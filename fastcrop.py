@@ -334,7 +334,7 @@ class FastCropApp(QMainWindow):
         self.cfg_show_shortcuts.stateChanged.connect(self.apply_drawer_visibility_rules)
         self.drawer_layout.addWidget(self.cfg_show_shortcuts)
         
-        self.cfg_show_toasts = QCheckBox("Center Notifications")
+        self.cfg_show_toasts = QCheckBox("Notifications")
         self.cfg_show_toasts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cfg_show_toasts.setChecked(True)
         self.drawer_layout.addWidget(self.cfg_show_toasts)
@@ -939,6 +939,15 @@ class FastCropApp(QMainWindow):
             else:
                 self.crop_box_selector.hide()
                 self.last_crop_geometry = None
+        
+        if use_lossless:
+            self.show_center_notification("Lossless Cropped")
+        else:
+            # Check if the output file is a naturally lossless format like PNG
+            if file_ext in ('.png', '.bmp'):
+                self.show_center_notification("Lossless Cropped")
+            else:
+                self.show_center_notification("Lossy Cropped")
 
         self.update_resolution_metrics_display()        
         return True
