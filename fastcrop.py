@@ -1112,13 +1112,13 @@ class FastCropApp(QMainWindow):
                 self.last_crop_geometry = None
         
         if use_lossless:
-            self.show_center_notification("Lossless Cropped")
+            self.show_center_notification("Lossless Crop")
         else:
             # Check if the output file is a naturally lossless format like PNG
             if file_ext in ('.png', '.bmp'):
-                self.show_center_notification("Lossless Cropped")
+                self.show_center_notification("Lossless Crop")
             else:
-                self.show_center_notification("Lossy Cropped")
+                self.show_center_notification("Lossy Crop")
 
         self.update_resolution_metrics_display()
         self.update_zoom_hud_payload()        
