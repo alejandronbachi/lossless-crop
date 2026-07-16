@@ -415,6 +415,26 @@ class FastCropApp(QMainWindow):
         self.image_display_container.mousePressEvent = self.on_mouse_press
         self.image_display_container.mouseMoveEvent = self.on_mouse_move
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
+
+        # Construct the secondary, floating text overlay widget
+        self.lbl_telemetry_hud = QLabel(self.central_widget)
+        self.lbl_telemetry_hud.setObjectName("TelemetryHUD")
+        self.lbl_telemetry_hud.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Clicks pass right through it!
+        self.lbl_telemetry_hud.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.lbl_telemetry_hud.setStyleSheet("""
+            QLabel#TelemetryHUD {
+                color: #888888;
+                font-family: monospace;
+                font-size: 16px;
+                font-weight: bold;
+                background-color: rgba(10, 10, 10, 0.75);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                padding: 10px;
+            }
+        """)
+        self.lbl_telemetry_hud.hide() # Hidden by default until bar collapses
+
         
         
         #  CONSTRUCT THE SLIDING CONFIGURATION DRAWER INTERFACE 
@@ -501,7 +521,12 @@ class FastCropApp(QMainWindow):
         self.cfg_show_infobar.stateChanged.connect(self.apply_drawer_visibility_rules)
         self.drawer_layout.addWidget(self.cfg_show_infobar)
 
-        # NEW: Target resolution display toggles
+        self.cfg_show_filename = QCheckBox("Image Filename")
+        self.cfg_show_filename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_filename.setChecked(True)
+        self.cfg_show_filename.stateChanged.connect(self.update_resolution_metrics_display)
+        self.drawer_layout.addWidget(self.cfg_show_filename)
+        #  Target resolution display toggles
         self.cfg_show_imgsize = QCheckBox("Image Resolution")
         self.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cfg_show_imgsize.setChecked(True)
@@ -785,6 +810,8 @@ class FastCropApp(QMainWindow):
         # Hide the commands panel instantly so it doesn't obstruct cropping fields
         self.lbl_commands_overlay.hide()
 
+        if not self.cfg_show_infobar.isChecked() and hasattr(self, 'lbl_telemetry_hud'):
+            self.lbl_telemetry_hud.hide()
         if event.button() == Qt.MouseButton.LeftButton:
             # Left Click: Draw a new crop box
             self.drag_start_origin = event.position().toPoint()
@@ -1195,6 +1222,15 @@ class FastCropApp(QMainWindow):
         self.refresh_display_canvas()
         self.position_commands_overlay()
 
+        # FLOATING OVERLAY SNAP ALIGNER #
+        if hasattr(self, 'lbl_telemetry_hud') and not self.lbl_telemetry_hud.isHidden():
+            self.lbl_telemetry_hud.adjustSize()
+            # Position it 15 pixels up from the very base margin line of the main window workspace
+            padding = 15
+            x = padding
+            y = self.central_widget.height() - self.lbl_telemetry_hud.height() - padding
+            self.lbl_telemetry_hud.move(x, y)
+
         # Keep floating panels properly anchored on right edge on resize
         if hasattr(self, 'drawer'):
             window_width = self.central_widget.width()
@@ -1282,6 +1318,12 @@ class FastCropApp(QMainWindow):
             self.info_bar_widget.show()
         else:
             self.info_bar_widget.hide()
+            
+        self.central_widget.layout().activate() 
+        self.refresh_display_canvas() 
+        
+        # 3. Trigger telemetry router recalculations to shift paths matching the updated layout
+        self.update_resolution_metrics_display()
 
     def closeEvent(self, event):
         """Standard PyQt window intercept routine executing right before closing down."""
@@ -1327,6 +1369,7 @@ class FastCropApp(QMainWindow):
             settings.setValue("show_shortcuts", self.cfg_show_shortcuts.isChecked())
             settings.setValue("show_toasts", self.cfg_show_toasts.isChecked())
             settings.setValue("show_infobar", self.cfg_show_infobar.isChecked())
+            settings.setValue("show_filename", self.cfg_show_filename.isChecked())
             settings.setValue("show_imgsize", self.cfg_show_imgsize.isChecked())
             settings.setValue("show_cropsize", self.cfg_show_cropsize.isChecked())
             settings.setValue("conserve_selection", self.chk_preserve.isChecked())
@@ -1374,6 +1417,7 @@ class FastCropApp(QMainWindow):
             self.cfg_show_shortcuts.setChecked(safe_bool(settings.value("show_shortcuts"), True))
             self.cfg_show_toasts.setChecked(safe_bool(settings.value("show_toasts"), True))
             self.cfg_show_infobar.setChecked(safe_bool(settings.value("show_infobar"), True))
+            self.cfg_show_filename.setChecked(safe_bool(settings.value("show_filename"), True))
             self.cfg_show_imgsize.setChecked(safe_bool(settings.value("show_imgsize"), True))
             self.cfg_show_cropsize.setChecked(safe_bool(settings.value("show_cropsize"), True))
             self.chk_preserve.setChecked(safe_bool(settings.value("conserve_selection"), True))
@@ -1414,66 +1458,92 @@ class FastCropApp(QMainWindow):
                     self.current_index = 0
                     self.load_image_to_viewport()
 
-
     def update_resolution_metrics_display(self):
-        """Computes and formats current source resolution and mouse box coordinates strings."""
+        """Intelligently processes and routes file data and resolutions based on layout settings."""
         if self.current_index == -1 or not self.current_pil_image:
+            self.lbl_status.setText("Ready. Open a folder to start cropping.")
             self.lbl_metrics.setText("")
+            self.lbl_telemetry_hud.setText("")
+            self.lbl_telemetry_hud.hide()
             return
-            
+
+        # 1. Compile file status tracking elements
+        filename_string = ""
+        if self.cfg_show_filename.isChecked():
+            filename_string = f"[{self.current_index + 1}/{len(self.image_files)}] {self.image_files[self.current_index]}"
+
+        # 2. Compile metrics tracking components
         metrics_text_parts = []
         src_w, src_h = self.current_pil_image.size
         
-        # 1. Core Source Image Array Dimensions
         if self.cfg_show_imgsize.isChecked():
             metrics_text_parts.append(f"IMG: {src_w}x{src_h}")
             
-        # 2. Translate Visual Screen Selection Space Dimensions back into Raw File Geometry Coordinates
         if self.cfg_show_cropsize.isChecked():
-            # Check if the rubber band box is visible and actually contains shape dimensions
             has_selection = (not self.crop_box_selector.isHidden()) and \
                             (self.crop_box_selector.width() > 5) and \
                             (self.crop_box_selector.height() > 5)
-                            
             if has_selection:
                 box_rect = self.crop_box_selector.geometry()
                 pixmap = self.image_display_container.pixmap()
-                
                 if pixmap:
-                    # Extract accurate pixel dimension envelopes from current preview containers
                     lbl_w, lbl_h = self.image_display_container.width(), self.image_display_container.height()
                     pix_w, pix_h = pixmap.width(), pixmap.height()
-                    
-                    # Compute layout centering offset metrics
                     offset_x = (lbl_w - pix_w) // 2
                     offset_y = (lbl_h - pix_h) // 2
-                    
-                    # Clip current active drawing boundaries relative to raw image position bounds
                     adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
                     adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
                     adj_w = min(box_rect.width(), pix_w - adj_x)
                     adj_h = min(box_rect.height(), pix_h - adj_y)
-                    
-                    # Scaling transformations math steps
                     scale_x = src_w / pix_w
                     scale_y = src_h / pix_h
-                    
                     real_crop_w = int(adj_w * scale_x)
                     real_crop_h = int(adj_h * scale_y)
-                    
                     if real_crop_w > 0 and real_crop_h > 0:
                         metrics_text_parts.append(f"CROP: {real_crop_w}x{real_crop_h}")
                     else:
-                        # Fallback placeholder if calculation boundaries collapse
                         metrics_text_parts.append("CROP: 0x0")
                 else:
                     metrics_text_parts.append("CROP: 0x0")
             else:
-                # 🌟 MAINTAIN UI CONSISTENCY: Always append 0x0 placeholder if no selection box is active 🌟
                 metrics_text_parts.append("CROP: 0x0")
+
+        metrics_string = " | ".join(metrics_text_parts) if metrics_text_parts else ""
+
+        # -------------------------------------------------------------
+        #  THE TRAFFIC ROUTER ENGINE 
+        # -------------------------------------------------------------
+        if self.cfg_show_infobar.isChecked():
+            # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
+            self.lbl_telemetry_hud.hide()
+            self.lbl_status.setText(filename_string if filename_string else "")
+            self.lbl_metrics.setText(metrics_string)
+        else:
+            # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
+            self.lbl_status.setText("")
+            self.lbl_metrics.setText("")
+            is_user_actively_editing = getattr(self, 'is_moving_box', False) or (hasattr(self, 'drag_start_origin') and not self.drag_start_origin.isNull() and not getattr(self, 'is_moving_box', False))
+            hud_lines = []
+            if filename_string:
+                hud_lines.append(filename_string)
+            if metrics_string:
+                hud_lines.append(metrics_string)
                 
-        # Inject the final calculated results text cleanly into layout label
-        self.lbl_metrics.setText(" | ".join(metrics_text_parts) if metrics_text_parts else "")
+            if hud_lines and not is_user_actively_editing:
+                # Update text array layout and force a layout redraw pass
+                self.lbl_telemetry_hud.setText("\n".join(hud_lines))
+                self.lbl_telemetry_hud.show()
+                self.lbl_telemetry_hud.adjustSize()
+                self.lbl_telemetry_hud.raise_()
+                
+                # Re-calculate geometry offsets so card sits perfectly at lower-left margin bounds
+                padding = 15
+                x = padding
+                y = self.central_widget.height() - self.lbl_telemetry_hud.height() - padding
+                self.lbl_telemetry_hud.move(x, y)
+            else:
+                self.lbl_telemetry_hud.hide()
+
 
     def toggle_zoom_hud_window_visibility(self):
         """Displays or shuts down the floating zoom view based on checkbox rules."""
