@@ -1436,11 +1436,7 @@ class FastCropApp(QMainWindow):
         master_remember = self.cfg_remember_settings.isChecked()
         settings.setValue("remember_settings", master_remember)
         # ALWAYS save geometry profiles, but we only restore them if 'Remember 
-        settings.setValue("main_win_x", self.x())
-        settings.setValue("main_win_y", self.y())
-        settings.setValue("main_win_w", self.width())
-        settings.setValue("main_win_h", self.height())
-
+        settings.setValue("main_window_geometry_blob", self.saveGeometry())
 
         if hasattr(self, 'zoom_hud'):
             settings.setValue("hud_win_x", self.zoom_hud.x())
@@ -1488,17 +1484,17 @@ class FastCropApp(QMainWindow):
             self.cfg_persist_hud_win.setChecked(safe_bool(settings.value("persist_hud_win"), True))
 
             if self.cfg_persist_main_win.isChecked():
-                mx = settings.value("main_win_x")
-                my = settings.value("main_win_y")
-                mw = settings.value("main_win_w")
-                mh = settings.value("main_win_h")
-                if mx is not None and my is not None and mw is not None and mh is not None:
-                    self.setGeometry(int(mx), int(my), int(mw), int(mh))
+                main_geom_blob = settings.value("main_window_geometry_blob")
+                if main_geom_blob:
+                    self.restoreGeometry(main_geom_blob)
                 
             if hasattr(self, 'zoom_hud') and self.cfg_persist_hud_win.isChecked():
-                hud_geom = settings.value("zoom_hud_geometry")
-                if hud_geom:
-                    self.zoom_hud.restoreGeometry(hud_geom)
+                hx = settings.value("hud_win_x")
+                hy = settings.value("hud_win_y")
+                hw = settings.value("hud_win_w")
+                hh = settings.value("hud_win_h")
+                if hx is not None and hy is not None and hw is not None and hh is not None:
+                    self.zoom_hud.setGeometry(int(hx), int(hy), int(hw), int(hh))
 
             # 2. Extract and translate all Boolean states safely using EXACT matching keys
             self.cfg_auto_folder.setChecked(safe_bool(settings.value("auto_open_folder"), False))
