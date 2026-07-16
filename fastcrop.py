@@ -86,6 +86,33 @@ class FastCropApp(QMainWindow):
         self.crop_box_selector = QRubberBand(QRubberBand.Shape.Rectangle, self.image_display_container)
         self.drag_start_origin = QPoint()
 
+        #  ADD THIS NEW COMMAND OVERLAY PANEL 
+        self.lbl_commands_overlay = QLabel(self.image_display_container)
+        self.lbl_commands_overlay.hide()  # Will show once an image loads
+        self.lbl_commands_overlay.setStyleSheet("""
+            QLabel {
+                color: #e0e0e0;
+                font-family: monospace;
+                font-size: 15px;
+                background-color: rgba(0, 0, 0, 0.7);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 8px;
+                padding: 10px;
+            }
+        """)
+        # Populate the exact hotkey roadmap text
+        self.lbl_commands_overlay.setText(
+            "<b>[Hotkeys Layout]</b><br>"
+            "Space       : Crop & Next Image<br>"
+            "S / Enter   : Crop & Stay<br>"
+            "F / ➡️      : Skip Forward<br>"
+            "B / ⬅️      : Skip Backward<br>"
+            "R           : Rotate Clockwise<br>"
+            "Esc         : Exit App<br><br>"
+            "<i>Left-Click Drag: Draw Box<br>"
+            "Right-Click Drag: Move Box</i>"
+        )
+     
         # Cinematic Floating Notifications Setup
         from PyQt6.QtWidgets import QGraphicsDropShadowEffect
         from PyQt6.QtGui import QColor
@@ -170,6 +197,10 @@ class FastCropApp(QMainWindow):
         else:
             self.crop_box_selector.hide()
             self.last_crop_geometry = None
+        
+        self.position_commands_overlay()
+        self.lbl_commands_overlay.show()
+        self.lbl_commands_overlay.raise_()
 
     def refresh_display_canvas(self):
         if not self.current_pil_image:
@@ -194,6 +225,9 @@ class FastCropApp(QMainWindow):
     def on_mouse_press(self, event):
         if not self.image_display_container.pixmap():
             return
+        
+        # Hide the commands panel instantly so it doesn't obstruct cropping fields
+        self.lbl_commands_overlay.hide()
 
         if event.button() == Qt.MouseButton.LeftButton:
             # Left Click: Draw a new crop box
@@ -265,6 +299,16 @@ class FastCropApp(QMainWindow):
         elif event.button() == Qt.MouseButton.RightButton:
             self.is_moving_box = False
             self.drag_start_origin = QPoint()
+        self.lbl_commands_overlay.show()
+        self.lbl_commands_overlay.raise_()
+
+    def position_commands_overlay(self):
+        """Positions the command overlay in the top right corner of the container."""
+        self.lbl_commands_overlay.adjustSize()
+        padding = 15
+        x = self.image_display_container.width() - self.lbl_commands_overlay.width() - padding
+        y = padding
+        self.lbl_commands_overlay.move(max(0, x), y)
 
 
     # -----------------------------------------------------------------
@@ -370,11 +414,11 @@ class FastCropApp(QMainWindow):
                 # Feedback fallback when hitting space on the last image
                 self.show_center_notification("Last image of directory")
                 
-        elif key == Qt.Key.Key_S:
+        elif key in (Qt.Key.Key_S, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Crop + Stay
             self.process_and_execute_crop()
             
-        elif key == Qt.Key.Key_F:
+        elif key in (Qt.Key.Key_F, Qt.Key.Key_Right):
             # Forward Skip
             if self.current_index < len(self.image_files) - 1:
                 self.current_index += 1
@@ -383,7 +427,7 @@ class FastCropApp(QMainWindow):
                 # Feedback fallback when trying to skip past the last image
                 self.show_center_notification("Last image of directory")
                 
-        elif key == Qt.Key.Key_B:
+        elif key in (Qt.Key.Key_B, Qt.Key.Key_Left):
             # Backward Skip
             if self.current_index > 0:
                 self.current_index -= 1
@@ -401,6 +445,7 @@ class FastCropApp(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.refresh_display_canvas()
+        self.position_commands_overlay()
         if self.lbl_notification.isVisible():
             parent_w = self.image_display_container.width()
             parent_h = self.image_display_container.height()
