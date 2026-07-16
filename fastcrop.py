@@ -40,7 +40,7 @@ class FloatingZoomPreview(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         self.setMouseTracking(True)
-        
+        self.setAcceptDrops(True)
         self.main_app = parent_window
         self.cached_crop_slice = None
         
@@ -1552,6 +1552,81 @@ class FastCropApp(QMainWindow):
                     pass
                     
         self.zoom_hud.update_zoom_payload(None)
+
+    def dragEnterEvent(self, event):
+        """Fires when a user hovers a dragging mouse cargo over the application frame."""
+        # Check if the dragging item contains filesystem file links/URLs
+        if event.mimeData().hasUrls():
+            # Dynamically change the cursor arrow to a premium link/drop icon copy state
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        """Fires the exact millisecond the user lets go of their mouse drop cargo."""
+        urls = event.mimeData().urls()
+        if not urls:
+            return
+            
+        # Extract the absolute local filesystem path from the very first dropped item
+        dropped_path = urls[0].toLocalFile()
+        if not dropped_path:
+            return
+            
+        target_folder = ""
+        target_starting_file = None
+        
+        # -------------------------------------------------------------
+        # 🌟 INDEPENDENT PATH PARSING ENGINE AUTOMATION 🌟
+        # -------------------------------------------------------------
+        if os.path.isdir(dropped_path):
+            # PIPELINE A: The asset dropped is a folder container raw
+            target_folder = dropped_path
+            
+        elif os.path.isfile(dropped_path):
+            # PIPELINE B: The asset dropped is an individual image file path
+            # Isolate its parent folder directory, and capture the specific filename string
+            target_folder = os.path.dirname(dropped_path)
+            target_starting_file = os.path.basename(dropped_path)
+        # -------------------------------------------------------------
+            
+        # Parse the folder queue matching our calculated target directory profiles
+        if target_folder and os.path.exists(target_folder):
+            self.image_folder = target_folder
+            folder_name = os.path.basename(os.path.normpath(target_folder))
+            self.lbl_folder_name.setText(f"📁 {folder_name}")
+            
+            # Enforce strict defensive extension format parsing whitelists
+            SAFE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
+            raw_files = [f for f in os.listdir(target_folder) if f.lower().endswith(SAFE_EXTENSIONS)]
+            raw_files.sort()
+            
+            # Run image header validation check passes to discard bad assets early
+            self.image_files = []
+            for filename in raw_files:
+                test_path = os.path.join(self.image_folder, filename)
+                try:
+                    with Image.open(test_path) as img:
+                        img.verify()
+                    self.image_files.append(filename)
+                except Exception:
+                    pass
+            
+            # Workspace Viewport Integration Dispatchers
+            if self.image_files:
+                # If a single file was dropped, search the array index map to find its position
+                if target_starting_file and (target_starting_file in self.image_files):
+                    self.current_index = self.image_files.index(target_starting_file)
+                else:
+                    self.current_index = 0
+                    
+                # Force view refresh 
+                self.load_image_to_viewport()
+                
+                # Resync QSettings registry so the folder browser stays matched
+                from PyQt6.QtCore import QSettings
+                QSettings("LossLessCropTeam", "LossLessCrop").setValue("last_used_folder", self.image_folder)
+            else:
+                self.lbl_status.setText("No valid, readable images found in dropped payload.")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
