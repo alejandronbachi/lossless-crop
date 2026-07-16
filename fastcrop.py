@@ -54,6 +54,7 @@ class FastCropApp(QMainWindow):
         self.combo_ratio = QComboBox()
         self.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.combo_ratio.addItems(["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"])
+        self.combo_ratio.currentIndexChanged.connect(self.on_ratio_changed)
         self.toolbar.addWidget(self.combo_ratio)
         
         # Workspace Retention Checkboxes
@@ -314,6 +315,35 @@ class FastCropApp(QMainWindow):
         y = padding
         self.lbl_commands_overlay.move(max(0, x), y)
 
+    def on_ratio_changed(self):
+        """Instantly morphs the active selection box when the aspect ratio dropdown changes."""
+        # Exit early if the selection box is hidden or practically empty
+        if self.crop_box_selector.isHidden() or self.crop_box_selector.width() <= 5:
+            return
+            
+        ratio_type = self.combo_ratio.currentText()
+        if ratio_type == "Freeform":
+            return  # Freeform allows any shape, so don't alter the current frame
+            
+        # Determine the target mathematical ratio scale
+        aspect_ratio = 1.0
+        if ratio_type == "16:9 Widescreen":
+            aspect_ratio = 16.0 / 9.0
+        elif ratio_type == "4:3 Standard":
+            aspect_ratio = 4.0 / 3.0
+            
+        # Use the current width as the master base and calculate the new height
+        current_geom = self.crop_box_selector.geometry()
+        new_width = current_geom.width()
+        new_height = int(new_width / aspect_ratio)
+        
+        # Build the updated boundary layout
+        new_rect = QRect(current_geom.x(), current_geom.y(), new_width, new_height)
+        
+        # Apply the new geometry dimensions to the canvas overlay
+        self.crop_box_selector.setGeometry(new_rect)
+        self.last_crop_geometry = new_rect
+        self.crop_box_selector.raise_()
 
     # -----------------------------------------------------------------
     # PIPELINE EDITING SUBROUTINES AND WRITING LOGIC
