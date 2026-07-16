@@ -214,20 +214,36 @@ class FastCropApp(QMainWindow):
             return
             
         self.image_folder = directory
-        
-        # Extract just the last folder name from the absolute path
         folder_name = os.path.basename(os.path.normpath(directory))
         self.lbl_folder_name.setText(f"📁 {folder_name}")
         
-        valid_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
-        self.image_files = [f for f in os.listdir(directory) if f.lower().endswith(valid_extensions)]
-        self.image_files.sort()
+        # 1. Define our verified, universally safe format whitelist
+        SAFE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
         
+        # Pull all files matching the whitelist extension pool
+        raw_files = [f for f in os.listdir(directory) if f.lower().endswith(SAFE_EXTENSIONS)]
+        raw_files.sort()
+        
+        # 2. Defensive Pass: Filter out fake/corrupted images using binary headers
+        self.image_files = []
+        for filename in raw_files:
+            test_path = os.path.join(self.image_folder, filename)
+            try:
+                # Open just the head bytes. If it's an exe or raw data block, it will fail here.
+                with Image.open(test_path) as img:
+                    img.verify() 
+                self.image_files.append(filename)
+            except Exception:
+                # Silently log the bypass in the terminal and keep moving
+                print(f"[SECURITY SHIELD] Discarded fake, renamed, or corrupted image file: {filename}")
+        
+        # 3. Viewport Dispatch
         if self.image_files:
             self.current_index = 0
             self.load_image_to_viewport()
         else:
-            self.lbl_status.setText("No compatible images found in chosen directory.")
+            self.lbl_status.setText("No valid, readable images found in directory.")
+
 
 
     def load_image_to_viewport(self):
@@ -307,6 +323,7 @@ class FastCropApp(QMainWindow):
         
         # FIX: Extract extension from tuple correctly using index [1]
         _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
+        file_ext = file_ext.lower()
         is_jpeg = file_ext in ('.jpg', '.jpeg')
         is_lossless = (self.combo_engine.currentText() == "Lossless") and LOSSLESS_AVAILABLE and is_jpeg
 
@@ -498,10 +515,22 @@ class FastCropApp(QMainWindow):
         # Close the Pillow memory handler connection to the source file before overwriting it
         self.current_pil_image.close()
         
-        # ⬇️ UPDATED ENGINE ROUTER WITH DETAILED LOGGING PIPELINES ⬇️
-        _, file_ext = os.path.splitext(original_name.lower())
+        #  UPDATED ENGINE ROUTER WITH DETAILED LOGGING PIPELINES 
+
+        _, file_ext = os.path.splitext(original_name)
+        file_ext = file_ext.lower()  # ✅ Normalizes .JPG / .JPEG down to lowercase strings
         is_jpeg = file_ext in ('.jpg', '.jpeg')
-        use_lossless = (self.combo_engine.currentText() == "Lossless") and LOSSLESS_AVAILABLE and is_jpeg
+        
+        # Verify the actual internal file signature structure for JPEG
+        is_true_jpeg = False
+        if is_jpeg:
+            try:
+                with open(current_filepath, 'rb') as f:
+                    is_true_jpeg = (f.read(3) == b'\xff\xd8\xff')
+            except Exception:
+                is_true_jpeg = False
+
+        use_lossless = (self.combo_engine.currentText() == "Lossless") and LOSSLESS_AVAILABLE and is_true_jpeg
 
         if use_lossless:
             # 🚀 ENGINE A: TRUE LOSSLESS JPEG TRANSLATION
