@@ -39,6 +39,118 @@ class FastCropApp(QMainWindow):
         self.setWindowTitle("LossLess Crop")
         self.resize(900, 700)
         
+        self.setStyleSheet("""
+            /* Main Window Workspace Context Background */
+
+            /*  Main Window Workspace Context Background (Explicitly target QMainWindow) */
+            QMainWindow {
+                background-color: #121212;
+            }
+            
+            /*  Target actual visual widgets individually instead of a broad QWidget wrapper 
+               This keeps internal dropdown delegate lists safe from -1 font inheritance death! */
+            QLabel, QCheckBox, QPushButton, QComboBox {
+                font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+                color: #e0e0e0;
+            }
+            
+            /* Premium Micro flat Interactive Toolbar Buttons */
+            QPushButton {
+                background-color: #222222;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                color: #ffffff;
+                padding: 5px 12px;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #2b2b2b;
+                border: 1px solid #444444;
+            }
+            QPushButton:pressed {
+                background-color: #1a1a1a;
+                border: 1px solid #222222;
+            }
+            
+            QComboBox {
+                background-color: #1e1e1e;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                padding: 4px 25px 4px 10px;
+                color: #ffffff;
+                min-width: 100px;
+            }
+            QComboBox:hover {
+                border: 1px solid #444444;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left-width: 0px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1e1e1e;
+                border: 1px solid #333333;
+                selection-background-color: #2d2d2d;
+                selection-color: #ffffff;
+                color: #cccccc;
+            }
+            
+            /* Bottom Split Structural Information Framework Widget */
+            QWidget#info_bar_widget {
+                background-color: #0a0a0a;
+                border-top: 1px solid #222222;
+            }
+
+            
+                        /* Sleek Space-Saving Checkboxes Layout Options */
+            QCheckBox {
+                font-size: 13px;
+                color: #cccccc;
+                spacing: 6px;
+                background-color: transparent;
+            }
+            QCheckBox:hover {
+                color: #ffffff;
+            }
+            
+            /* Base layout definition for ALL checkbox indicator boxes */
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 1px solid #444444;
+                border-radius: 3px;
+                background-color: #1e1e1e;
+            }
+            
+            /* Unchecked Hover State */
+            QCheckBox::indicator:unchecked:hover {
+                border: 1px solid #666666;
+                background-color: #252525;
+            }
+            
+            /* Safe, fully-quoted Base64 data string blocks all console logs & syntax warnings  */
+            QCheckBox::indicator:checked {
+                background-color: #3b5998;
+                border: 1px solid #4a6fa5;
+                image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjIwIDYgOSAxNyA0IDEyIi8+PC9zdmc+");
+            }
+            
+            /* Checked Hover State */
+            QCheckBox::indicator:checked:hover {
+                background-color: #4a6fa5;
+                border: 1px solid #5a7fb5;
+            }
+            
+            /* Bottom Split Structural Information Framework Widget */
+            QWidget#info_bar_widget {
+                background-color: #0a0a0a;
+                border-top: 1px solid #222222;
+            }
+        """)
+
         # Image Pipeline Management Variables
         self.image_folder = ""
         self.image_files = []
@@ -82,6 +194,14 @@ class FastCropApp(QMainWindow):
         self.combo_engine = QComboBox()
         self.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.combo_engine.setToolTip("Choose processing engine mode for saving operations.")
+
+        from PyQt6.QtGui import QFont
+        native_font = QFont("Segoe UI", 10) # Binds a solid, valid 10pt/13px font profile
+        self.combo_engine.setFont(native_font)
+        self.combo_engine.view().setFont(native_font) # Binds the internal dropdown view list too!
+        
+
+
         if LOSSLESS_AVAILABLE:
             self.combo_engine.addItem("Lossless")
         if PILLOW_AVAILABLE:
@@ -94,6 +214,8 @@ class FastCropApp(QMainWindow):
         self.combo_ratio = QComboBox()
         self.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.combo_ratio.setToolTip("Force the cropping rectangle selection box to lock onto specific aspect ratios.")
+        self.combo_ratio.setFont(native_font)
+        self.combo_ratio.view().setFont(native_font)
         self.combo_ratio.addItems(["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"])
         self.combo_ratio.currentIndexChanged.connect(self.on_ratio_changed)
         self.toolbar.addWidget(self.combo_ratio)
@@ -112,26 +234,30 @@ class FastCropApp(QMainWindow):
         self.toolbar.addWidget(self.chk_overwrite)
         
         #  Custom Gear Button - Far Left & Borderless
+        
         self.btn_settings = QPushButton("⚙️")
         self.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_settings.setToolTip("Toggle configuration choices")
-        self.btn_settings.setFixedSize(36, 36) # Square and slightly larger
+        self.btn_settings.setFixedSize(38, 38) # Slightly larger bounding frame layout
         self.btn_settings.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 border: none;
                 border-radius: 6px;
-                font-size: 18px;
-                color: #aaaaaa;
+                font-size: 16px; /* Perfectly optimized glyph scaling */
+                color: #888888;
+                padding: 0px;   /* Clears implicit layout margins blocking edges */
+                margin: 0px;
             }
             QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
+                background-color: rgba(255, 255, 255, 0.08);
                 color: #ffffff;
             }
             QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 0.05);
+                background-color: rgba(255, 255, 255, 0.04);
             }
         """)
+
         self.btn_settings.clicked.connect(self.toggle_settings_drawer)
         self.toolbar.addWidget(self.btn_settings)
 
