@@ -151,7 +151,7 @@ class FloatingZoomPreview(QWidget):
     def keyPressEvent(self, event):
         """Listens for specific keystrokes when the preview window has active focus."""
         # 🌟 CLOSE ON ESCAPE: If the user hits Esc, cleanly dismiss the HUD panel
-        if event.key() == Qt.Key.Key_Escape:
+        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_P):
             self.hide()
             
             # Uncheck the matching drawer checkbox in the main window for sync consistency
@@ -637,6 +637,67 @@ class FastCropApp(QMainWindow):
         self.notification_timer.setInterval(1000)
         self.notification_timer.setSingleShot(True)
         self.notification_timer.timeout.connect(self.lbl_notification.hide)
+
+
+        # =============================================================
+        # FLOATING INTERACTIVE HUB SPLASH HUD OVERLAY (Collision-Proof)
+        # =============================================================
+        self.lbl_splash_hud = QLabel(self.central_widget)
+        self.lbl_splash_hud.setObjectName("SplashHUD")
+        # Ensure mouse clicks pass straight through the text box so they don't block canvas drops
+        self.lbl_splash_hud.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.lbl_splash_hud.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Premium Obsidian themed typography card styling layout with 85% translucent backing
+        self.lbl_splash_hud.setStyleSheet("""
+            QLabel#SplashHUD {
+                color: #ffffff;
+                font-family: 'Segoe UI', -apple-system, sans-serif;
+                background-color: rgba(15, 15, 15, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                padding: 35px 50px;
+                line-height: 150%;
+            }
+        """)
+        
+        # Build the exact typographic text block structure using clean Unicode pointers
+        # We increase the padding gaps inside the inner line elements for greater vertical depth
+        splash_text = (
+            "<div style='text-align: center; font-family: \"Segoe UI\", -apple-system, sans-serif;'>"
+            
+            # Row 1: The Core Hotkey Prompt
+            "<div style='margin-bottom: 22px;'>"
+            "<span style='font-size: 26px; font-weight: bold; color: #ffffff;'>[O] &nbsp;▸&nbsp; Open a Directory Folder</span>"
+            "</div>"
+            
+            # Row 2: Minimalist Small "OR" Divider 1
+            "<div style='margin-bottom: 22px;'>"
+            "<span style='font-size: 11px; font-weight: 800; color: #555555; letter-spacing: 2px; text-transform: uppercase;'>— or —</span>"
+            "</div>"
+            
+            # Row 3: Drag Folder Guideline
+            "<div style='margin-bottom: 22px;'>"
+            "<span style='font-size: 19px; font-weight: 500; color: #bbbbbb;'>Drag & Drop a Directory Folder</span>"
+            "</div>"
+            
+            # Row 4: Second Small "OR" Divider 2
+            "<div style='margin-bottom: 22px;'>"
+            "<span style='font-size: 11px; font-weight: 800; color: #555555; letter-spacing: 2px; text-transform: uppercase;'>— or —</span>"
+            "</div>"
+            
+            # Row 5: Drag File Guideline (No bottom margin needed on the final line element)
+            "<div>"
+            "<span style='font-size: 19px; font-weight: 500; color: #bbbbbb;'>Drag & Drop an Image File</span>"
+            "</div>"
+            
+            "</div>"
+        )
+        self.lbl_splash_hud.setText(splash_text)
+        self.lbl_splash_hud.hide() # Maintained hidden by default until evaluated on launch
+
+
+
         # -------------------------------------------------------------
         # BOTTOM INFO BAR LAYOUT PANEL (Split Structure)
         # -------------------------------------------------------------
@@ -715,9 +776,20 @@ class FastCropApp(QMainWindow):
 
 
     def load_image_to_viewport(self):
-        if not (0 <= self.current_index < len(self.image_files)):
+        if self.current_index == -1 or not self.image_files or not (0 <= self.current_index < len(self.image_files)):
+            # ⬇️ No image active: Reveal the floating instruction overlay card over empty canvas space ⬇️
+            if hasattr(self, 'lbl_splash_hud'):
+                self.lbl_splash_hud.show()
+                # Force instant repositioning call
+                self.lbl_splash_hud.adjustSize()
+                cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
+                cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
+                self.lbl_splash_hud.move(cx, max(50, cy))
+                self.lbl_splash_hud.raise_()
             return
-            
+        
+        if hasattr(self, 'lbl_splash_hud'):
+            self.lbl_splash_hud.hide()
         file_path = os.path.join(self.image_folder, self.image_files[self.current_index])
         self.lbl_status.setText(f"[{self.current_index + 1}/{len(self.image_files)}] - {self.image_files[self.current_index]}")
         
@@ -1221,6 +1293,17 @@ class FastCropApp(QMainWindow):
         self.refresh_display_canvas()
         self.position_commands_overlay()
 
+        #  CENTER THE FLOATING SPLASH HUD CARD IN ABSOLUTE WORKSPACE ROOM 
+        if hasattr(self, 'lbl_splash_hud') and not self.lbl_splash_hud.isHidden():
+            self.lbl_splash_hud.adjustSize()
+            
+            # Compute perfect centering math targets across the workspace geometry footprint
+            cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
+            cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
+            
+            # Snap it seamlessly into place over the center empty canvas
+            self.lbl_splash_hud.move(cx, max(50, cy))
+
         # FLOATING OVERLAY SNAP ALIGNER #
         if hasattr(self, 'lbl_telemetry_hud') and not self.lbl_telemetry_hud.isHidden():
             self.lbl_telemetry_hud.adjustSize()
@@ -1443,8 +1526,7 @@ class FastCropApp(QMainWindow):
         
         # 4. Folder Automation Check
         last_folder = settings.value("last_used_folder", "")
-        if last_folder and isinstance(last_folder, str) and os.path.exists(last_folder):
-            if remember and self.cfg_auto_folder.isChecked():
+        if last_folder and isinstance(last_folder, str) and os.path.exists(last_folder) and remember and self.cfg_auto_folder.isChecked():
                 self.image_folder = last_folder
                 folder_name = os.path.basename(os.path.normpath(last_folder))
                 self.lbl_folder_name.setText(f"📁 {folder_name}")
@@ -1456,6 +1538,15 @@ class FastCropApp(QMainWindow):
                 if self.image_files:
                     self.current_index = 0
                     self.load_image_to_viewport()
+        else:
+            # 🌟 Startup is completely empty! Reveal our floating typographic guidelines HUD layout card 🌟
+            if hasattr(self, 'lbl_splash_hud'):
+                self.lbl_splash_hud.show()
+                self.lbl_splash_hud.adjustSize()
+                cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
+                cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
+                self.lbl_splash_hud.move(cx, max(50, cy))
+                self.lbl_splash_hud.raise_()
 
     def update_resolution_metrics_display(self):
         """Intelligently processes and routes file data and resolutions based on layout settings."""
