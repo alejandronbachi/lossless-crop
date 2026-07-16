@@ -308,13 +308,6 @@ class FastCropApp(QMainWindow):
         self.toolbar = QHBoxLayout()
         self.toolbar.setSpacing(10)
         
-        # Standard Directory Load Button
-        self.btn_open = QPushButton("Open")
-        self.btn_open.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.btn_open.setToolTip("Open a directory containing images to start editing.")
-        self.btn_open.clicked.connect(self.select_directory)
-        self.toolbar.addWidget(self.btn_open)
-        
         self.lbl_folder_name = QLabel("No directory loaded.")
         self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px;")
         self.toolbar.addWidget(self.lbl_folder_name)
@@ -603,6 +596,7 @@ class FastCropApp(QMainWindow):
             "<b>[Hotkeys Layout]</b><br>"
             "[<b>Space</b>]       : Crop & Next Image<br>"
             "[<b>S</b>] / <b>Enter</b>]   : Crop & Stay<br>"
+            "[<b>O</b>]           : Open Directory<br>"
             "[<b>F</b>] / [<b>→</b>]      : Skip Forward<br>"
             "[<b>B</b>] / [<b>←</b>]      : Skip Backward<br>"
             "[<b>R</b>]           : Rotate Clockwise<br>"
@@ -1213,6 +1207,11 @@ class FastCropApp(QMainWindow):
         elif key == Qt.Key.Key_R:
             # Rotate Action
             self.rotate_current_image()
+
+        elif event.key() == Qt.Key.Key_O:
+            self.select_directory()
+            event.accept()
+            return
             
         else:
             super().keyPressEvent(event)
