@@ -7,6 +7,20 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QColor
 from PyQt6.QtCore import Qt, QRect, QSize, QPoint, QTimer
 
+# Check for Pillow availability
+try:
+    from PIL import Image
+    PILLOW_AVAILABLE = True
+except ImportError:
+    PILLOW_AVAILABLE = False
+
+# Check for Lossless engine availability
+try:
+    from jpegtran import JPEGImage
+    LOSSLESS_AVAILABLE = True
+except ImportError:
+    LOSSLESS_AVAILABLE = False
+
 class FastCropApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -49,6 +63,22 @@ class FastCropApp(QMainWindow):
         
         self.toolbar.addStretch()
         
+        self.toolbar.addWidget(QLabel("Engine Mode:"))
+        self.combo_engine = QComboBox()
+        self.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        
+        # Dynamically unlock features based on the top environment checks
+        if LOSSLESS_AVAILABLE:
+            self.combo_engine.addItem("Lossless Mode (100% Quality)")
+        if PILLOW_AVAILABLE:
+            self.combo_engine.addItem("Pillow Mode (Pixel-Perfect)")
+            
+        # If lossless is missing, fallback gracefully
+        if not LOSSLESS_AVAILABLE and PILLOW_AVAILABLE:
+            self.combo_engine.setCurrentText("Pillow Mode (Pixel-Perfect)")
+            
+        self.toolbar.addWidget(self.combo_engine)
+
         # Aspect Ratio Optimization Control Dropdowns
         self.toolbar.addWidget(QLabel("Force Ratio:"))
         self.combo_ratio = QComboBox()
@@ -255,33 +285,58 @@ class FastCropApp(QMainWindow):
             return
             
         current_point = event.position().toPoint()
+        ratio_type = self.combo_ratio.currentText()
+        is_lossless = self.combo_engine.currentText() == "Lossless Mode (100% Quality)"
 
+        # -----------------------------------------------------------------
+        # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box)
+        # -----------------------------------------------------------------
         if self.is_moving_box:
-            # Right Click Logic: Move the selection box without resizing it
             delta = current_point - self.drag_start_origin
             current_geometry = self.crop_box_selector.geometry()
             
-            # Calculate new position coordinates
             new_x = current_geometry.x() + delta.x()
             new_y = current_geometry.y() + delta.y()
             
-            # Constrain to prevent moving completely outside the display canvas boundaries
+            # ⬇️ APPLY GRID SNAPPING TO THE MOVEMENT ⬇️
+            if is_lossless:
+                new_x = round(new_x / 16) * 16
+                new_y = round(new_y / 16) * 16
+            
+            # Constrain to prevent moving completely outside the display canvas
             new_x = max(0, min(new_x, self.image_display_container.width() - current_geometry.width()))
             new_y = max(0, min(new_y, self.image_display_container.height() - current_geometry.height()))
             
             # Apply layout movement update
             self.crop_box_selector.move(new_x, new_y)
             self.last_crop_geometry = self.crop_box_selector.geometry()
-            self.drag_start_origin = current_point  # Update base point for smooth tracking delta
             
+            # Only update our tracking origin if we actually shifted position
+            if not is_lossless or (delta.x() % 16 == 0 or delta.y() % 16 == 0):
+                self.drag_start_origin = current_point
+
+        # -----------------------------------------------------------------
+        # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing/Resizing the box)
+        # -----------------------------------------------------------------
         else:
-            # Left Click Logic: Handle original box drawing/resizing
-            current_rect = QRect(self.drag_start_origin, current_point).normalized()
-            ratio_type = self.combo_ratio.currentText()
+            # ⬇️ APPLY GRID SNAPPING TO THE DRAWING BOUNDARIES ⬇️
+            if is_lossless:
+                snap_x = round(current_point.x() / 16) * 16
+                snap_y = round(current_point.y() / 16) * 16
+                current_point = QPoint(snap_x, snap_y)
+                
+                orig_x = round(self.drag_start_origin.x() / 16) * 16
+                orig_y = round(self.drag_start_origin.y() / 16) * 16
+                start_origin = QPoint(orig_x, orig_y)
+            else:
+                start_origin = self.drag_start_origin
+
+            current_rect = QRect(start_origin, current_point).normalized()
             
             if ratio_type == "Freeform":
                 self.crop_box_selector.setGeometry(current_rect)
             else:
+                # Aspect ratio mathematical bounding locks (1:1, 16:9, etc.)
                 aspect_ratio = 1.0
                 if ratio_type == "16:9 Widescreen":
                     aspect_ratio = 16.0 / 9.0
@@ -289,12 +344,20 @@ class FastCropApp(QMainWindow):
                     aspect_ratio = 4.0 / 3.0
                     
                 width = current_rect.width()
-                height = int(width / aspect_ratio)
                 
-                new_rect = QRect(self.drag_start_origin.x(), self.drag_start_origin.y(), 
-                                 width if current_point.x() > self.drag_start_origin.x() else -width,
-                                 height if current_point.y() > self.drag_start_origin.y() else -height).normalized()
+                # ⬇️ ADJUST ENFORCED RATIO HEIGHT FOR LOSSLESS ⬇️
+                if is_lossless:
+                    # Make sure the width stays on a 16-pixel boundary
+                    width = round(width / 16) * 16
+                    height = round((width / aspect_ratio) / 16) * 16
+                else:
+                    height = int(width / aspect_ratio)
+                
+                new_rect = QRect(start_origin.x(), start_origin.y(), 
+                                 width if current_point.x() > start_origin.x() else -width,
+                                 height if current_point.y() > start_origin.y() else -height).normalized()
                 self.crop_box_selector.setGeometry(new_rect)
+    
 
     def on_mouse_release(self, event):
         if event.button() == Qt.MouseButton.LeftButton and not self.is_moving_box:
