@@ -36,7 +36,7 @@ LOSSLESS_AVAILABLE = os.path.exists(binary_path)
 class FastCropApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("FastCrop - Desktop Image Editor")
+        self.setWindowTitle("LossLess Crop")
         self.resize(900, 700)
         
         # Image Pipeline Management Variables
@@ -51,6 +51,7 @@ class FastCropApp(QMainWindow):
 
         # Initialize User Interface
         self.init_ui()
+        self.load_application_state()
         
     def init_ui(self):
         # Master Structural Layout
@@ -62,38 +63,34 @@ class FastCropApp(QMainWindow):
         # TOP SYSTEM TOOLBAR CONTROL PANELS
         # -------------------------------------------------------------
         self.toolbar = QHBoxLayout()
+        self.toolbar.setSpacing(10)
         
-        # 1. Compact Open Button
+        # Standard Directory Load Button
         self.btn_open = QPushButton("Open")
         self.btn_open.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_open.setToolTip("Open a directory containing images to start editing.")
         self.btn_open.clicked.connect(self.select_directory)
         self.toolbar.addWidget(self.btn_open)
         
-        # Folder Name Display Panel
         self.lbl_folder_name = QLabel("No directory loaded.")
         self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px;")
         self.toolbar.addWidget(self.lbl_folder_name)
         
         self.toolbar.addStretch()
         
-        # 2. Compact Engine Selection Dropdown (No Label)
+        # Engine Options Dropdown
         self.combo_engine = QComboBox()
         self.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.combo_engine.setToolTip("Choose the processing engine mode for saving operations.")
-        
-        # Safely inject values with clean shortened strings
+        self.combo_engine.setToolTip("Choose processing engine mode for saving operations.")
         if LOSSLESS_AVAILABLE:
             self.combo_engine.addItem("Lossless")
         if PILLOW_AVAILABLE:
             self.combo_engine.addItem("Pixel-Perfect")
-            
         if not LOSSLESS_AVAILABLE and PILLOW_AVAILABLE:
             self.combo_engine.setCurrentText("Pixel-Perfect")
-            
         self.toolbar.addWidget(self.combo_engine)
         
-        # 3. Compact Aspect Ratio Dropdown (No Label)
+        # Aspect Ratio Dropdown
         self.combo_ratio = QComboBox()
         self.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.combo_ratio.setToolTip("Force the cropping rectangle selection box to lock onto specific aspect ratios.")
@@ -101,22 +98,45 @@ class FastCropApp(QMainWindow):
         self.combo_ratio.currentIndexChanged.connect(self.on_ratio_changed)
         self.toolbar.addWidget(self.combo_ratio)
         
-        # 4. Shortened Geometry Preservation Checkbox
+        # Shortened Toolbar Checkboxes
         self.chk_preserve = QCheckBox("Conserve selection")
         self.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.chk_preserve.setToolTip("Conserve the current selection box size and position coordinates across images.")
+        self.chk_preserve.setToolTip("Conserve current selection box size and position coordinates across images.")
         self.chk_preserve.setChecked(True)
         self.toolbar.addWidget(self.chk_preserve)
         
-        # 5. Shortened File Destruction Checkbox
         self.chk_overwrite = QCheckBox("Overwrite")
         self.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.chk_overwrite.setToolTip("Directly overwrite the original source image files instead of nesting copies in a subfolder.")
+        self.chk_overwrite.setToolTip("Directly overwrite original source image files instead of nesting copies in a subfolder.")
         self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
         
+        #  Custom Gear Button - Far Left & Borderless
+        self.btn_settings = QPushButton("⚙️")
+        self.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_settings.setToolTip("Toggle configuration choices")
+        self.btn_settings.setFixedSize(36, 36) # Square and slightly larger
+        self.btn_settings.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 6px;
+                font-size: 18px;
+                color: #aaaaaa;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: #ffffff;
+            }
+            QPushButton:pressed {
+                background-color: rgba(255, 255, 255, 0.05);
+            }
+        """)
+        self.btn_settings.clicked.connect(self.toggle_settings_drawer)
+        self.toolbar.addWidget(self.btn_settings)
+
         self.main_layout.addLayout(self.toolbar)
-        
+
         # -------------------------------------------------------------
         # MIDDLE VISUAL DISPLAY CANVAS PANEL
         # -------------------------------------------------------------
@@ -134,6 +154,114 @@ class FastCropApp(QMainWindow):
         self.image_display_container.mouseMoveEvent = self.on_mouse_move
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
         
+        
+        #  CONSTRUCT THE SLIDING CONFIGURATION DRAWER INTERFACE 
+        # We nest the drawer widget inside the main window, floating over the canvas
+        self.drawer_width = 240
+        self.drawer = QWidget(self.central_widget)
+        self.drawer.setObjectName("SettingsDrawer")
+        
+        # Style the drawer with semi-transparent obsidian glass aesthetics
+        self.drawer.setStyleSheet("""
+            QWidget#SettingsDrawer {
+                background-color: rgba(20, 20, 20, 0.94);
+                border-left: 1px solid rgba(255, 255, 255, 0.15);
+            }
+            QCheckBox {
+                color: #e0e0e0;
+                font-size: 13px;
+                padding: 4px;
+            }
+            QLabel {
+                color: #ffffff;
+                font-size: 14px;
+                font-weight: bold;
+                padding-bottom: 5px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        """)
+        
+        # Build the structural menu inner checkboxes layout
+        self.drawer_layout = QVBoxLayout(self.drawer)
+        self.drawer_layout.setContentsMargins(15, 20, 15, 20)
+        self.drawer_layout.setSpacing(12)
+        
+        # Header Label Section Title
+        self.drawer_layout.addWidget(QLabel("UI Configuration"))
+        
+        # -------------------------------------------------------------
+        # CATEGORY 1: SHOW / DISPLAY OPTIONS
+        # -------------------------------------------------------------
+        lbl_show_section = QLabel("Show / Display")
+        lbl_show_section.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 10px; padding-bottom: 2px;")
+        self.drawer_layout.addWidget(lbl_show_section)
+        
+        divider1 = QWidget()
+        divider1.setMinimumHeight(1)
+        divider1.setMaximumHeight(1)
+        divider1.setStyleSheet("background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;")
+        self.drawer_layout.addWidget(divider1)
+        
+        self.cfg_show_shortcuts = QCheckBox("Shortcuts Guide")
+        self.cfg_show_shortcuts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_shortcuts.setChecked(True)
+        self.cfg_show_shortcuts.stateChanged.connect(self.apply_drawer_visibility_rules)
+        self.drawer_layout.addWidget(self.cfg_show_shortcuts)
+        
+        self.cfg_show_toasts = QCheckBox("Center Notifications")
+        self.cfg_show_toasts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_toasts.setChecked(True)
+        self.drawer_layout.addWidget(self.cfg_show_toasts)
+        
+        self.cfg_show_infobar = QCheckBox("Bottom Info Bar")
+        self.cfg_show_infobar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_infobar.setChecked(True)
+        self.cfg_show_infobar.stateChanged.connect(self.apply_drawer_visibility_rules)
+        self.drawer_layout.addWidget(self.cfg_show_infobar)
+
+        # NEW: Target resolution display toggles
+        self.cfg_show_imgsize = QCheckBox("Image Resolution")
+        self.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_imgsize.setChecked(True)
+        self.cfg_show_imgsize.stateChanged.connect(self.update_resolution_metrics_display)
+        self.drawer_layout.addWidget(self.cfg_show_imgsize)
+
+        self.cfg_show_cropsize = QCheckBox("Live Crop Size")
+        self.cfg_show_cropsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_cropsize.setChecked(True)
+        self.cfg_show_cropsize.stateChanged.connect(self.update_resolution_metrics_display)
+        self.drawer_layout.addWidget(self.cfg_show_cropsize)
+        
+        # -------------------------------------------------------------
+        # CATEGORY 2: AUTOMATION & PERSISTENCE OPTIONS
+        # -------------------------------------------------------------
+        lbl_auto_section = QLabel("App Workspace Memory")
+        lbl_auto_section.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;")
+        self.drawer_layout.addWidget(lbl_auto_section)
+        
+        divider2 = QWidget()
+        divider2.setMinimumHeight(1)
+        divider2.setMaximumHeight(1)
+        divider2.setStyleSheet("background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;")
+        self.drawer_layout.addWidget(divider2)
+
+        self.cfg_remember_settings = QCheckBox("Remember settings")
+        self.cfg_remember_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_remember_settings.setChecked(True)
+        self.drawer_layout.addWidget(self.cfg_remember_settings)
+
+        self.cfg_auto_folder = QCheckBox("Auto-open last folder")
+        self.cfg_auto_folder.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_auto_folder.setChecked(False)
+        self.drawer_layout.addWidget(self.cfg_auto_folder)
+        
+        self.drawer_layout.addStretch()
+
+        
+        # Positions the drawer completely tucked away out of sight behind the left edge
+        self.drawer.setGeometry(-self.drawer_width, 0, self.drawer_width, 0)
+        self.drawer_is_open = False
+
         # Interactive Selection Component Initialization
         self.crop_box_selector = QRubberBand(QRubberBand.Shape.Rectangle, self.image_display_container)
         self.drag_start_origin = QPoint()
@@ -196,22 +324,49 @@ class FastCropApp(QMainWindow):
         self.notification_timer.setInterval(1000)
         self.notification_timer.setSingleShot(True)
         self.notification_timer.timeout.connect(self.lbl_notification.hide)
-        # Bottom info bar
-        self.info_bar = QHBoxLayout()
+        # -------------------------------------------------------------
+        # BOTTOM INFO BAR LAYOUT PANEL (Split Structure)
+        # -------------------------------------------------------------
+        self.info_bar_widget = QWidget()
+        self.info_bar = QHBoxLayout(self.info_bar_widget)
+        self.info_bar.setContentsMargins(10, 5, 10, 5)
+        
+        # Left spacing stretch item to balance center filenames tracking
+        self.info_bar.addStretch(1)
+        
+        # Primary Centered File Status Label
         self.lbl_status = QLabel("Ready. Open a folder to start cropping.")
         self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500; padding: 5px 0px;")
+        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500;")
         self.info_bar.addWidget(self.lbl_status)
-        self.main_layout.addLayout(self.info_bar)
+        
+        # Secondary Right Edge Metrics Tracker
+        self.info_bar.addStretch(1)
+        self.lbl_metrics = QLabel("")
+        self.lbl_metrics.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_metrics.setStyleSheet("color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;")
+        self.info_bar.addWidget(self.lbl_metrics)
+        
+        self.main_layout.addWidget(self.info_bar_widget)
+
 
 
     # -----------------------------------------------------------------
     # FILE PIPELINE AND RENDERING LOGIC
     # -----------------------------------------------------------------
     def select_directory(self):
-        directory = QFileDialog.getExistingDirectory(self, "Select Image Directory")
-        if not directory:
-            return
+        from PyQt6.QtCore import QSettings
+        settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        # Pull down folder path registry memory fallback
+        fallback_path = settings.value("last_used_folder", "", type=str)
+        
+        # Pass path memory directly as the starting browser location parameters argument
+        directory = QFileDialog.getExistingDirectory(
+            self, 
+            "Select Image Directory", 
+            fallback_path if os.path.exists(fallback_path) else ""
+        )
+        if not directory: return
             
         self.image_folder = directory
         folder_name = os.path.basename(os.path.normpath(directory))
@@ -257,18 +412,50 @@ class FastCropApp(QMainWindow):
         self.current_pil_image = Image.open(file_path)
         self.refresh_display_canvas()
         
-        # Handle persistent selection boundaries box rules
+        # -----------------------------------------------------------------
+        # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION
+        # -----------------------------------------------------------------
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
+            # 1. Grab the fresh file extension properties
+            _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
+            is_jpeg = file_ext in ('.jpg', '.jpeg')
+            is_lossless = (self.combo_engine.currentText() == "Lossless") and LOSSLESS_AVAILABLE and is_jpeg
+            
+            if is_lossless:
+                current_geom = self.last_crop_geometry
+                
+                #  OPTIMIZATION CHECK: Only calculate if the box is NOT already aligned
+                is_already_snapped = (current_geom.x() % 16 == 0) and \
+                                     (current_geom.y() % 16 == 0) and \
+                                     (current_geom.width() % 16 == 0) and \
+                                     (current_geom.height() % 16 == 0)
+                                     
+                if not is_already_snapped:
+                    # Snap the shunted selection box coordinates onto 16x16 grid markers
+                    snap_x = round(current_geom.x() / 16) * 16
+                    snap_y = round(current_geom.y() / 16) * 16
+                    snap_w = round(current_geom.width() / 16) * 16
+                    snap_h = round(current_geom.height() / 16) * 16
+                    
+                    ratio_type = self.combo_ratio.currentText()
+                    if ratio_type != "Freeform":
+                        aspect_ratio = 16.0 / 9.0 if ratio_type == "16:9 Widescreen" else (4.0 / 3.0 if ratio_type == "4:3 Standard" else 1.0)
+                        snap_h = round((snap_w / aspect_ratio) / 16) * 16
+                    
+                    # Update our tracking memory with the safe, snapped grid block values
+                    self.last_crop_geometry = QRect(snap_x, snap_y, snap_w, snap_h)
+                    print(f"Snapping selection box")
+            # Render the updated layout box onto your viewport canvas
             self.crop_box_selector.setGeometry(self.last_crop_geometry)
             self.crop_box_selector.show()
-            self.crop_box_selector.raise_() 
+            self.crop_box_selector.raise_()
         else:
             self.crop_box_selector.hide()
             self.last_crop_geometry = None
-        
+
         self.position_commands_overlay()
-        self.lbl_commands_overlay.show()
-        self.lbl_commands_overlay.raise_()
+        self.apply_drawer_visibility_rules()
+        self.update_resolution_metrics_display()
 
     def refresh_display_canvas(self):
         if not self.current_pil_image:
@@ -291,6 +478,12 @@ class FastCropApp(QMainWindow):
     # MOUSE INTERACTION & ASPECT BOX OVERLAYS
     # -----------------------------------------------------------------
     def on_mouse_press(self, event):
+        
+        if self.drawer_is_open:
+            # If the user clicks on the image layout while the menu is open, smoothly retract it
+            self.toggle_settings_drawer()
+            return # Block the click from drawing a box on this specific tap
+
         if not self.image_display_container.pixmap() or self.current_index == -1:
             return
         
@@ -389,16 +582,23 @@ class FastCropApp(QMainWindow):
         elif event.button() == Qt.MouseButton.RightButton:
             self.is_moving_box = False
             self.drag_start_origin = QPoint()
-        self.lbl_commands_overlay.show()
-        self.lbl_commands_overlay.raise_()
+        if self.cfg_show_shortcuts.isChecked() and self.current_index != -1:
+            self.lbl_commands_overlay.show()
+            self.lbl_commands_overlay.raise_()
+        self.update_resolution_metrics_display()
 
     def position_commands_overlay(self):
-        """Positions the command overlay in the top right corner of the container."""
+        """Positions the command overlay in the top left corner of the container."""
         self.lbl_commands_overlay.adjustSize()
+        
+        # Define a clean 15-pixel padding buffer away from the left bezel edge
         padding = 15
-        x = self.image_display_container.width() - self.lbl_commands_overlay.width() - padding
+        x = padding
         y = padding
-        self.lbl_commands_overlay.move(max(0, x), y)
+        
+        # Snap the floating panel smoothly to the top-left corner
+        self.lbl_commands_overlay.move(x, y)
+
 
     def on_ratio_changed(self):
         """Instantly morphs the active selection box when the aspect ratio dropdown changes."""
@@ -613,7 +813,8 @@ class FastCropApp(QMainWindow):
             else:
                 self.crop_box_selector.hide()
                 self.last_crop_geometry = None
-                
+
+        self.update_resolution_metrics_display()        
         return True
 
 
@@ -625,6 +826,7 @@ class FastCropApp(QMainWindow):
         if self.current_pil_image:
             self.current_pil_image = self.current_pil_image.rotate(-90, expand=True)
             self.refresh_display_canvas()
+            self.update_resolution_metrics_display()
 
     # -----------------------------------------------------------------
     # GLOBAL APPLICATION HOTKEY INTERCEPT CAPABILITIES
@@ -677,6 +879,17 @@ class FastCropApp(QMainWindow):
         super().resizeEvent(event)
         self.refresh_display_canvas()
         self.position_commands_overlay()
+
+        # Keep floating panels properly anchored on right edge on resize
+        if hasattr(self, 'drawer'):
+            window_width = self.central_widget.width()
+            top_offset_padding = 45
+            available_height = self.central_widget.height() - top_offset_padding
+            if self.drawer_is_open:
+                self.drawer.setGeometry(window_width - self.drawer_width, top_offset_padding, self.drawer_width, available_height)
+            else:
+                self.drawer.setGeometry(window_width, top_offset_padding, self.drawer_width, available_height)
+               
         if self.lbl_notification.isVisible():
             parent_w = self.image_display_container.width()
             parent_h = self.image_display_container.height()
@@ -686,6 +899,8 @@ class FastCropApp(QMainWindow):
 
     def show_center_notification(self, text):
         """Displays a cinematic floating alert in the exact middle of the image area."""
+        if not self.cfg_show_toasts.isChecked():
+            return
         self.lbl_notification.setText(text)
         self.lbl_notification.adjustSize()
         
@@ -705,7 +920,204 @@ class FastCropApp(QMainWindow):
         
         # Restart the 3-second countdown clock
         self.notification_timer.start()
+
+    def toggle_settings_drawer(self):
+        """Triggers the smooth sliding sidebar animation from the right bezel edge."""
+        from PyQt6.QtCore import QPropertyAnimation, QEasingCurve
         
+        # Grab accurate central window dimension states
+        window_width = self.central_widget.width()
+        total_window_height = self.central_widget.height()
+        
+        top_offset_padding = 45
+        available_height = total_window_height - top_offset_padding
+        
+        self.drawer_animation = QPropertyAnimation(self.drawer, b"geometry")
+        self.drawer_animation.setDuration(250)
+        self.drawer_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        
+        if self.drawer_is_open:
+            # SLIDE SHUT: Pull panel back completely flush off the right screen limit
+            self.drawer_animation.setStartValue(QRect(window_width - self.drawer_width, top_offset_padding, self.drawer_width, available_height))
+            self.drawer_animation.setEndValue(QRect(window_width, top_offset_padding, self.drawer_width, available_height))
+            self.drawer_is_open = False
+        else:
+            # SLIDE OPEN: Shift panel inward towards the left to display its full width dimensions
+            self.drawer_animation.setStartValue(QRect(window_width, top_offset_padding, self.drawer_width, available_height))
+            self.drawer_animation.setEndValue(QRect(window_width - self.drawer_width, top_offset_padding, self.drawer_width, available_height))
+            self.drawer_is_open = True
+            self.drawer.show()
+            self.drawer.raise_()
+            
+        self.drawer_animation.start()
+
+
+
+    def apply_drawer_visibility_rules(self):
+        """Instantly toggles layout components visibility mapping based on drawer checkbox inputs."""
+        # 1. Evaluate shortcuts guide cheat-sheet overlay
+        if self.cfg_show_shortcuts.isChecked() and self.current_index != -1:
+            self.lbl_commands_overlay.show()
+            self.lbl_commands_overlay.raise_()
+        else:
+            self.lbl_commands_overlay.hide()
+            
+        # 2. Evaluate lower status-bar tracking panel labels
+        if self.cfg_show_infobar.isChecked():
+            self.info_bar_widget.show()
+        else:
+            self.info_bar_widget.hide()
+
+    def closeEvent(self, event):
+        """Standard PyQt window intercept routine executing right before closing down."""
+        self.save_application_state()
+        event.accept()
+
+    def save_application_state(self):
+        """Saves current tool states and path preferences into OS settings registries."""
+        from PyQt6.QtCore import QSettings
+        settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        
+        # Always store the current folder directory no matter what
+        if self.image_folder:
+            settings.setValue("last_used_folder", self.image_folder)
+            
+        # 🌟 ALWAYS write the master preference toggle first!
+        master_remember = self.cfg_remember_settings.isChecked()
+        settings.setValue("remember_settings", master_remember)
+        
+        # Write state variables if 'Remember settings' checkbox rule is active
+        if master_remember:
+            settings.setValue("auto_open_folder", self.cfg_auto_folder.isChecked())
+            settings.setValue("show_shortcuts", self.cfg_show_shortcuts.isChecked())
+            settings.setValue("show_toasts", self.cfg_show_toasts.isChecked())
+            settings.setValue("show_infobar", self.cfg_show_infobar.isChecked())
+            settings.setValue("show_imgsize", self.cfg_show_imgsize.isChecked())
+            settings.setValue("show_cropsize", self.cfg_show_cropsize.isChecked())
+            settings.setValue("conserve_selection", self.chk_preserve.isChecked())
+            settings.setValue("overwrite_files", self.chk_overwrite.isChecked())
+            settings.setValue("ratio_preference", self.combo_ratio.currentText())
+            settings.setValue("engine_preference", self.combo_engine.currentText())
+
+    def load_application_state(self):
+        """Restores previous session user state conditions on startup safely handling OS registries."""
+        from PyQt6.QtCore import QSettings
+        settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        
+        # Helper function to safely translate OS string registries ("true"/"false") into Python booleans
+        def safe_bool(val, default):
+            if val is None: return default
+            if isinstance(val, bool): return val
+            if isinstance(val, int): return bool(val)
+            return str(val).lower() in ("true", "1", "yes")
+
+        # 1. Parse the master memory rule
+        raw_remember = settings.value("remember_settings", True)
+        remember = safe_bool(raw_remember, True)
+        self.cfg_remember_settings.setChecked(remember)
+        
+        if remember:
+            # 2. Extract and translate all Boolean states safely using EXACT matching keys
+            self.cfg_auto_folder.setChecked(safe_bool(settings.value("auto_open_folder"), False))
+            self.cfg_show_shortcuts.setChecked(safe_bool(settings.value("show_shortcuts"), True))
+            self.cfg_show_toasts.setChecked(safe_bool(settings.value("show_toasts"), True))
+            self.cfg_show_infobar.setChecked(safe_bool(settings.value("show_infobar"), True))
+            self.cfg_show_imgsize.setChecked(safe_bool(settings.value("show_imgsize"), True))
+            self.cfg_show_cropsize.setChecked(safe_bool(settings.value("show_cropsize"), True))
+            self.chk_preserve.setChecked(safe_bool(settings.value("conserve_selection"), True))
+            self.chk_overwrite.setChecked(safe_bool(settings.value("overwrite_files"), False))
+            
+            # 3. Extract Dropdown String Values Safely
+            ratio = settings.value("ratio_preference", "Freeform")
+            if ratio and self.combo_ratio.findText(str(ratio)) != -1: 
+                self.combo_ratio.setCurrentText(str(ratio))
+                
+            engine = settings.value("engine_preference", "Pixel-Perfect")
+            if engine and self.combo_engine.findText(str(engine)) != -1: 
+                self.combo_engine.setCurrentText(str(engine))
+
+        # Refresh the UI layout elements to reflect the loaded choices
+        self.apply_drawer_visibility_rules()
+        self.update_resolution_metrics_display()
+        
+        # 4. Folder Automation Check
+        last_folder = settings.value("last_used_folder", "")
+        if last_folder and isinstance(last_folder, str) and os.path.exists(last_folder):
+            if remember and self.cfg_auto_folder.isChecked():
+                self.image_folder = last_folder
+                folder_name = os.path.basename(os.path.normpath(last_folder))
+                self.lbl_folder_name.setText(f"📁 {folder_name}")
+                
+                SAFE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
+                self.image_files = [f for f in os.listdir(last_folder) if f.lower().endswith(SAFE_EXTENSIONS)]
+                self.image_files.sort()
+                
+                if self.image_files:
+                    self.current_index = 0
+                    self.load_image_to_viewport()
+
+
+    def update_resolution_metrics_display(self):
+        """Computes and formats current source resolution and mouse box coordinates strings."""
+        if self.current_index == -1 or not self.current_pil_image:
+            self.lbl_metrics.setText("")
+            return
+            
+        metrics_text_parts = []
+        src_w, src_h = self.current_pil_image.size
+        
+        # 1. Core Source Image Array Dimensions
+        if self.cfg_show_imgsize.isChecked():
+            metrics_text_parts.append(f"IMG: {src_w}x{src_h}")
+            
+        # 2. Translate Visual Screen Selection Space Dimensions back into Raw File Geometry Coordinates
+        if self.cfg_show_cropsize.isChecked():
+            # Check if the rubber band box is visible and actually contains shape dimensions
+            has_selection = (not self.crop_box_selector.isHidden()) and \
+                            (self.crop_box_selector.width() > 5) and \
+                            (self.crop_box_selector.height() > 5)
+                            
+            if has_selection:
+                box_rect = self.crop_box_selector.geometry()
+                pixmap = self.image_display_container.pixmap()
+                
+                if pixmap:
+                    # Extract accurate pixel dimension envelopes from current preview containers
+                    lbl_w, lbl_h = self.image_display_container.width(), self.image_display_container.height()
+                    pix_w, pix_h = pixmap.width(), pixmap.height()
+                    
+                    # Compute layout centering offset metrics
+                    offset_x = (lbl_w - pix_w) // 2
+                    offset_y = (lbl_h - pix_h) // 2
+                    
+                    # Clip current active drawing boundaries relative to raw image position bounds
+                    adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
+                    adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
+                    adj_w = min(box_rect.width(), pix_w - adj_x)
+                    adj_h = min(box_rect.height(), pix_h - adj_y)
+                    
+                    # Scaling transformations math steps
+                    scale_x = src_w / pix_w
+                    scale_y = src_h / pix_h
+                    
+                    real_crop_w = int(adj_w * scale_x)
+                    real_crop_h = int(adj_h * scale_y)
+                    
+                    if real_crop_w > 0 and real_crop_h > 0:
+                        metrics_text_parts.append(f"CROP: {real_crop_w}x{real_crop_h}")
+                    else:
+                        # Fallback placeholder if calculation boundaries collapse
+                        metrics_text_parts.append("CROP: 0x0")
+                else:
+                    metrics_text_parts.append("CROP: 0x0")
+            else:
+                # 🌟 MAINTAIN UI CONSISTENCY: Always append 0x0 placeholder if no selection box is active 🌟
+                metrics_text_parts.append("CROP: 0x0")
+                
+        # Inject the final calculated results text cleanly into layout label
+        self.lbl_metrics.setText(" | ".join(metrics_text_parts) if metrics_text_parts else "")
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
