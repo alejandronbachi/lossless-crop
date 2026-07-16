@@ -597,6 +597,7 @@ class FastCropApp(QMainWindow):
             "[<b>Space</b>]       : Crop & Next Image<br>"
             "[<b>S</b>] / <b>Enter</b>]   : Crop & Stay<br>"
             "[<b>O</b>]           : Open Directory<br>"
+            "[<b>I</b>]           : Open Image<br>"
             "[<b>F</b>] / [<b>→</b>]      : Skip Forward<br>"
             "[<b>B</b>] / [<b>←</b>]      : Skip Backward<br>"
             "[<b>R</b>]           : Rotate Clockwise<br>"
@@ -668,7 +669,7 @@ class FastCropApp(QMainWindow):
             
             # Row 1: The Core Hotkey Prompt
             "<div style='margin-bottom: 22px;'>"
-            "<span style='font-size: 26px; font-weight: bold; color: #ffffff;'>[O] &nbsp;▸&nbsp; Open a Directory Folder</span>"
+            "<span style='font-size: 26px; font-weight: bold; color: #ffffff;'>[O] &nbsp;▸&nbsp; Open Directory &nbsp;|&nbsp; [I] &nbsp;▸&nbsp; Open Image </span>"
             "</div>"
             
             # Row 2: Minimalist Small "OR" Divider 1
@@ -1284,6 +1285,11 @@ class FastCropApp(QMainWindow):
             self.select_directory()
             event.accept()
             return
+        
+        elif event.key() == Qt.Key.Key_I:
+            self.select_individual_image_file()
+            event.accept()
+            return
             
         else:
             super().keyPressEvent(event)
@@ -1786,6 +1792,69 @@ class FastCropApp(QMainWindow):
                 QSettings("LossLessCropTeam", "LossLessCrop").setValue("last_used_folder", self.image_folder)
             else:
                 self.lbl_status.setText("No valid, readable images found in dropped payload.")
+
+    def select_individual_image_file(self):
+        """Manually picks a specific image file via shortcut, cacing up the surrounding directory."""
+        from PyQt6.QtCore import QSettings
+        settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        
+        # Pull down our saved path registry memory fallback
+        fallback_path = settings.value("last_used_folder", "", type=str)
+        if not fallback_path or not os.path.exists(fallback_path):
+            fallback_path = ""
+
+        # Open individual file-centric prompt target filter dialog bounds
+        file_filter = "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
+        selected_file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Target Starting Image File",
+            fallback_path,
+            file_filter
+        )
+        
+        if not selected_file_path:
+            return # User closed the prompt browser window smoothly
+
+        # Deconstruct absolute parent folder string paths and target file properties
+        target_folder = os.path.dirname(selected_file_path)
+        target_filename = os.path.basename(selected_file_path)
+
+        # Update application workspace states
+        self.image_folder = target_folder
+        folder_name = os.path.basename(os.path.normpath(target_folder))
+        self.lbl_folder_name.setText(f"📁 {folder_name}")
+        
+        # Parse the surrounding container assets using strict whitelists shields
+        SAFE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
+        raw_files = [f for f in os.listdir(target_folder) if f.lower().endswith(SAFE_EXTENSIONS)]
+        raw_files.sort()
+        
+        # Execute header validation checking passes
+        self.image_files = []
+        for filename in raw_files:
+            test_path = os.path.join(self.image_folder, filename)
+            try:
+                with Image.open(test_path) as img:
+                    img.verify()
+                self.image_files.append(filename)
+            except Exception:
+                pass
+        
+        # 🚀 WORKSPACE VIEWPORT LAYOUT DISPATCHERS
+        if self.image_files:
+            # INDEX LOOKUP LOOP: Find exactly where our selected photo sits in the queue array!
+            if target_filename in self.image_files:
+                self.current_index = self.image_files.index(target_filename)
+            else:
+                self.current_index = 0
+                
+            # Render the targeted image onto your canvas view layout channels
+            self.load_image_to_viewport()
+            
+            # Resync persistent folder memory boundaries
+            settings.setValue("last_used_folder", self.image_folder)
+        else:
+            self.lbl_status.setText("No valid, readable images found in target folder directory.")
 
 
 if __name__ == "__main__":
