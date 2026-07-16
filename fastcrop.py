@@ -32,6 +32,119 @@ else:
 binary_path = os.path.join(current_dir, "binaries", BINARY_FILE)
 LOSSLESS_AVAILABLE = os.path.exists(binary_path)
 
+class FloatingZoomPreview(QWidget):
+    def __init__(self, parent_window):
+        super().__init__(parent_window)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setMouseTracking(True)
+        
+        self.main_app = parent_window
+        self.cached_crop_slice = None
+        
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.lbl_canvas = QLabel()
+        self.lbl_canvas.setStyleSheet("background-color: #000000; border: 2px solid #4a6fa5;")
+        self.lbl_canvas.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.lbl_canvas)
+        
+        self.setMinimumSize(150, 150)
+        self.resize(250, 250) 
+        
+        # Tracking states
+        self.drag_start_global = QPoint()
+        self.initial_window_geom = QRect()
+        self.is_resizing = False
+        self.is_moving = False
+
+    def update_zoom_payload(self, pil_crop_slice):
+        self.cached_crop_slice = pil_crop_slice
+        self.refresh_scaled_image()
+
+    def refresh_scaled_image(self):
+        if not self.cached_crop_slice:
+            self.lbl_canvas.clear()
+            return
+        try:
+            pil_rgba = self.cached_crop_slice.convert("RGBA")
+            data = pil_rgba.tobytes("raw", "RGBA")
+            img_w, img_h = pil_rgba.size
+            qimg = QImage(data, img_w, img_h, QImage.Format.Format_RGBA8888)
+            pixmap = QPixmap.fromImage(qimg)
+            
+            current_window_size = self.size()
+            if current_window_size.width() <= 0 or current_window_size.height() <= 0:
+                return
+                
+            scaled_pixmap = pixmap.scaled(
+                current_window_size, 
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding, 
+                Qt.TransformationMode.SmoothTransformation
+            )
+            self.lbl_canvas.setPixmap(scaled_pixmap)
+        except Exception as e:
+            print(f"[HUD INTERCEPT] Render pipeline block: {e}")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.is_resizing and hasattr(self.main_app, 'update_zoom_hud_payload'):
+            self.main_app.update_zoom_hud_payload()
+        else:
+            self.refresh_scaled_image()
+
+    # =================================================================
+    # 🖱️ FINALIZED COHESIVE INPUT MAPS: LEFT = RESIZE, RIGHT = MOVE ANYWHERE
+    # =================================================================
+    def mousePressEvent(self, event):
+        # Capture absolute global starting anchors to prevent tracking jitter
+        self.drag_start_global = event.globalPosition().toPoint()
+        self.initial_window_geom = self.geometry()
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            # 🌟 MATCHED COHESION: Left click handles resizing!
+            self.is_resizing = True
+            event.accept()
+        elif event.button() == Qt.MouseButton.RightButton:
+            # 🌟 MATCHED COHESION: Right click handles moving the position!
+            self.is_moving = True
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if not event.buttons():
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            return
+
+        current_global_pos = event.globalPosition().toPoint()
+        delta = current_global_pos - self.drag_start_global
+
+        # 🌟 MATCHED COHESION: LEFT-CLICK DRAG TO RESIZE (Expands toward drag direction)
+        if self.is_resizing and (event.buttons() == Qt.MouseButton.LeftButton):
+            new_w = max(self.minimumWidth(), self.initial_window_geom.width() + delta.x())
+            new_h = max(self.minimumHeight(), self.initial_window_geom.height() + delta.y())
+            self.resize(new_w, new_h)
+            event.accept()
+
+        # 🌟 MATCHED COHESION: RIGHT-CLICK DRAG TO MOVE ANYWHERE
+        elif self.is_moving and (event.buttons() == Qt.MouseButton.RightButton):
+            target_x = self.initial_window_geom.x() + delta.x()
+            target_y = self.initial_window_geom.y() + delta.y()
+            self.move(target_x, target_y)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self.is_resizing = False
+        self.is_moving = False
+        event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        # 🌟 MATCHED COHESION: Double right-click to close (so double-left doesn't misfire during resizing)
+        if event.button() == Qt.MouseButton.RightButton:
+            self.hide()
+            if hasattr(self.main_app, 'cfg_show_preview'):
+                self.main_app.cfg_show_preview.setChecked(False)
+            event.accept()
 
 class FastCropApp(QMainWindow):
     def __init__(self):
@@ -163,6 +276,7 @@ class FastCropApp(QMainWindow):
 
         # Initialize User Interface
         self.init_ui()
+        self.zoom_hud = FloatingZoomPreview(self)
         self.load_application_state()
         
     def init_ui(self):
@@ -232,7 +346,12 @@ class FastCropApp(QMainWindow):
         self.chk_overwrite.setToolTip("Directly overwrite original source image files instead of nesting copies in a subfolder.")
         self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
-        
+
+        self.cfg_show_preview = QCheckBox("Zoom Preview HUD")
+        self.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_preview.setChecked(False)
+        self.cfg_show_preview.stateChanged.connect(self.toggle_zoom_hud_window_visibility)
+        self.toolbar.addWidget(self.cfg_show_preview)
         #  Custom Gear Button - Far Left & Borderless
         
         self.btn_settings = QPushButton("⚙️")
@@ -311,12 +430,32 @@ class FastCropApp(QMainWindow):
         self.drawer_layout = QVBoxLayout(self.drawer)
         self.drawer_layout.setContentsMargins(15, 20, 15, 20)
         self.drawer_layout.setSpacing(12)
-        
-        # Header Label Section Title
-        self.drawer_layout.addWidget(QLabel("UI Configuration"))
-        
+    
         # -------------------------------------------------------------
-        # CATEGORY 1: SHOW / DISPLAY OPTIONS
+        # CATEGORY 1: AUTOMATION & PERSISTENCE OPTIONS
+        # -------------------------------------------------------------
+        lbl_auto_section = QLabel("General")
+        lbl_auto_section.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;")
+        self.drawer_layout.addWidget(lbl_auto_section)
+        
+        divider2 = QWidget()
+        divider2.setMinimumHeight(1)
+        divider2.setMaximumHeight(1)
+        divider2.setStyleSheet("background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;")
+        self.drawer_layout.addWidget(divider2)
+
+        self.cfg_remember_settings = QCheckBox("Save settings")
+        self.cfg_remember_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_remember_settings.setChecked(True)
+        self.drawer_layout.addWidget(self.cfg_remember_settings)
+
+        self.cfg_auto_folder = QCheckBox("Auto-open last folder")
+        self.cfg_auto_folder.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_auto_folder.setChecked(False)
+        self.drawer_layout.addWidget(self.cfg_auto_folder)
+
+        # -------------------------------------------------------------
+        # CATEGORY 2: SHOW / DISPLAY OPTIONS
         # -------------------------------------------------------------
         lbl_show_section = QLabel("Show / Display")
         lbl_show_section.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 10px; padding-bottom: 2px;")
@@ -358,28 +497,7 @@ class FastCropApp(QMainWindow):
         self.cfg_show_cropsize.stateChanged.connect(self.update_resolution_metrics_display)
         self.drawer_layout.addWidget(self.cfg_show_cropsize)
         
-        # -------------------------------------------------------------
-        # CATEGORY 2: AUTOMATION & PERSISTENCE OPTIONS
-        # -------------------------------------------------------------
-        lbl_auto_section = QLabel("App Workspace Memory")
-        lbl_auto_section.setStyleSheet("color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;")
-        self.drawer_layout.addWidget(lbl_auto_section)
-        
-        divider2 = QWidget()
-        divider2.setMinimumHeight(1)
-        divider2.setMaximumHeight(1)
-        divider2.setStyleSheet("background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;")
-        self.drawer_layout.addWidget(divider2)
-
-        self.cfg_remember_settings = QCheckBox("Remember settings")
-        self.cfg_remember_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_remember_settings.setChecked(True)
-        self.drawer_layout.addWidget(self.cfg_remember_settings)
-
-        self.cfg_auto_folder = QCheckBox("Auto-open last folder")
-        self.cfg_auto_folder.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_auto_folder.setChecked(False)
-        self.drawer_layout.addWidget(self.cfg_auto_folder)
+       
         
         self.drawer_layout.addStretch()
 
@@ -582,6 +700,7 @@ class FastCropApp(QMainWindow):
         self.position_commands_overlay()
         self.apply_drawer_visibility_rules()
         self.update_resolution_metrics_display()
+        self.update_zoom_hud_payload()
 
     def refresh_display_canvas(self):
         if not self.current_pil_image:
@@ -632,6 +751,7 @@ class FastCropApp(QMainWindow):
                 self.box_start_pos = self.crop_box_selector.geometry().topLeft()            
             else:
                 self.is_moving_box = False
+        self.update_zoom_hud_payload()
 
     def on_mouse_move(self, event):
         if self.drag_start_origin.isNull():
@@ -698,6 +818,7 @@ class FastCropApp(QMainWindow):
             
             # FIX: Use correct native method name setGeometry
             self.crop_box_selector.setGeometry(new_rect)
+            self.update_zoom_hud_payload()
     
 
     def on_mouse_release(self, event):
@@ -949,7 +1070,8 @@ class FastCropApp(QMainWindow):
             else:
                 self.show_center_notification("Lossy Cropped")
 
-        self.update_resolution_metrics_display()        
+        self.update_resolution_metrics_display()
+        self.update_zoom_hud_payload()        
         return True
 
 
@@ -1117,10 +1239,15 @@ class FastCropApp(QMainWindow):
         if self.image_folder:
             settings.setValue("last_used_folder", self.image_folder)
             
-        # 🌟 ALWAYS write the master preference toggle first!
+        # ALWAYS write the master preference toggle first!
         master_remember = self.cfg_remember_settings.isChecked()
         settings.setValue("remember_settings", master_remember)
-        
+        # ALWAYS save geometry profiles, but we only restore them if 'Remember 
+        settings.setValue("main_window_geometry", self.saveGeometry())
+        if hasattr(self, 'zoom_hud'):
+            settings.setValue("zoom_hud_geometry", self.zoom_hud.saveGeometry())
+            settings.setValue("show_preview_hud", self.cfg_show_preview.isChecked())
+
         # Write state variables if 'Remember settings' checkbox rule is active
         if master_remember:
             settings.setValue("auto_open_folder", self.cfg_auto_folder.isChecked())
@@ -1133,6 +1260,7 @@ class FastCropApp(QMainWindow):
             settings.setValue("overwrite_files", self.chk_overwrite.isChecked())
             settings.setValue("ratio_preference", self.combo_ratio.currentText())
             settings.setValue("engine_preference", self.combo_engine.currentText())
+            settings.setValue("show_preview_hud", self.cfg_show_preview.isChecked())
 
     def load_application_state(self):
         """Restores previous session user state conditions on startup safely handling OS registries."""
@@ -1152,6 +1280,16 @@ class FastCropApp(QMainWindow):
         self.cfg_remember_settings.setChecked(remember)
         
         if remember:
+
+            main_geom = settings.value("main_window_geometry")
+            if main_geom:
+                self.restoreGeometry(main_geom)
+                
+            if hasattr(self, 'zoom_hud'):
+                hud_geom = settings.value("zoom_hud_geometry")
+                if hud_geom:
+                    self.zoom_hud.restoreGeometry(hud_geom)
+
             # 2. Extract and translate all Boolean states safely using EXACT matching keys
             self.cfg_auto_folder.setChecked(safe_bool(settings.value("auto_open_folder"), False))
             self.cfg_show_shortcuts.setChecked(safe_bool(settings.value("show_shortcuts"), True))
@@ -1161,7 +1299,13 @@ class FastCropApp(QMainWindow):
             self.cfg_show_cropsize.setChecked(safe_bool(settings.value("show_cropsize"), True))
             self.chk_preserve.setChecked(safe_bool(settings.value("conserve_selection"), True))
             self.chk_overwrite.setChecked(safe_bool(settings.value("overwrite_files"), False))
+            self.cfg_show_preview.setChecked(safe_bool(settings.value("show_preview_hud"), False))
             
+            show_hud = safe_bool(settings.value("show_preview_hud"), False)
+            self.cfg_show_preview.setChecked(show_hud)
+            if show_hud:
+                self.zoom_hud.show()
+
             # 3. Extract Dropdown String Values Safely
             ratio = settings.value("ratio_preference", "Freeform")
             if ratio and self.combo_ratio.findText(str(ratio)) != -1: 
@@ -1252,7 +1396,65 @@ class FastCropApp(QMainWindow):
         # Inject the final calculated results text cleanly into layout label
         self.lbl_metrics.setText(" | ".join(metrics_text_parts) if metrics_text_parts else "")
 
+    def toggle_zoom_hud_window_visibility(self):
+        """Displays or shuts down the floating zoom view based on checkbox rules."""
+        if self.cfg_show_preview.isChecked():
+            # Snap it to float nicely right next to the main application window on launch
+            main_geom = self.geometry()
+            self.zoom_hud.move(main_geom.right() + 10, main_geom.top() + 50)
+            self.zoom_hud.show()
+            self.update_zoom_hud_payload() # Refresh data instantly
+        else:
+            self.zoom_hud.hide()
 
+    def update_zoom_hud_payload(self):
+        """Calculates coordinates, slices memory, and passes the payload to the HUD."""
+        # Abort if the HUD window is hidden or no image selection is active
+        if not self.cfg_show_preview.isChecked() or self.crop_box_selector.isHidden():
+            self.zoom_hud.update_zoom_payload(None)
+            return
+
+        box_rect = self.crop_box_selector.geometry()
+        pixmap = self.image_display_container.pixmap()
+        
+        if pixmap and box_rect.width() > 5 and box_rect.height() > 5:
+            # Map screen pixel coordinates back into high-resolution image space
+            lbl_w, lbl_h = self.image_display_container.width(), self.image_display_container.height()
+            pix_w, pix_h = pixmap.width(), pixmap.height()
+            offset_x = (lbl_w - pix_w) // 2
+            offset_y = (lbl_h - pix_h) // 2
+            
+            adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
+            adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
+            adj_w = min(box_rect.width(), pix_w - adj_x)
+            adj_h = min(box_rect.height(), pix_h - adj_y)
+            
+            src_w, src_h = self.current_pil_image.size
+            scale_x = src_w / pix_w
+            scale_y = src_h / pix_h
+            
+            crop_left = int(adj_x * scale_x)
+            crop_top = int(adj_y * scale_y)
+            crop_right = int((adj_x + adj_w) * scale_x)
+            crop_bottom = int((adj_y + adj_h) * scale_y)
+            
+            if (crop_right > crop_left) and (crop_bottom > crop_top):
+                try:
+                    # Slice the high-speed image array straight from our memory handle
+                    # We open a tiny separate copy so it doesn't collide with saving rules
+                    file_path = os.path.join(self.image_folder, self.image_files[self.current_index])
+                    with Image.open(file_path) as img:
+                        # Apply orientation rotations if the user flipped the canvas
+                        if hasattr(self, 'current_rotation_angle') and self.current_rotation_angle != 0:
+                            img = img.rotate(self.current_rotation_angle, expand=True)
+                        
+                        crop_slice = img.crop((crop_left, crop_top, crop_right, crop_bottom))
+                        self.zoom_hud.update_zoom_payload(crop_slice)
+                        return
+                except Exception:
+                    pass
+                    
+        self.zoom_hud.update_zoom_payload(None)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
