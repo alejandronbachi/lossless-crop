@@ -1,25 +1,37 @@
 import sys
 import os
-from PIL import Image
+import platform
+import subprocess
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QFileDialog, QPushButton, 
                              QComboBox, QCheckBox, QRubberBand, QSizePolicy, QGraphicsDropShadowEffect)
 from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QColor
 from PyQt6.QtCore import Qt, QRect, QSize, QPoint, QTimer
 
+
+
 # Check for Pillow availability
 try:
-    from PIL import Image
+    from PIL import Image, ImageDraw
     PILLOW_AVAILABLE = True
 except ImportError:
     PILLOW_AVAILABLE = False
 
-# Check for Lossless engine availability
-try:
-    from jpegtran import JPEGImage
-    LOSSLESS_AVAILABLE = True
-except ImportError:
-    LOSSLESS_AVAILABLE = False
+# Check for Local Lossless Binaries on your drive
+# Calculate the path to your new binaries folder
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+if os.name == 'nt':
+    BINARY_FILE = "jpegtran.exe"
+elif platform.system() == "Darwin":
+    BINARY_FILE = "jpegtran_mac"
+else:
+    BINARY_FILE = "jpegtran_linux"
+
+# Verify if the binary is sitting in your project directory
+binary_path = os.path.join(current_dir, "binaries", BINARY_FILE)
+LOSSLESS_AVAILABLE = os.path.exists(binary_path)
+
 
 class FastCropApp(QMainWindow):
     def __init__(self):
@@ -181,7 +193,7 @@ class FastCropApp(QMainWindow):
         self.lbl_notification.setGraphicsEffect(shadow)
 
         self.notification_timer = QTimer()
-        self.notification_timer.setInterval(2000)
+        self.notification_timer.setInterval(1000)
         self.notification_timer.setSingleShot(True)
         self.notification_timer.timeout.connect(self.lbl_notification.hide)
         # Bottom info bar
@@ -263,7 +275,7 @@ class FastCropApp(QMainWindow):
     # MOUSE INTERACTION & ASPECT BOX OVERLAYS
     # -----------------------------------------------------------------
     def on_mouse_press(self, event):
-        if not self.image_display_container.pixmap():
+        if not self.image_display_container.pixmap() or self.current_index == -1:
             return
         
         # Hide the commands panel instantly so it doesn't obstruct cropping fields
@@ -282,6 +294,7 @@ class FastCropApp(QMainWindow):
             if not self.crop_box_selector.isHidden() and self.crop_box_selector.geometry().contains(click_point):
                 self.is_moving_box = True
                 self.drag_start_origin = click_point  # Track starting point of movement drag
+                self.box_start_pos = self.crop_box_selector.geometry().topLeft()            
             else:
                 self.is_moving_box = False
 
@@ -291,57 +304,49 @@ class FastCropApp(QMainWindow):
             
         current_point = event.position().toPoint()
         ratio_type = self.combo_ratio.currentText()
-        is_lossless = self.combo_engine.currentText() == "Lossless"
+        
+        # FIX: Extract extension from tuple correctly using index [1]
+        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
+        is_jpeg = file_ext in ('.jpg', '.jpeg')
+        is_lossless = (self.combo_engine.currentText() == "Lossless") and LOSSLESS_AVAILABLE and is_jpeg
 
         # -----------------------------------------------------------------
-        # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box)
+        # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box smoothly)
         # -----------------------------------------------------------------
         if self.is_moving_box:
-            delta = current_point - self.drag_start_origin
+            # Calculate the total distance the mouse has moved since the first right-click
+            total_mouse_delta = current_point - self.drag_start_origin
             current_geometry = self.crop_box_selector.geometry()
             
-            new_x = current_geometry.x() + delta.x()
-            new_y = current_geometry.y() + delta.y()
+            # Add that total distance to the box's initial starting coordinates
+            target_x = self.box_start_pos.x() + total_mouse_delta.x()
+            target_y = self.box_start_pos.y() + total_mouse_delta.y()
             
-            # ⬇️ APPLY GRID SNAPPING TO THE MOVEMENT ⬇️
+            # Apply 16x16 grid snap ONLY to the visible layout coordinates
             if is_lossless:
-                new_x = round(new_x / 16) * 16
-                new_y = round(new_y / 16) * 16
+                render_x = round(target_x / 16) * 16
+                render_y = round(target_y / 16) * 16
+            else:
+                render_x = target_x
+                render_y = target_y
             
-            # Constrain to prevent moving completely outside the display canvas
-            new_x = max(0, min(new_x, self.image_display_container.width() - current_geometry.width()))
-            new_y = max(0, min(new_y, self.image_display_container.height() - current_geometry.height()))
+            # Keep the box inside the display window boundaries safely
+            render_x = max(0, min(render_x, self.image_display_container.width() - current_geometry.width()))
+            render_y = max(0, min(render_y, self.image_display_container.height() - current_geometry.height()))
             
-            # Apply layout movement update
-            self.crop_box_selector.move(new_x, new_y)
+            # Move the widget layout on the screen
+            self.crop_box_selector.move(render_x, render_y)
             self.last_crop_geometry = self.crop_box_selector.geometry()
             
-            # Only update our tracking origin if we actually shifted position
-            if not is_lossless or (delta.x() % 16 == 0 or delta.y() % 16 == 0):
-                self.drag_start_origin = current_point
-
         # -----------------------------------------------------------------
-        # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing/Resizing the box)
+        # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing the box)
         # -----------------------------------------------------------------
         else:
-            # ⬇️ APPLY GRID SNAPPING TO THE DRAWING BOUNDARIES ⬇️
-            if is_lossless:
-                snap_x = round(current_point.x() / 16) * 16
-                snap_y = round(current_point.y() / 16) * 16
-                current_point = QPoint(snap_x, snap_y)
-                
-                orig_x = round(self.drag_start_origin.x() / 16) * 16
-                orig_y = round(self.drag_start_origin.y() / 16) * 16
-                start_origin = QPoint(orig_x, orig_y)
-            else:
-                start_origin = self.drag_start_origin
-
-            current_rect = QRect(start_origin, current_point).normalized()
+            current_rect = QRect(self.drag_start_origin, current_point).normalized()
             
             if ratio_type == "Freeform":
-                self.crop_box_selector.setGeometry(current_rect)
+                new_rect = current_rect
             else:
-                # Aspect ratio mathematical bounding locks (1:1, 16:9, etc.)
                 aspect_ratio = 1.0
                 if ratio_type == "16:9 Widescreen":
                     aspect_ratio = 16.0 / 9.0
@@ -349,19 +354,14 @@ class FastCropApp(QMainWindow):
                     aspect_ratio = 4.0 / 3.0
                     
                 width = current_rect.width()
+                height = int(width / aspect_ratio)
                 
-                # ⬇️ ADJUST ENFORCED RATIO HEIGHT FOR LOSSLESS ⬇️
-                if is_lossless:
-                    # Make sure the width stays on a 16-pixel boundary
-                    width = round(width / 16) * 16
-                    height = round((width / aspect_ratio) / 16) * 16
-                else:
-                    height = int(width / aspect_ratio)
-                
-                new_rect = QRect(start_origin.x(), start_origin.y(), 
-                                 width if current_point.x() > start_origin.x() else -width,
-                                 height if current_point.y() > start_origin.y() else -height).normalized()
-                self.crop_box_selector.setGeometry(new_rect)
+                new_rect = QRect(self.drag_start_origin.x(), self.drag_start_origin.y(), 
+                                 width if current_point.x() > self.drag_start_origin.x() else -width,
+                                 height if current_point.y() > self.drag_start_origin.y() else -height).normalized()
+            
+            # FIX: Use correct native method name setGeometry
+            self.crop_box_selector.setGeometry(new_rect)
     
 
     def on_mouse_release(self, event):
@@ -403,7 +403,16 @@ class FastCropApp(QMainWindow):
         # Use the current width as the master base and calculate the new height
         current_geom = self.crop_box_selector.geometry()
         new_width = current_geom.width()
-        new_height = int(new_width / aspect_ratio)
+        # CHECK BOTH ENGINE AND EXTENSION
+        original_name = self.image_files[self.current_index]
+        _, ext = os.path.splitext(original_name.lower())
+        is_lossless = (self.combo_engine.currentText() == "Lossless") and (ext in ('.jpg', '.jpeg'))
+        
+        if is_lossless:
+            new_width = round(new_width / 16) * 16
+            new_height = round((new_width / aspect_ratio) / 16) * 16
+        else:
+            new_height = int(new_width / aspect_ratio)
         
         # Build the updated boundary layout
         new_rect = QRect(current_geom.x(), current_geom.y(), new_width, new_height)
@@ -456,16 +465,19 @@ class FastCropApp(QMainWindow):
         crop_top = int(adj_y * scale_factor_y)
         crop_right = int((adj_x + adj_w) * scale_factor_x)
         crop_bottom = int((adj_y + adj_h) * scale_factor_y)
-        # Process structural image matrix slicing via pillow arrays
-        cropped_image = self.current_pil_image.crop((crop_left, crop_top, crop_right, crop_bottom))
         
+        # Calculate width and height for jpegtran command arguments
+        crop_width = crop_right - crop_left
+        crop_height = crop_bottom - crop_top
+
         # Original asset fallback defaults
         original_name = self.image_files[self.current_index]
+        current_filepath = os.path.join(self.image_folder, original_name)
         
         # SAVE PATH REDIRECTION LOGIC
         if self.chk_overwrite.isChecked():
             # If overwrite is active, save directly over the source file
-            output_filepath = os.path.join(self.image_folder, original_name)
+            output_filepath = current_filepath
         else:
             # If overwrite is OFF, ensure we create unique versions
             output_subfolder = os.path.join(self.image_folder, "cropped")
@@ -486,19 +498,97 @@ class FastCropApp(QMainWindow):
         # Close the Pillow memory handler connection to the source file before overwriting it
         self.current_pil_image.close()
         
-        # Write asset back to filesystem
-        cropped_image.save(output_filepath)
+        # ⬇️ UPDATED ENGINE ROUTER WITH DETAILED LOGGING PIPELINES ⬇️
+        _, file_ext = os.path.splitext(original_name.lower())
+        is_jpeg = file_ext in ('.jpg', '.jpeg')
+        use_lossless = (self.combo_engine.currentText() == "Lossless") and LOSSLESS_AVAILABLE and is_jpeg
+
+        if use_lossless:
+            # 🚀 ENGINE A: TRUE LOSSLESS JPEG TRANSLATION
+            print(f"\n[ENGINE ACTIVATION] ---> LOSSLESS MODE (jpegtran)")
+            print(f" 📂 Source File   : {current_filepath}")
+            print(f" 💾 Target Output : {output_filepath}")
+            print(f" 📐 File Dimensions: {src_w}x{src_h}")
+            print(f" 🧮 Crop Math     : X={crop_left}, Y={crop_top}, W={crop_width}, H={crop_height}")
+
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            if os.name == 'nt':
+                bin_name = "jpegtran.exe"
+            elif platform.system() == "Darwin":
+                bin_name = "jpegtran_mac"
+            else:
+                bin_name = "jpegtran_linux"
+            binary_path = os.path.join(current_dir, "binaries", bin_name)
+
+            crop_argument = f"{crop_width}x{crop_height}+{crop_left}+{crop_top}"
+            command = [
+                binary_path,
+                "-crop", crop_argument,
+                "-outfile", output_filepath,
+                current_filepath
+            ]
+            
+            try:
+                # Fire the background native command process execution
+                subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print("[SUCCESS] Lossless binary block transformation completed with 0% quality loss.")
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                # Emergency safe fallback if jpegtran fails on a malformed JPEG block
+                print(f"❌ [EMERGENCY FALLBACK] jpegtran failed, shifting to Pillow: {e}")
+                img = Image.open(current_filepath)
+                cropped_image = img.crop((crop_left, crop_top, crop_right, crop_bottom))
+                cropped_image.save(output_filepath)
+                img.close()
+                print("[SUCCESS] Fallback image re-compression save finalized safely.")
+        else:
+            # 🎨 ENGINE B: STANDARD PILLOW RE-COMPRESSION
+            print(f"\n[ENGINE ACTIVATION] ---> PIXEL-PERFECT MODE (Pillow)")
+            print(f" 📂 Source File   : {current_filepath}")
+            print(f" 💾 Target Output : {output_filepath}")
+            print(f" 📐 File Dimensions: {src_w}x{src_h}")
+            print(f" 🧮 Crop Math     : Left={crop_left}, Top={crop_top}, Right={crop_right}, Bottom={crop_bottom}")
+            if not is_jpeg:
+                print(f" 📝 Format Notice : Non-JPEG format ({file_ext.upper()}) dynamically routed to Pillow engine.")
+            elif not LOSSLESS_AVAILABLE:
+                print(f" ⚠️ Engine Notice : jpegtran binary missing from environment. Defaulting to pixel re-compression.")
+
+            img = Image.open(current_filepath)
+            cropped_image = img.crop((crop_left, crop_top, crop_right, crop_bottom))
+            cropped_image.save(output_filepath)
+            img.close()
+            print("[SUCCESS] Image pixel re-compression slice saved successfully.")
+        # -------------------------------------------------------------
         
         # Reload the newly saved file back into memory so navigation doesn't throw errors
-        self.current_pil_image = Image.open(output_filepath)
-        
         if self.chk_overwrite.isChecked():
-            # Force the UI to instantly display the newly cropped version of the image
+            # Load the newly overwritten file path directly
+            self.current_pil_image = Image.open(output_filepath)
             self.refresh_display_canvas()
-            # Clear the old box selection so it doesn't float over the newly resized canvas
-            self.crop_box_selector.hide()
-            self.last_crop_geometry = None
+            
+            # ⬇️ UPDATED: Conserve the selection layer even after an overwrite! ⬇️
+            if self.chk_preserve.isChecked() and self.last_crop_geometry:
+                self.crop_box_selector.setGeometry(self.last_crop_geometry)
+                self.crop_box_selector.show()
+                self.crop_box_selector.raise_()
+            else:
+                self.crop_box_selector.hide()
+                self.last_crop_geometry = None
+        else:
+            # If we saved a copy inside /cropped, re-open our original file
+            self.current_pil_image = Image.open(current_filepath)
+            
+            if self.chk_preserve.isChecked() and self.last_crop_geometry:
+                self.crop_box_selector.setGeometry(self.last_crop_geometry)
+                self.crop_box_selector.show()
+                self.crop_box_selector.raise_()
+            else:
+                self.crop_box_selector.hide()
+                self.last_crop_geometry = None
+                
         return True
+
+
+
 
 
 
