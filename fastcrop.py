@@ -21,7 +21,8 @@ class FastCropApp(QMainWindow):
         
         # Bounding Box Memory Settings
         self.last_crop_geometry = None 
-        
+        self.is_moving_box = False
+
         # Initialize User Interface
         self.init_ui()
         
@@ -113,7 +114,7 @@ class FastCropApp(QMainWindow):
         self.lbl_notification.setGraphicsEffect(shadow)
 
         self.notification_timer = QTimer()
-        self.notification_timer.setInterval(3000)
+        self.notification_timer.setInterval(2000)
         self.notification_timer.setSingleShot(True)
         self.notification_timer.timeout.connect(self.lbl_notification.hide)
         # Bottom info bar
@@ -165,6 +166,7 @@ class FastCropApp(QMainWindow):
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
             self.crop_box_selector.setGeometry(self.last_crop_geometry)
             self.crop_box_selector.show()
+            self.crop_box_selector.raise_() 
         else:
             self.crop_box_selector.hide()
             self.last_crop_geometry = None
@@ -190,43 +192,80 @@ class FastCropApp(QMainWindow):
     # MOUSE INTERACTION & ASPECT BOX OVERLAYS
     # -----------------------------------------------------------------
     def on_mouse_press(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and self.image_display_container.pixmap():
+        if not self.image_display_container.pixmap():
+            return
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Left Click: Draw a new crop box
             self.drag_start_origin = event.position().toPoint()
             self.crop_box_selector.setGeometry(QRect(self.drag_start_origin, QSize()))
             self.crop_box_selector.show()
+            self.is_moving_box = False
+
+        elif event.button() == Qt.MouseButton.RightButton:
+            # Right Click: Move the existing crop box if the cursor is inside it
+            click_point = event.position().toPoint()
+            if not self.crop_box_selector.isHidden() and self.crop_box_selector.geometry().contains(click_point):
+                self.is_moving_box = True
+                self.drag_start_origin = click_point  # Track starting point of movement drag
+            else:
+                self.is_moving_box = False
 
     def on_mouse_move(self, event):
         if self.drag_start_origin.isNull():
             return
             
-        target_point = event.position().toPoint()
-        current_rect = QRect(self.drag_start_origin, target_point).normalized()
-        
-        ratio_type = self.combo_ratio.currentText()
-        if ratio_type == "Freeform":
-            self.crop_box_selector.setGeometry(current_rect)
-        else:
-            # Aspect ratio mathematical bounding locks
-            aspect_ratio = 1.0  # Fallback Default for 1:1
-            if ratio_type == "16:9 Widescreen":
-                aspect_ratio = 16.0 / 9.0
-            elif ratio_type == "4:3 Standard":
-                aspect_ratio = 4.0 / 3.0
-                
-            width = current_rect.width()
-            height = int(width / aspect_ratio)
+        current_point = event.position().toPoint()
+
+        if self.is_moving_box:
+            # Right Click Logic: Move the selection box without resizing it
+            delta = current_point - self.drag_start_origin
+            current_geometry = self.crop_box_selector.geometry()
             
-            # Maintain drawing direction adjustment alignments
-            new_rect = QRect(self.drag_start_origin.x(), self.drag_start_origin.y(), 
-                             width if target_point.x() > self.drag_start_origin.x() else -width,
-                             height if target_point.y() > self.drag_start_origin.y() else -height).normalized()
-            self.crop_box_selector.setGeometry(new_rect)
+            # Calculate new position coordinates
+            new_x = current_geometry.x() + delta.x()
+            new_y = current_geometry.y() + delta.y()
+            
+            # Constrain to prevent moving completely outside the display canvas boundaries
+            new_x = max(0, min(new_x, self.image_display_container.width() - current_geometry.width()))
+            new_y = max(0, min(new_y, self.image_display_container.height() - current_geometry.height()))
+            
+            # Apply layout movement update
+            self.crop_box_selector.move(new_x, new_y)
+            self.last_crop_geometry = self.crop_box_selector.geometry()
+            self.drag_start_origin = current_point  # Update base point for smooth tracking delta
+            
+        else:
+            # Left Click Logic: Handle original box drawing/resizing
+            current_rect = QRect(self.drag_start_origin, current_point).normalized()
+            ratio_type = self.combo_ratio.currentText()
+            
+            if ratio_type == "Freeform":
+                self.crop_box_selector.setGeometry(current_rect)
+            else:
+                aspect_ratio = 1.0
+                if ratio_type == "16:9 Widescreen":
+                    aspect_ratio = 16.0 / 9.0
+                elif ratio_type == "4:3 Standard":
+                    aspect_ratio = 4.0 / 3.0
+                    
+                width = current_rect.width()
+                height = int(width / aspect_ratio)
+                
+                new_rect = QRect(self.drag_start_origin.x(), self.drag_start_origin.y(), 
+                                 width if current_point.x() > self.drag_start_origin.x() else -width,
+                                 height if current_point.y() > self.drag_start_origin.y() else -height).normalized()
+                self.crop_box_selector.setGeometry(new_rect)
 
     def on_mouse_release(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and not self.is_moving_box:
             if self.crop_box_selector.width() > 5 and self.crop_box_selector.height() > 5:
                 self.last_crop_geometry = self.crop_box_selector.geometry()
             self.drag_start_origin = QPoint()
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.is_moving_box = False
+            self.drag_start_origin = QPoint()
+
 
     # -----------------------------------------------------------------
     # PIPELINE EDITING SUBROUTINES AND WRITING LOGIC
