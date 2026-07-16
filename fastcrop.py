@@ -34,9 +34,11 @@ LOSSLESS_AVAILABLE = os.path.exists(binary_path)
 
 class FloatingZoomPreview(QWidget):
     def __init__(self, parent_window):
-        super().__init__(parent_window)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        super().__init__(None)
+     
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+
         self.setMouseTracking(True)
         
         self.main_app = parent_window
@@ -145,6 +147,20 @@ class FloatingZoomPreview(QWidget):
             if hasattr(self.main_app, 'cfg_show_preview'):
                 self.main_app.cfg_show_preview.setChecked(False)
             event.accept()
+
+    def keyPressEvent(self, event):
+        """Listens for specific keystrokes when the preview window has active focus."""
+        # 🌟 CLOSE ON ESCAPE: If the user hits Esc, cleanly dismiss the HUD panel
+        if event.key() == Qt.Key.Key_Escape:
+            self.hide()
+            
+            # Uncheck the matching drawer checkbox in the main window for sync consistency
+            if hasattr(self.main_app, 'cfg_show_preview') and self.main_app.cfg_show_preview:
+                self.main_app.cfg_show_preview.setChecked(False)
+                
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 class FastCropApp(QMainWindow):
     def __init__(self):
@@ -277,6 +293,7 @@ class FastCropApp(QMainWindow):
         # Initialize User Interface
         self.init_ui()
         self.zoom_hud = FloatingZoomPreview(self)
+        
         self.load_application_state()
         
     def init_ui(self):
@@ -496,9 +513,41 @@ class FastCropApp(QMainWindow):
         self.cfg_show_cropsize.setChecked(True)
         self.cfg_show_cropsize.stateChanged.connect(self.update_resolution_metrics_display)
         self.drawer_layout.addWidget(self.cfg_show_cropsize)
+                # -------------------------------------------------------------
+        # CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE
+        # -------------------------------------------------------------
+        lbl_layout_section = QLabel("Layout Memory")
+        lbl_layout_section.setStyleSheet("""
+            QLabel {
+                color: #888888; 
+                font-size: 11px; 
+                font-weight: bold; 
+                text-transform: uppercase; 
+                letter-spacing: 1px; 
+                border: none; 
+                margin-top: 15px; 
+                padding-bottom: 2px;
+            }
+        """)
+        self.drawer_layout.addWidget(lbl_layout_section)
         
-       
+        divider3 = QWidget()
+        divider3.setMinimumHeight(1)
+        divider3.setMaximumHeight(1)
+        divider3.setStyleSheet("background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;")
+        self.drawer_layout.addWidget(divider3)
+
+        self.cfg_persist_main_win = QCheckBox("Main Window")
+        self.cfg_persist_main_win.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_persist_main_win.setChecked(True) # Checked by default for convenient startup
+        self.drawer_layout.addWidget(self.cfg_persist_main_win)
+
+        self.cfg_persist_hud_win = QCheckBox("Preview HUD")
+        self.cfg_persist_hud_win.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_persist_hud_win.setChecked(True) # Checked by default for convenient startup
+        self.drawer_layout.addWidget(self.cfg_persist_hud_win)
         
+        ########################## 
         self.drawer_layout.addStretch()
 
         
@@ -527,12 +576,13 @@ class FastCropApp(QMainWindow):
         # Populate the exact hotkey roadmap text
         self.lbl_commands_overlay.setText(
             "<b>[Hotkeys Layout]</b><br>"
-            "Space       : Crop & Next Image<br>"
-            "S / Enter   : Crop & Stay<br>"
-            "F / ➡️      : Skip Forward<br>"
-            "B / ⬅️      : Skip Backward<br>"
-            "R           : Rotate Clockwise<br>"
-            "Esc         : Exit App<br><br>"
+            "[<b>Space</b>]       : Crop & Next Image<br>"
+            "[<b>S</b>] / <b>Enter</b>]   : Crop & Stay<br>"
+            "[<b>F</b>] / [<b>→</b>]      : Skip Forward<br>"
+            "[<b>B</b>] / [<b>←</b>]      : Skip Backward<br>"
+            "[<b>R</b>]           : Rotate Clockwise<br>"
+            "[<b>P</b>] Toggle Zoom HUD Preview<br>"
+            "[<b>Esc</b>]         : Exit App<br><br>"
             "<i>Left-Click Drag: Draw Box<br>"
             "Right-Click Drag: Move Box</i>"
         )
@@ -1093,7 +1143,15 @@ class FastCropApp(QMainWindow):
         
         if key == Qt.Key.Key_Escape:
             self.close()
-            
+        
+
+        if event.key() == Qt.Key.Key_P:
+            # Toggle the state of the configuration checkbox
+            current_state = self.cfg_show_preview.isChecked()
+            self.cfg_show_preview.setChecked(not current_state)   
+            event.accept()
+            return
+
         elif key == Qt.Key.Key_Space:
             # Crop + Advance
             self.process_and_execute_crop()
@@ -1228,6 +1286,11 @@ class FastCropApp(QMainWindow):
     def closeEvent(self, event):
         """Standard PyQt window intercept routine executing right before closing down."""
         self.save_application_state()
+
+        if hasattr(self, 'zoom_hud') and self.zoom_hud:
+            # This forces the borderless satellite HUD to cleanly terminate right alongside the main app
+            self.zoom_hud.close()
+
         event.accept()
 
     def save_application_state(self):
@@ -1243,13 +1306,23 @@ class FastCropApp(QMainWindow):
         master_remember = self.cfg_remember_settings.isChecked()
         settings.setValue("remember_settings", master_remember)
         # ALWAYS save geometry profiles, but we only restore them if 'Remember 
-        settings.setValue("main_window_geometry", self.saveGeometry())
+        settings.setValue("main_win_x", self.x())
+        settings.setValue("main_win_y", self.y())
+        settings.setValue("main_win_w", self.width())
+        settings.setValue("main_win_h", self.height())
+
+
         if hasattr(self, 'zoom_hud'):
-            settings.setValue("zoom_hud_geometry", self.zoom_hud.saveGeometry())
+            settings.setValue("hud_win_x", self.zoom_hud.x())
+            settings.setValue("hud_win_y", self.zoom_hud.y())
+            settings.setValue("hud_win_w", self.zoom_hud.width())
+            settings.setValue("hud_win_h", self.zoom_hud.height())
             settings.setValue("show_preview_hud", self.cfg_show_preview.isChecked())
 
         # Write state variables if 'Remember settings' checkbox rule is active
         if master_remember:
+            settings.setValue("persist_main_win", self.cfg_persist_main_win.isChecked())
+            settings.setValue("persist_hud_win", self.cfg_persist_hud_win.isChecked())
             settings.setValue("auto_open_folder", self.cfg_auto_folder.isChecked())
             settings.setValue("show_shortcuts", self.cfg_show_shortcuts.isChecked())
             settings.setValue("show_toasts", self.cfg_show_toasts.isChecked())
@@ -1280,12 +1353,18 @@ class FastCropApp(QMainWindow):
         self.cfg_remember_settings.setChecked(remember)
         
         if remember:
+            self.cfg_persist_main_win.setChecked(safe_bool(settings.value("persist_main_win"), True))
+            self.cfg_persist_hud_win.setChecked(safe_bool(settings.value("persist_hud_win"), True))
 
-            main_geom = settings.value("main_window_geometry")
-            if main_geom:
-                self.restoreGeometry(main_geom)
+            if self.cfg_persist_main_win.isChecked():
+                mx = settings.value("main_win_x")
+                my = settings.value("main_win_y")
+                mw = settings.value("main_win_w")
+                mh = settings.value("main_win_h")
+                if mx is not None and my is not None and mw is not None and mh is not None:
+                    self.setGeometry(int(mx), int(my), int(mw), int(mh))
                 
-            if hasattr(self, 'zoom_hud'):
+            if hasattr(self, 'zoom_hud') and self.cfg_persist_hud_win.isChecked():
                 hud_geom = settings.value("zoom_hud_geometry")
                 if hud_geom:
                     self.zoom_hud.restoreGeometry(hud_geom)
@@ -1304,7 +1383,7 @@ class FastCropApp(QMainWindow):
             show_hud = safe_bool(settings.value("show_preview_hud"), False)
             self.cfg_show_preview.setChecked(show_hud)
             if show_hud:
-                self.zoom_hud.show()
+                self.toggle_zoom_hud_window_visibility()
 
             # 3. Extract Dropdown String Values Safely
             ratio = settings.value("ratio_preference", "Freeform")
@@ -1399,13 +1478,31 @@ class FastCropApp(QMainWindow):
     def toggle_zoom_hud_window_visibility(self):
         """Displays or shuts down the floating zoom view based on checkbox rules."""
         if self.cfg_show_preview.isChecked():
-            # Snap it to float nicely right next to the main application window on launch
-            main_geom = self.geometry()
-            self.zoom_hud.move(main_geom.right() + 10, main_geom.top() + 50)
+            from PyQt6.QtCore import QSettings
+            settings = QSettings("LossLessCropTeam", "LossLessCrop")
+            
+            # 1. Force the window into existence first so the OS layout initializes
             self.zoom_hud.show()
-            self.update_zoom_hud_payload() # Refresh data instantly
+            self.zoom_hud.raise_()
+            
+            # 2. Immediately look up our explicit layout coordinates
+            hx = settings.value("hud_win_x")
+            hy = settings.value("hud_win_y")
+            hw = settings.value("hud_win_w")
+            hh = settings.value("hud_win_h")
+            
+            # 🌟 FIXED: If explicit dimensions exist, enforce them AFTER the window is shown!
+            if hx is not None and hy is not None and hw is not None and hh is not None:
+                self.zoom_hud.setGeometry(int(hx), int(hy), int(hw), int(hh))
+            else:
+                # Helpfully place it to the right of the main window ONLY if it's the first run ever
+                main_geom = self.geometry()
+                self.zoom_hud.setGeometry(main_geom.right() + 10, main_geom.top() + 50, 250, 250)
+            
+            self.update_zoom_hud_payload()
         else:
             self.zoom_hud.hide()
+
 
     def update_zoom_hud_payload(self):
         """Calculates coordinates, slices memory, and passes the payload to the HUD."""
