@@ -51,50 +51,55 @@ class FastCropApp(QMainWindow):
         # -------------------------------------------------------------
         self.toolbar = QHBoxLayout()
         
-        self.btn_open = QPushButton("Open Folder")
+        # 1. Compact Open Button
+        self.btn_open = QPushButton("Open")
         self.btn_open.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_open.setToolTip("Open a directory containing images to start editing.")
         self.btn_open.clicked.connect(self.select_directory)
         self.toolbar.addWidget(self.btn_open)
         
-        # NEW: Shows the folder name directly next to the button
+        # Folder Name Display Panel
         self.lbl_folder_name = QLabel("No directory loaded.")
         self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px;")
         self.toolbar.addWidget(self.lbl_folder_name)
         
         self.toolbar.addStretch()
         
-        self.toolbar.addWidget(QLabel("Engine Mode:"))
+        # 2. Compact Engine Selection Dropdown (No Label)
         self.combo_engine = QComboBox()
         self.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.combo_engine.setToolTip("Choose the processing engine mode for saving operations.")
         
-        # Dynamically unlock features based on the top environment checks
+        # Safely inject values with clean shortened strings
         if LOSSLESS_AVAILABLE:
-            self.combo_engine.addItem("Lossless Mode (100% Quality)")
+            self.combo_engine.addItem("Lossless")
         if PILLOW_AVAILABLE:
-            self.combo_engine.addItem("Pillow Mode (Pixel-Perfect)")
+            self.combo_engine.addItem("Pixel-Perfect")
             
-        # If lossless is missing, fallback gracefully
         if not LOSSLESS_AVAILABLE and PILLOW_AVAILABLE:
-            self.combo_engine.setCurrentText("Pillow Mode (Pixel-Perfect)")
+            self.combo_engine.setCurrentText("Pixel-Perfect")
             
         self.toolbar.addWidget(self.combo_engine)
-
-        # Aspect Ratio Optimization Control Dropdowns
-        self.toolbar.addWidget(QLabel("Force Ratio:"))
+        
+        # 3. Compact Aspect Ratio Dropdown (No Label)
         self.combo_ratio = QComboBox()
         self.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.combo_ratio.setToolTip("Force the cropping rectangle selection box to lock onto specific aspect ratios.")
         self.combo_ratio.addItems(["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"])
         self.combo_ratio.currentIndexChanged.connect(self.on_ratio_changed)
         self.toolbar.addWidget(self.combo_ratio)
         
-        # Workspace Retention Checkboxes
-        self.chk_preserve = QCheckBox("Conserve selection box position/size")
+        # 4. Shortened Geometry Preservation Checkbox
+        self.chk_preserve = QCheckBox("Conserve selection")
         self.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.chk_preserve.setToolTip("Conserve the current selection box size and position coordinates across images.")
         self.chk_preserve.setChecked(True)
         self.toolbar.addWidget(self.chk_preserve)
         
-        self.chk_overwrite = QCheckBox("Overwrite original files")
-        self.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus) 
+        # 5. Shortened File Destruction Checkbox
+        self.chk_overwrite = QCheckBox("Overwrite")
+        self.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.chk_overwrite.setToolTip("Directly overwrite the original source image files instead of nesting copies in a subfolder.")
         self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
         
@@ -286,7 +291,7 @@ class FastCropApp(QMainWindow):
             
         current_point = event.position().toPoint()
         ratio_type = self.combo_ratio.currentText()
-        is_lossless = self.combo_engine.currentText() == "Lossless Mode (100% Quality)"
+        is_lossless = self.combo_engine.currentText() == "Lossless"
 
         # -----------------------------------------------------------------
         # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box)
