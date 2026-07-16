@@ -38,6 +38,7 @@ class FastCropApp(QMainWindow):
         self.toolbar = QHBoxLayout()
         
         self.btn_open = QPushButton("Open Folder")
+        self.btn_open.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_open.clicked.connect(self.select_directory)
         self.toolbar.addWidget(self.btn_open)
         
@@ -51,15 +52,18 @@ class FastCropApp(QMainWindow):
         # Aspect Ratio Optimization Control Dropdowns
         self.toolbar.addWidget(QLabel("Force Ratio:"))
         self.combo_ratio = QComboBox()
+        self.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.combo_ratio.addItems(["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"])
         self.toolbar.addWidget(self.combo_ratio)
         
         # Workspace Retention Checkboxes
         self.chk_preserve = QCheckBox("Conserve selection box position/size")
+        self.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.chk_preserve.setChecked(True)
         self.toolbar.addWidget(self.chk_preserve)
         
         self.chk_overwrite = QCheckBox("Overwrite original files")
+        self.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus) 
         self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
         
@@ -362,13 +366,23 @@ class FastCropApp(QMainWindow):
         
         # SAVE PATH REDIRECTION LOGIC
         if self.chk_overwrite.isChecked():
-            # If the user checks overwrite, save directly on top of the original source file
+            # If overwrite is active, save directly over the source file
             output_filepath = os.path.join(self.image_folder, original_name)
         else:
-            # Otherwise, use our safe 'cropped' isolation subfolder ecosystem
+            # If overwrite is OFF, ensure we create unique versions
             output_subfolder = os.path.join(self.image_folder, "cropped")
             os.makedirs(output_subfolder, exist_ok=True)
+            
+            # Split filename and extension (e.g., 'photo' and '.jpg')
+            name, ext = os.path.splitext(original_name)
             output_filepath = os.path.join(output_subfolder, original_name)
+            
+            # If the file already exists, loop until a unique _X index is found
+            version_counter = 1
+            while os.path.exists(output_filepath):
+                new_filename = f"{name}_{version_counter}{ext}"
+                output_filepath = os.path.join(output_subfolder, new_filename)
+                version_counter += 1
         
         # CRITICAL STEP FOR OVERWRITING FILE LOCKS 
         # Close the Pillow memory handler connection to the source file before overwriting it
