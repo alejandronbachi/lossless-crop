@@ -26,7 +26,7 @@ class FastCropApp(QMainWindow):
         self.init_ui()
         
     def init_ui(self):
-        # Master Structural Layout Layouts
+        # Master Structural Layout
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -40,9 +40,10 @@ class FastCropApp(QMainWindow):
         self.btn_open.clicked.connect(self.select_directory)
         self.toolbar.addWidget(self.btn_open)
         
-        # Information Tracker Meta Overlay Label
-        self.lbl_status = QLabel("No directory loaded. Click 'Open Folder' to start.")
-        self.toolbar.addWidget(self.lbl_status)
+        # NEW: Shows the folder name directly next to the button
+        self.lbl_folder_name = QLabel("No directory loaded.")
+        self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px;")
+        self.toolbar.addWidget(self.lbl_folder_name)
         
         self.toolbar.addStretch()
         
@@ -57,11 +58,10 @@ class FastCropApp(QMainWindow):
         self.chk_preserve.setChecked(True)
         self.toolbar.addWidget(self.chk_preserve)
         
-        #Overwrite original files"
         self.chk_overwrite = QCheckBox("Overwrite original files")
-        self.chk_overwrite.setChecked(False)  # Defaults to False as requested
+        self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
-
+        
         self.main_layout.addLayout(self.toolbar)
         
         # -------------------------------------------------------------
@@ -71,11 +71,12 @@ class FastCropApp(QMainWindow):
         self.image_display_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_display_container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.image_display_container.setStyleSheet("background-color: #1a1a1a; border: 1px solid #333;")
-        self.image_display_container.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         
+        from PyQt6.QtWidgets import QSizePolicy
+        self.image_display_container.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.main_layout.addWidget(self.image_display_container, stretch=1)
         
-        # Attach Interactive Mouse Targets to the Primary Image Container Canvas
+        # Attach Interactive Mouse Targets
         self.image_display_container.mousePressEvent = self.on_mouse_press
         self.image_display_container.mouseMoveEvent = self.on_mouse_move
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
@@ -84,13 +85,15 @@ class FastCropApp(QMainWindow):
         self.crop_box_selector = QRubberBand(QRubberBand.Shape.Rectangle, self.image_display_container)
         self.drag_start_origin = QPoint()
 
-        # Create a centered notification label floating on top of the viewport
+        # Cinematic Floating Notifications Setup
+        from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+        from PyQt6.QtGui import QColor
+
         self.lbl_notification = QLabel(self.image_display_container)
         self.lbl_notification.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_notification.setWordWrap(True)
-        self.lbl_notification.hide()  # Hidden by default
+        self.lbl_notification.hide()
 
-        # Apply big white typography styles with a clean modern border
         self.lbl_notification.setStyleSheet("""
             QLabel {
                 color: #ffffff;
@@ -103,18 +106,24 @@ class FastCropApp(QMainWindow):
             }
         """)
 
-        # Add a rich cinematic drop shadow to make it pop off the background image
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(15)
         shadow.setColor(QColor(0, 0, 0, 180))
         shadow.setOffset(0, 4)
         self.lbl_notification.setGraphicsEffect(shadow)
 
-        # Timer mechanism to handle the 3-second auto-dismissal
         self.notification_timer = QTimer()
-        self.notification_timer.setInterval(3000)  # 3000ms = 3 seconds
-        self.notification_timer.setSingleShot(True)  # Only fire once per activation
+        self.notification_timer.setInterval(3000)
+        self.notification_timer.setSingleShot(True)
         self.notification_timer.timeout.connect(self.lbl_notification.hide)
+        # Bottom info bar
+        self.info_bar = QHBoxLayout()
+        self.lbl_status = QLabel("Ready. Open a folder to start cropping.")
+        self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500; padding: 5px 0px;")
+        self.info_bar.addWidget(self.lbl_status)
+        self.main_layout.addLayout(self.info_bar)
+
 
     # -----------------------------------------------------------------
     # FILE PIPELINE AND RENDERING LOGIC
@@ -125,9 +134,12 @@ class FastCropApp(QMainWindow):
             return
             
         self.image_folder = directory
-        valid_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
         
-        # Filter files cleanly
+        # Extract just the last folder name from the absolute path
+        folder_name = os.path.basename(os.path.normpath(directory))
+        self.lbl_folder_name.setText(f"📁 {folder_name}")
+        
+        valid_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
         self.image_files = [f for f in os.listdir(directory) if f.lower().endswith(valid_extensions)]
         self.image_files.sort()
         
@@ -136,6 +148,7 @@ class FastCropApp(QMainWindow):
             self.load_image_to_viewport()
         else:
             self.lbl_status.setText("No compatible images found in chosen directory.")
+
 
     def load_image_to_viewport(self):
         if not (0 <= self.current_index < len(self.image_files)):
