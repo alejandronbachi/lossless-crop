@@ -182,7 +182,7 @@ class FastCropApp(QMainWindow):
                 font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
                 color: #e0e0e0;
             }
-            
+                            
             /* Premium Micro flat Interactive Toolbar Buttons */
             QPushButton {
                 background-color: #222222;
@@ -418,7 +418,7 @@ class FastCropApp(QMainWindow):
             QLabel#TelemetryHUD {
                 color: #888888;
                 font-family: monospace;
-                font-size: 16px;
+                font-size: 13px;
                 font-weight: bold;
                 background-color: rgba(10, 10, 10, 0.75);
                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -426,7 +426,10 @@ class FastCropApp(QMainWindow):
                 padding: 10px;
             }
         """)
+
         self.lbl_telemetry_hud.hide() # Hidden by default until bar collapses
+
+
 
         
         
@@ -575,6 +578,9 @@ class FastCropApp(QMainWindow):
 
         # Interactive Selection Component Initialization
         self.crop_box_selector = QRubberBand(QRubberBand.Shape.Rectangle, self.image_display_container)
+        
+        
+        
         self.drag_start_origin = QPoint()
 
         #  ADD THIS NEW COMMAND OVERLAY PANEL 
@@ -582,12 +588,13 @@ class FastCropApp(QMainWindow):
         self.lbl_commands_overlay.hide()  # Will show once an image loads
         self.lbl_commands_overlay.setStyleSheet("""
             QLabel {
-                color: #e0e0e0;
+                color: #ffffff;
                 font-family: monospace;
-                font-size: 15px;
-                background-color: rgba(0, 0, 0, 0.7);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 8px;
+                font-size: 13px;
+                font-weight: bold;
+                background-color: rgba(10, 10, 10, 0.55);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                border-radius: 6px;
                 padding: 10px;
             }
         """)
@@ -606,6 +613,25 @@ class FastCropApp(QMainWindow):
             "<i>Left-Click Drag: Draw Box<br>"
             "Right-Click Drag: Move Box</i>"
         )
+
+        # Ensure you pull down the native graphics effect components module from the top framework library layer
+        from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+        from PyQt6.QtGui import QColor
+
+        # 🌟 SHADOW EFFECT A: For your top-left Shortcut Commands Overlay
+        commands_shadow = QGraphicsDropShadowEffect(self)
+        commands_shadow.setBlurRadius(4)            # Softness of the shadow edge
+        commands_shadow.setColor(QColor("#000000")) # Pure black shadow mapping
+        commands_shadow.setOffset(1, 1)             # Shunt the shadow down 1px and right 1px
+        self.lbl_commands_overlay.setGraphicsEffect(commands_shadow)
+
+        # 🌟 SHADOW EFFECT B: For your lower-left Telemetry HUD Card
+        telemetry_shadow = QGraphicsDropShadowEffect(self)
+        telemetry_shadow.setBlurRadius(3)
+        telemetry_shadow.setColor(QColor("#000000"))
+        telemetry_shadow.setOffset(1, 1)
+        self.lbl_telemetry_hud.setGraphicsEffect(telemetry_shadow)
+
      
         # Cinematic Floating Notifications Setup
         from PyQt6.QtWidgets import QGraphicsDropShadowEffect
