@@ -963,7 +963,7 @@ class FastCropApp(QMainWindow):
             # Move the widget layout on the screen
             self.crop_box_selector.move(render_x, render_y)
             self.last_crop_geometry = self.crop_box_selector.geometry()
-            
+
         # -----------------------------------------------------------------
         # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing the box)
         # -----------------------------------------------------------------
@@ -988,7 +988,8 @@ class FastCropApp(QMainWindow):
             
             # FIX: Use correct native method name setGeometry
             self.crop_box_selector.setGeometry(new_rect)
-            self.update_zoom_hud_payload()
+        self.update_zoom_hud_payload()
+        self.update_resolution_metrics_display()
     
 
     def on_mouse_release(self, event):
