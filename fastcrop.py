@@ -315,8 +315,8 @@ class FastCropApp(QMainWindow):
         self.toolbar = QHBoxLayout()
         self.toolbar.setSpacing(10)
         
-        self.lbl_folder_name = QPushButton("No directory loaded.")
-        self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px; min-width: 120px;")
+        self.lbl_folder_name = QPushButton("No directory loaded")
+        self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px; min-width: 140px;text-align: left;")
         self.lbl_folder_name.clicked.connect(self.select_directory)
 
         self.toolbar.addWidget(self.lbl_folder_name)
