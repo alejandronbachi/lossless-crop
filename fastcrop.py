@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QFileDialog, QPushButton, 
                              QComboBox, QCheckBox, QRubberBand, QSizePolicy, 
                              QGraphicsDropShadowEffect, QFrame, QSpinBox)
-from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QColor
+from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QColor, QIcon
 from PyQt6.QtCore import Qt, QRect, QSize, QPoint, QTimer
 
 
@@ -169,6 +169,12 @@ class FastCropApp(QMainWindow):
         self.setWindowTitle("LossLess Crop")
         self.resize(900, 700)
         
+        # 🌟 NEW: Core Application Icon Registry Initialization 🌟
+        icon_path = os.path.join(os.path.dirname(__index__ if '__index__' in locals() else __file__), "icon.png")
+        if os.path.exists(icon_path):
+            app_icon = QIcon(icon_path)
+            self.setWindowIcon(app_icon) # Sets Title Bar Icon
+
         self.setStyleSheet("""
             /* Main Window Workspace Context Background */
 
@@ -309,8 +315,10 @@ class FastCropApp(QMainWindow):
         self.toolbar = QHBoxLayout()
         self.toolbar.setSpacing(10)
         
-        self.lbl_folder_name = QLabel("No directory loaded.")
-        self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px;")
+        self.lbl_folder_name = QPushButton("No directory loaded.")
+        self.lbl_folder_name.setStyleSheet("font-weight: bold; color: #aaa; margin-left: 5px; min-width: 120px;")
+        self.lbl_folder_name.clicked.connect(self.select_directory)
+
         self.toolbar.addWidget(self.lbl_folder_name)
         
         self.toolbar.addStretch()
@@ -2096,6 +2104,10 @@ class FastCropApp(QMainWindow):
 
 
 if __name__ == "__main__":
+    import ctypes
+    myappid = 'losslesscropteam.losslesscrop.editor.1.0' # Arbitrary unique ID string names
+    try: ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception: pass
     app = QApplication(sys.argv)
     window = FastCropApp()
     window.show()
