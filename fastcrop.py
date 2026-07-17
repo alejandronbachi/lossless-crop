@@ -484,12 +484,7 @@ class FastCropApp(QMainWindow):
         self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
 
-        self.cfg_show_preview = QCheckBox("Preview")
-        self.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_preview.setToolTip("Display Zoom Preview HUD")
-        self.cfg_show_preview.setChecked(False)
-        self.cfg_show_preview.stateChanged.connect(self.toggle_zoom_hud_window_visibility)
-        self.toolbar.addWidget(self.cfg_show_preview)
+
         #  Custom Gear Button - Far Left & Borderless
         
         self.btn_settings = QPushButton("⚙️")
@@ -657,7 +652,14 @@ class FastCropApp(QMainWindow):
         self.cfg_show_imgsize.stateChanged.connect(self.update_resolution_metrics_display)
         self.drawer_layout.addWidget(self.cfg_show_imgsize)
 
-                # -------------------------------------------------------------
+        self.cfg_show_preview = QCheckBox("Preview")
+        self.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_preview.setToolTip("Display Zoom Preview HUD")
+        self.cfg_show_preview.setChecked(False)
+        self.cfg_show_preview.stateChanged.connect(self.toggle_zoom_hud_window_visibility)
+        self.drawer_layout.addWidget(self.cfg_show_preview)
+
+        # -------------------------------------------------------------
         # CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE
         # -------------------------------------------------------------
         lbl_layout_section = QLabel("Layout Memory")
@@ -691,6 +693,9 @@ class FastCropApp(QMainWindow):
         self.cfg_persist_hud_win.setChecked(True) # Checked by default for convenient startup
         self.drawer_layout.addWidget(self.cfg_persist_hud_win)
         
+
+
+
         ########################## 
         self.drawer_layout.addStretch()
 
