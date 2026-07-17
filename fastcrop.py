@@ -4,7 +4,8 @@ import platform
 import subprocess
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QFileDialog, QPushButton, 
-                             QComboBox, QCheckBox, QRubberBand, QSizePolicy, QGraphicsDropShadowEffect)
+                             QComboBox, QCheckBox, QRubberBand, QSizePolicy, 
+                             QGraphicsDropShadowEffect, QFrame, QSpinBox)
 from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QColor
 from PyQt6.QtCore import Qt, QRect, QSize, QPoint, QTimer
 
@@ -344,8 +345,126 @@ class FastCropApp(QMainWindow):
         self.combo_ratio.currentIndexChanged.connect(self.on_ratio_changed)
         self.toolbar.addWidget(self.combo_ratio)
         
+        # -------------------------------------------------------------
+        # TOP TOOLBAR: PRECISION MANUAL CROP INPUT SPINBOXES
+        # -------------------------------------------------------------
+        
+        # Guard flag variable to block recursive input echo storms
+        self._updating_spinboxes = False
+
+        # Build a small layout container frame to hold our spinboxes on the toolbar row
+        self.spin_container = QFrame()
+        self.spin_container.setStyleSheet("background-color: transparent; border: none; margin: 0; padding: 0;")
+        spin_layout = QHBoxLayout(self.spin_container)
+        spin_layout.setContentsMargins(5, 0, 5, 0)
+        spin_layout.setSpacing(6)
+        
+        #s
+        #  SPINBOX STYLESHEET: Explicit internal target routing prevents mouse click hijacking! 🌟
+        spin_box_stylesheet = """
+            /* Main base container footprint */
+            QSpinBox {
+                background-color: #1e1e1e;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                color: #ffffff;
+                font-family: monospace;
+                font-size: 13px;
+                font-weight: bold;
+                min-width: 95px;
+            }
+            QSpinBox:hover {
+                border: 1px solid #444444;
+            }
+            
+            /* Clean structural positioning for the text cursor layer */
+            QSpinBox::editor {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                padding-top: 3px;
+                padding-bottom: 3px;
+                padding-left: 5px;
+                padding-right: 20px; /* Keep text safely clear of the buttons layer zone */
+            }
+            
+            /* 🌟 THE REAL FIX PART 1: Explicitly lock the top right position for the Up Button 🌟 */
+            QSpinBox::up-button {
+                subcontrol-origin: border;
+                subcontrol-position: top right;
+                width: 18px;
+                height: 12px; /* Force an explicit height so it can NEVER collapse to zero! */
+                border-left: 1px solid #333333;
+                border-bottom: 1px solid #333333;
+                background-color: #252525;
+            }
+            QSpinBox::up-button:hover {
+                background-color: #353535;
+            }
+            QSpinBox::up-button:pressed {
+                background-color: #151515;
+            }
+            
+            /* 🌟 THE REAL FIX PART 2: Explicitly lock the bottom right position for the Down Button 🌟 */
+            QSpinBox::down-button {
+                subcontrol-origin: border;
+                subcontrol-position: bottom right;
+                width: 18px;
+                height: 12px; /* Force an explicit height to match the Up button perfectly */
+                border-left: 1px solid #333333;
+                background-color: #252525;
+            }
+            QSpinBox::down-button:hover {
+                background-color: #353535;
+            }
+            QSpinBox::down-button:pressed {
+                background-color: #151515;
+            }
+            
+            /* Optional: Render clean native geometric triangle pointers inside the boxes */
+            QSpinBox::up-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjE4IDE1IDEyIDkgNiAxNSIvPjwvc3ZnPg==);
+                width: 10px;
+                height: 10px;
+            }
+            QSpinBox::down-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ii8+PC9zdmc+);
+                width: 10px;
+                height: 10px;
+            }
+
+        """
+
+        # 1. Custom Numeric Width Input Field Cell
+        self.spin_width = QSpinBox()
+        self.spin_width.setRange(10, 10000) # Support massive high-res cameras safely
+        self.spin_width.setValue(0)
+        self.spin_width.setPrefix("W: ")
+        self.spin_width.setSuffix(" px")
+        self.spin_width.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.spin_width.setStyleSheet(spin_box_stylesheet)
+       
+        # Connect input changing events straight to our mapping engine
+        self.spin_width.valueChanged.connect(self.on_spin_width_changed)
+        spin_layout.addWidget(self.spin_width)
+
+        # 2. Custom Numeric Height Input Field Cell
+        self.spin_height = QSpinBox()
+        self.spin_height.setRange(10, 10000)
+        self.spin_height.setValue(0)
+        self.spin_height.setPrefix("H: ")
+        self.spin_height.setSuffix(" px")
+        self.spin_height.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.spin_height.setStyleSheet(spin_box_stylesheet)
+        self.spin_height.valueChanged.connect(self.on_spin_height_changed)
+        spin_layout.addWidget(self.spin_height)
+
+        # Add the spin container frame directly to your top toolbar stack right next to the dropdown!
+        self.toolbar.addWidget(self.spin_container)
+
+
+
         # Shortened Toolbar Checkboxes
-        self.chk_preserve = QCheckBox("Conserve selection")
+        self.chk_preserve = QCheckBox("Keep selection")
         self.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.chk_preserve.setToolTip("Conserve current selection box size and position coordinates across images.")
         self.chk_preserve.setChecked(True)
@@ -357,8 +476,9 @@ class FastCropApp(QMainWindow):
         self.chk_overwrite.setChecked(False)
         self.toolbar.addWidget(self.chk_overwrite)
 
-        self.cfg_show_preview = QCheckBox("Zoom Preview HUD")
+        self.cfg_show_preview = QCheckBox("Preview")
         self.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cfg_show_preview.setToolTip("Display Zoom Preview HUD")
         self.cfg_show_preview.setChecked(False)
         self.cfg_show_preview.stateChanged.connect(self.toggle_zoom_hud_window_visibility)
         self.toolbar.addWidget(self.cfg_show_preview)
@@ -529,11 +649,6 @@ class FastCropApp(QMainWindow):
         self.cfg_show_imgsize.stateChanged.connect(self.update_resolution_metrics_display)
         self.drawer_layout.addWidget(self.cfg_show_imgsize)
 
-        self.cfg_show_cropsize = QCheckBox("Live Crop Size")
-        self.cfg_show_cropsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_cropsize.setChecked(True)
-        self.cfg_show_cropsize.stateChanged.connect(self.update_resolution_metrics_display)
-        self.drawer_layout.addWidget(self.cfg_show_cropsize)
                 # -------------------------------------------------------------
         # CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE
         # -------------------------------------------------------------
@@ -1056,6 +1171,10 @@ class FastCropApp(QMainWindow):
         self.crop_box_selector.setGeometry(new_rect)
         self.last_crop_geometry = new_rect
         self.crop_box_selector.raise_()
+        if hasattr(self, 'spin_width') and not self.crop_box_selector.isHidden():
+            # Calling this function forces the engine to recalculate the source pixels 
+            # and push the brand new numbers straight into your toolbar input cells instantly
+            self.update_resolution_metrics_display()
 
     # -----------------------------------------------------------------
     # PIPELINE EDITING SUBROUTINES AND WRITING LOGIC
@@ -1482,7 +1601,6 @@ class FastCropApp(QMainWindow):
             settings.setValue("show_infobar", self.cfg_show_infobar.isChecked())
             settings.setValue("show_filename", self.cfg_show_filename.isChecked())
             settings.setValue("show_imgsize", self.cfg_show_imgsize.isChecked())
-            settings.setValue("show_cropsize", self.cfg_show_cropsize.isChecked())
             settings.setValue("conserve_selection", self.chk_preserve.isChecked())
             settings.setValue("overwrite_files", self.chk_overwrite.isChecked())
             settings.setValue("ratio_preference", self.combo_ratio.currentText())
@@ -1530,7 +1648,6 @@ class FastCropApp(QMainWindow):
             self.cfg_show_infobar.setChecked(safe_bool(settings.value("show_infobar"), True))
             self.cfg_show_filename.setChecked(safe_bool(settings.value("show_filename"), True))
             self.cfg_show_imgsize.setChecked(safe_bool(settings.value("show_imgsize"), True))
-            self.cfg_show_cropsize.setChecked(safe_bool(settings.value("show_cropsize"), True))
             self.chk_preserve.setChecked(safe_bool(settings.value("conserve_selection"), True))
             self.chk_overwrite.setChecked(safe_bool(settings.value("overwrite_files"), False))
             self.cfg_show_preview.setChecked(safe_bool(settings.value("show_preview_hud"), False))
@@ -1578,7 +1695,7 @@ class FastCropApp(QMainWindow):
                 self.lbl_splash_hud.raise_()
 
     def update_resolution_metrics_display(self):
-        """Intelligently processes and routes file data and resolutions based on layout settings."""
+        """Computes current source metrics and updates the toolbar precision spinboxes natively."""
         if self.current_index == -1 or not self.current_pil_image:
             self.lbl_status.setText("Ready. Open a folder to start cropping.")
             self.lbl_metrics.setText("")
@@ -1586,80 +1703,70 @@ class FastCropApp(QMainWindow):
             self.lbl_telemetry_hud.hide()
             return
 
-        # 1. Compile file status tracking elements
+        # 1. Compile file status tracking label text elements
         filename_string = ""
         if self.cfg_show_filename.isChecked():
             filename_string = f"[{self.current_index + 1}/{len(self.image_files)}] {self.image_files[self.current_index]}"
 
-        # 2. Compile metrics tracking components
+        # 2. Compile image array base size info tracking
         metrics_text_parts = []
         src_w, src_h = self.current_pil_image.size
-        
         if self.cfg_show_imgsize.isChecked():
             metrics_text_parts.append(f"IMG: {src_w}x{src_h}")
-            
-        if self.cfg_show_cropsize.isChecked():
-            has_selection = (not self.crop_box_selector.isHidden()) and \
-                            (self.crop_box_selector.width() > 5) and \
-                            (self.crop_box_selector.height() > 5)
-            if has_selection:
-                box_rect = self.crop_box_selector.geometry()
-                pixmap = self.image_display_container.pixmap()
-                if pixmap:
-                    lbl_w, lbl_h = self.image_display_container.width(), self.image_display_container.height()
-                    pix_w, pix_h = pixmap.width(), pixmap.height()
-                    offset_x = (lbl_w - pix_w) // 2
-                    offset_y = (lbl_h - pix_h) // 2
-                    adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
-                    adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
-                    adj_w = min(box_rect.width(), pix_w - adj_x)
-                    adj_h = min(box_rect.height(), pix_h - adj_y)
-                    scale_x = src_w / pix_w
-                    scale_y = src_h / pix_h
-                    real_crop_w = int(adj_w * scale_x)
-                    real_crop_h = int(adj_h * scale_y)
-                    if real_crop_w > 0 and real_crop_h > 0:
-                        metrics_text_parts.append(f"CROP: {real_crop_w}x{real_crop_h}")
-                    else:
-                        metrics_text_parts.append("CROP: 0x0")
-                else:
-                    metrics_text_parts.append("CROP: 0x0")
-            else:
-                metrics_text_parts.append("CROP: 0x0")
-
         metrics_string = " | ".join(metrics_text_parts) if metrics_text_parts else ""
 
-        # -------------------------------------------------------------
-        #  THE TRAFFIC ROUTER ENGINE 
-        # -------------------------------------------------------------
+        # 3. Translate visual screen bounding boxes back into high-res source file dimensions
+        real_crop_w, real_crop_h = 0, 0
+        has_selection = (not self.crop_box_selector.isHidden()) and \
+                        (self.crop_box_selector.width() > 5) and \
+                        (self.crop_box_selector.height() > 5)
+                        
+        if has_selection:
+            box_rect = self.crop_box_selector.geometry()
+            pixmap = self.image_display_container.pixmap()
+            if pixmap:
+                lbl_w, lbl_h = self.image_display_container.width(), self.image_display_container.height()
+                pix_w, pix_h = pixmap.width(), pixmap.height()
+                offset_x = (lbl_w - pix_w) // 2
+                offset_y = (lbl_h - pix_h) // 2
+                
+                adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
+                adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
+                adj_w = min(box_rect.width(), pix_w - adj_x)
+                adj_h = min(box_rect.height(), pix_h - adj_y)
+                
+                scale_x = src_w / pix_w
+                scale_y = src_h / pix_h
+                real_crop_w = int(adj_w * scale_x)
+                real_crop_h = int(adj_h * scale_y)
+
+        # 🌟 TWO-WAY SYNC CORE LAYER: Safely push numbers into the spinboxes without loops 🌟
+        if not self._updating_spinboxes:
+            self._updating_spinboxes = True
+            self.spin_width.setValue(real_crop_w if real_crop_w > 0 else 0)
+            self.spin_height.setValue(real_crop_h if real_crop_h > 0 else 0)
+            self._updating_spinboxes = False
+
+        # 4. Standard structural routing for the remaining text indicators
         if self.cfg_show_infobar.isChecked():
-            # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
             self.lbl_telemetry_hud.hide()
             self.lbl_status.setText(filename_string if filename_string else "")
             self.lbl_metrics.setText(metrics_string)
         else:
-            # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
             self.lbl_status.setText("")
             self.lbl_metrics.setText("")
+            hud_lines = [filename_string] if filename_string else []
+            if metrics_string: hud_lines.append(metrics_string)
+            
+            # Hide overlay during active mouse drawing movements per your requirement
             is_user_actively_editing = getattr(self, 'is_moving_box', False) or (hasattr(self, 'drag_start_origin') and not self.drag_start_origin.isNull() and not getattr(self, 'is_moving_box', False))
-            hud_lines = []
-            if filename_string:
-                hud_lines.append(filename_string)
-            if metrics_string:
-                hud_lines.append(metrics_string)
-                
+            
             if hud_lines and not is_user_actively_editing:
-                # Update text array layout and force a layout redraw pass
                 self.lbl_telemetry_hud.setText("\n".join(hud_lines))
                 self.lbl_telemetry_hud.show()
                 self.lbl_telemetry_hud.adjustSize()
-                self.lbl_telemetry_hud.raise_()
-                
-                # Re-calculate geometry offsets so card sits perfectly at lower-left margin bounds
                 padding = 15
-                x = padding
-                y = self.central_widget.height() - self.lbl_telemetry_hud.height() - padding
-                self.lbl_telemetry_hud.move(x, y)
+                self.lbl_telemetry_hud.move(padding, self.central_widget.height() - self.lbl_telemetry_hud.height() - padding)
             else:
                 self.lbl_telemetry_hud.hide()
 
@@ -1878,6 +1985,114 @@ class FastCropApp(QMainWindow):
             settings.setValue("last_used_folder", self.image_folder)
         else:
             self.lbl_status.setText("No valid, readable images found in target folder directory.")
+
+    def get_current_forced_ratio(self):
+        """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
+        ratio_type = self.combo_ratio.currentText()
+        if ratio_type == "1:1 Square": return 1.0
+        if ratio_type == "16:9 Widescreen": return 16.0 / 9.0
+        if ratio_type == "4:3 Standard": return 4.0 / 3.0
+        return None # Freeform
+
+    def on_spin_width_changed(self, value):
+        """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
+        if self._updating_spinboxes or self.current_index == -1 or not self.current_pil_image:
+            return
+            
+        ratio = self.get_current_forced_ratio()
+        if ratio is not None:
+            # Aspect ratio locked! Calculate and push matching height value natively
+            self._updating_spinboxes = True
+            calculated_height = int(round(value / ratio))
+            # Safely cap it to your image's physical maximum pixel bounds
+            calculated_height = min(calculated_height, self.current_pil_image.size[1])
+            self.spin_height.setValue(calculated_height)
+            self._updating_spinboxes = False
+            
+        # Push the finalized dimensions out to redraw on the preview image container
+        self.apply_spinbox_dimensions_to_canvas()
+
+    def on_spin_height_changed(self, value):
+        """Triggers when height spinbox is adjusted manually via arrows or keystrokes."""
+        if self._updating_spinboxes or self.current_index == -1 or not self.current_pil_image:
+            return
+            
+        ratio = self.get_current_forced_ratio()
+        if ratio is not None:
+            # Aspect ratio locked! Calculate and push matching width value natively
+            self._updating_spinboxes = True
+            calculated_width = int(round(value * ratio))
+            # Safely cap it to your image's physical maximum pixel bounds
+            calculated_width = min(calculated_width, self.current_pil_image.size[0])
+            self.spin_width.setValue(calculated_width)
+            self._updating_spinboxes = False
+            
+        # Push the finalized dimensions out to redraw on the preview image container
+        self.apply_spinbox_dimensions_to_canvas()
+
+    def apply_spinbox_dimensions_to_canvas(self):
+        """Translates explicit spinbox dimensions backwards to snap box selections on screen."""
+        if self.current_index == -1 or not self.current_pil_image:
+            return
+            
+        pixmap = self.image_display_container.pixmap()
+        if not pixmap:
+            return
+            
+        # 1. Grab values, clipping them if they try to grow larger than the raw photo arrays
+        src_w, src_h = self.current_pil_image.size
+        target_w = min(self.spin_width.value(), src_w)
+        target_h = min(self.spin_height.value(), src_h)
+        
+        if target_w <= 10 or target_h <= 10:
+            self.crop_box_selector.hide()
+            return
+
+        # 2. Extract current presentation layout dimension scales
+        lbl_w, lbl_h = self.image_display_container.width(), self.image_display_container.height()
+        pix_w, pix_h = pixmap.width(), pixmap.height()
+        
+        # Compute viewport centering offset margins
+        offset_x = (lbl_w - pix_w) // 2
+        offset_y = (lbl_h - pix_h) // 2
+        
+        scale_x = pix_w / src_w
+        scale_y = pix_h / src_h
+        
+        box_w = int(target_w * scale_x)
+        box_h = int(target_h * scale_y)
+        
+        # 3. Determine positioning anchor point
+        if not self.crop_box_selector.isHidden():
+            current_geom = self.crop_box_selector.geometry()
+            box_x = current_geom.x()
+            box_y = current_geom.y()
+            
+            # 🌟 FIXED: Bound checking constraints are calculated strictly inside the scaled photo pixels! 🌟
+            # This allows the box to expand completely up to the image margins without locking up.
+            max_allowed_w = pix_w - (box_x - offset_x)
+            max_allowed_h = pix_h - (box_y - offset_y)
+            
+            box_w = min(box_w, max_allowed_w)
+            box_h = min(box_h, max_allowed_h)
+        else:
+            # Default empty fallback: center it perfectly on the canvas
+            box_x = offset_x + (pix_w - box_w) // 2
+            box_y = offset_y + (pix_h - box_h) // 2
+            
+        # 4. Snap the QRubberBand cleanly over the pixels!
+        new_rect = QRect(box_x, box_y, box_w, box_h)
+        
+        # Optimization guard allows rendering updates safely
+        if self.crop_box_selector.geometry() != new_rect or self.crop_box_selector.isHidden():
+            self.crop_box_selector.setGeometry(new_rect)
+            self.crop_box_selector.show()
+            
+            # Cache tracking parameters and dispatch updates out to the Zoom Preview HUD!
+            self.last_crop_geometry = new_rect
+            if hasattr(self, 'zoom_hud'):
+                # Force instant sync to your borderless satellite window
+                self.update_zoom_hud_payload()
 
 
 if __name__ == "__main__":
