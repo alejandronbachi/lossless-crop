@@ -1552,7 +1552,9 @@ class FastCropApp(QMainWindow):
         return True
 
     def rotate_current_image(self):
-        """Rotates the image and dynamically forces the active crop box to re-snap."""
+        """Rotates the image matrix underneath the stationary viewport selection frame,
+        instantly re-aligning the box to the new underlying grid.
+        """
         if not self.current_pil_image:
             return
 
@@ -1565,35 +1567,20 @@ class FastCropApp(QMainWindow):
         self.current_pil_image = self.current_pil_image.rotate(-90, expand=True)
         self.refresh_display_canvas()
 
-        # 3. Handle selection box re-snapping post-rotation
+        # 3. Re-align the stationary screen stencil to the new underlying JPEG blocks
         if not self.crop_box_selector.isHidden() and self.last_crop_geometry:
-            geom = self.last_crop_geometry
+            # Let our unified utility process the snap to prevent 1-pixel rounding drift
+            snapped_rect = self.calculate_snapped_rect(self.last_crop_geometry)
 
-            # Re-snap bounds safely onto 16x16 grid layers matching new layout dimensions
-            snap_x = round(geom.x() / 16) * 16
-            snap_y = round(geom.y() / 16) * 16
-            snap_w = round(geom.width() / 16) * 16
-            snap_h = round(geom.height() / 16) * 16
-
-            # Force aspect ratio matching if dropdown rule isn't freeform
-            ratio_type = self.combo_ratio.currentText()
-            if ratio_type != "Freeform":
-                aspect_ratio = (
-                    16.0 / 9.0
-                    if ratio_type == "16:9 Widescreen"
-                    else (4.0 / 3.0 if ratio_type == "4:3 Standard" else 1.0)
-                )
-                snap_h = round((snap_w / aspect_ratio) / 16) * 16
-
-            # Commit the updated geometry matrix directly back to the canvas
-            self.last_crop_geometry = QRect(snap_x, snap_y, snap_w, snap_h)
+            self.last_crop_geometry = snapped_rect
             self.crop_box_selector.setGeometry(self.last_crop_geometry)
             self.crop_box_selector.show()
             self.crop_box_selector.raise_()
 
         # 4. Synchronize status bars, spinboxes, and the zoom preview engine
         self.update_resolution_metrics_display()
-        self.update_zoom_hud_payload()
+        if hasattr(self, "update_zoom_hud_payload"):
+            self.update_zoom_hud_payload()
 
     # -----------------------------------------------------------------
     # GLOBAL APPLICATION HOTKEY INTERCEPT CAPABILITIES
