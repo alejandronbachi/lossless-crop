@@ -1035,6 +1035,9 @@ class FastCropApp(QMainWindow):
         # -----------------------------------------------------------------
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION
         # -----------------------------------------------------------------
+        # -----------------------------------------------------------------
+        # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
+        # -----------------------------------------------------------------
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
             # 1. Grab the fresh file extension properties
             _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
@@ -1046,47 +1049,30 @@ class FastCropApp(QMainWindow):
             )
 
             if is_lossless:
-                current_geom = self.last_crop_geometry
-
-                #  OPTIMIZATION CHECK: Only calculate if the box is NOT already aligned
-                is_already_snapped = (
-                    (current_geom.x() % 16 == 0)
-                    and (current_geom.y() % 16 == 0)
-                    and (current_geom.width() % 16 == 0)
-                    and (current_geom.height() % 16 == 0)
+                # Force the stationary screen box geometry through our core math engine.
+                # This leaves the box position alone but calculates the perfect 16x16 image-space conversion.
+                self.last_crop_geometry = self.calculate_snapped_rect(
+                    self.last_crop_geometry
+                )
+                print(
+                    "[DEBUG NAV] Landed on Lossless JPEG. Selection aligned to underlying MCU grid."
                 )
 
-                if not is_already_snapped:
-                    # Snap the shunted selection box coordinates onto 16x16 grid markers
-                    snap_x = round(current_geom.x() / 16) * 16
-                    snap_y = round(current_geom.y() / 16) * 16
-                    snap_w = round(current_geom.width() / 16) * 16
-                    snap_h = round(current_geom.height() / 16) * 16
-
-                    ratio_type = self.combo_ratio.currentText()
-                    if ratio_type != "Freeform":
-                        aspect_ratio = (
-                            16.0 / 9.0
-                            if ratio_type == "16:9 Widescreen"
-                            else (4.0 / 3.0 if ratio_type == "4:3 Standard" else 1.0)
-                        )
-                        snap_h = round((snap_w / aspect_ratio) / 16) * 16
-
-                    # Update our tracking memory with the safe, snapped grid block values
-                    self.last_crop_geometry = QRect(snap_x, snap_y, snap_w, snap_h)
-                    print("Snapping selection box")
-            # Render the updated layout box onto your viewport canvas
+            # Render the stationary box onto your viewport canvas exactly where it belongs
             self.crop_box_selector.setGeometry(self.last_crop_geometry)
             self.crop_box_selector.show()
             self.crop_box_selector.raise_()
         else:
             self.crop_box_selector.hide()
             self.last_crop_geometry = None
+            if hasattr(self, "ghost_selector") and self.ghost_selector:
+                self.ghost_selector.hide()
 
         self.position_commands_overlay()
         self.apply_drawer_visibility_rules()
         self.update_resolution_metrics_display()
-        self.update_zoom_hud_payload()
+        if hasattr(self, "update_zoom_hud_payload"):
+            self.update_zoom_hud_payload()
 
     def refresh_display_canvas(self):
         if not self.current_pil_image:
