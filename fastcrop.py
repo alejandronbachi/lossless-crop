@@ -1270,7 +1270,7 @@ class FastCropApp(QMainWindow):
             new_width = round(new_width / 16) * 16
             new_height = round((new_width / aspect_ratio) / 16) * 16
         else:
-            new_height = int(new_width / aspect_ratio)
+            new_height = max(1, round(new_width / aspect_ratio))
 
         # Build the updated boundary layout
         new_rect = QRect(current_geom.x(), current_geom.y(), new_width, new_height)
@@ -1377,21 +1377,27 @@ class FastCropApp(QMainWindow):
             and is_true_jpeg
         )
 
-        # Fix: Dynamic Engine Specific Coordinate Mapping to prevent sizing loss
+        # Fix: Pull directly from the accurate spinboxes in Pixel-Perfect mode
         if use_lossless:
-            # Lossless Mode: Symmetrically round to the nearest 16x16 block boundary
+            # Lossless Mode: Keep the mathematically secure 16x16 MCU block snapping
             crop_left = max(0, round((adj_x * scale_factor_x) / 16) * 16)
             crop_top = max(0, round((adj_y * scale_factor_y) / 16) * 16)
             crop_right = crop_left + max(16, round((adj_w * scale_factor_x) / 16) * 16)
             crop_bottom = crop_top + max(16, round((adj_h * scale_factor_y) / 16) * 16)
 
         else:
-            # Improved: Scale absolute edges first to match screen coordinates exactly
+            # Pixel-Perfect Mode: Trust the spinbox dimensions as the true target size
+            # Calculate the top-left starting position precisely from the screen offset
             crop_left = max(0, round(adj_x * scale_factor_x))
             crop_top = max(0, round(adj_y * scale_factor_y))
 
-            crop_right = min(src_w, round((adj_x + adj_w) * scale_factor_x))
-            crop_bottom = min(src_h, round((adj_y + adj_h) * scale_factor_y))
+            # Read the absolute intended dimensions directly from the UI elements
+            target_width = self.spin_width.value()
+            target_height = self.spin_height.value()
+
+            # Force the right and bottom boundaries to yield those exact pixel dimensions
+            crop_right = min(src_w, crop_left + target_width)
+            crop_bottom = min(src_h, crop_top + target_height)
 
         # Calculate width and height for jpegtran command arguments
         crop_width = crop_right - crop_left
@@ -2657,7 +2663,7 @@ class FastCropApp(QMainWindow):
         pw, ph = pixmap.width(), pixmap.height()
         ox, oy = (lw - pw) // 2, (lh - ph) // 2
         sx, sy = pw / src_w, ph / src_h
-        bw, bh = int(tw * sx), int(th * sy)
+        bw, bh = round(tw * sx), round(th * sy)
 
         if not self.crop_box_selector.isHidden():
             geom = self.crop_box_selector.geometry()
