@@ -1033,9 +1033,6 @@ class FastCropApp(QMainWindow):
         self.refresh_display_canvas()
 
         # -----------------------------------------------------------------
-        # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION
-        # -----------------------------------------------------------------
-        # -----------------------------------------------------------------
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
         # -----------------------------------------------------------------
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
