@@ -1084,7 +1084,7 @@ class FastCropApp(QMainWindow):
     def refresh_display_canvas(self):
         if not self.current_pil_image:
             return
-
+        # TODO should we load it like the preview?
         # Convert pillow imaging data states to native PyQt QImage arrays cleanly
         pil_img = self.current_pil_image.convert("RGBA")
         data = pil_img.tobytes("raw", "RGBA")
@@ -1616,11 +1616,7 @@ class FastCropApp(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # 2. Restart the timer on every pixel drag (prevents premature execution)
-        self.resize_throttle_timer.start(50)  # 50 milliseconds delay
 
-    def execute_deferred_resize_recalc(self):
-        self.refresh_display_canvas()
         self.position_commands_overlay()
 
         #  CENTER THE FLOATING SPLASH HUD CARD IN ABSOLUTE WORKSPACE ROOM
@@ -1669,6 +1665,14 @@ class FastCropApp(QMainWindow):
             x = (parent_w - self.lbl_notification.width()) // 2
             y = (parent_h - self.lbl_notification.height()) // 2
             self.lbl_notification.move(x, y)
+
+        # 2. Restart the timer on every pixel drag (prevents premature execution)
+        self.resize_throttle_timer.start(50)  # 50 milliseconds delay
+
+    def execute_deferred_resize_recalc(self):
+        self.refresh_display_canvas()
+        if hasattr(self, "zoom_hud"):
+            self.update_zoom_hud_payload()
 
     def show_center_notification(self, text):
         """Displays a cinematic floating alert in the exact middle of the image area."""
