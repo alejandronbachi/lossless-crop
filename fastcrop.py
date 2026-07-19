@@ -937,14 +937,14 @@ class FastCropApp(QMainWindow):
 
         # Secondary Right Edge Metrics Tracker
         self.info_bar.addStretch(1)
-        self.lbl_crop_metrics = QLabel("")
-        self.lbl_crop_metrics.setAlignment(
+        self.lbl__metrics = QLabel("")
+        self.lbl__metrics.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        self.lbl_crop_metrics.setStyleSheet(
+        self.lbl__metrics.setStyleSheet(
             "color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;"
         )
-        self.info_bar.addWidget(self.lbl_crop_metrics)
+        self.info_bar.addWidget(self.lbl__metrics)
 
         self.main_layout.addWidget(self.info_bar_widget)
 
@@ -2228,7 +2228,10 @@ class FastCropApp(QMainWindow):
             or not self.current_pil_image
             or self.crop_box_selector.isHidden()
         ):
-            self.lbl_crop_metrics.setText("Crop Size: 0 x 0")
+            self.lbl_status.setText("Ready. Open a folder to start cropping.")
+            self.lbl_metrics.setText("")
+            self.lbl_telemetry_hud.setText("")
+            self.lbl_telemetry_hud.hide()
             return
 
         pixmap = self.image_display_container.pixmap()
@@ -2294,7 +2297,47 @@ class FastCropApp(QMainWindow):
             self._updating_spinboxes = False
 
         # 5. Synchronize the status bar HUD text labels
-        self.lbl_crop_metrics.setText(f"Crop Size: {final_w} x {final_h}")
+        # -------------------------------------------------------------
+        #  THE TRAFFIC ROUTER ENGINE
+        # -------------------------------------------------------------
+        if self.cfg_show_infobar.isChecked():
+            # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
+            self.lbl_telemetry_hud.hide()
+            self.lbl_status.setText(filename_string if filename_string else "")
+            self.lbl_metrics.setText(metrics_string)
+        else:
+            # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
+            self.lbl_status.setText("")
+            self.lbl_metrics.setText("")
+            is_user_actively_editing = getattr(self, "is_moving_box", False) or (
+                hasattr(self, "drag_start_origin")
+                and not self.drag_start_origin.isNull()
+                and not getattr(self, "is_moving_box", False)
+            )
+            hud_lines = []
+            if filename_string:
+                hud_lines.append(filename_string)
+            if metrics_string:
+                hud_lines.append(metrics_string)
+
+            if hud_lines and not is_user_actively_editing:
+                # Update text array layout and force a layout redraw pass
+                self.lbl_telemetry_hud.setText("\n".join(hud_lines))
+                self.lbl_telemetry_hud.show()
+                self.lbl_telemetry_hud.adjustSize()
+                self.lbl_telemetry_hud.raise_()
+
+                # Re-calculate geometry offsets so card sits perfectly at lower-left margin bounds
+                padding = 15
+                x = padding
+                y = (
+                    self.central_widget.height()
+                    - self.lbl_telemetry_hud.height()
+                    - padding
+                )
+                self.lbl_telemetry_hud.move(x, y)
+            else:
+                self.lbl_telemetry_hud.hide()
 
     def toggle_zoom_hud_window_visibility(self):
         """Displays or shuts down the floating zoom view based on checkbox rules."""
