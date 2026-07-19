@@ -716,17 +716,13 @@ class FastCropApp(QMainWindow):
         self.cfg_show_filename = QCheckBox("Image Filename")
         self.cfg_show_filename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cfg_show_filename.setChecked(True)
-        self.cfg_show_filename.stateChanged.connect(
-            self.update_resolution_metrics_display
-        )
+        self.cfg_show_filename.stateChanged.connect(self.update_telemetry_label)
         self.drawer_layout.addWidget(self.cfg_show_filename)
         #  Target resolution display toggles
         self.cfg_show_imgsize = QCheckBox("Image Resolution")
         self.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cfg_show_imgsize.setChecked(True)
-        self.cfg_show_imgsize.stateChanged.connect(
-            self.update_resolution_metrics_display
-        )
+        self.cfg_show_imgsize.stateChanged.connect(self.update_telemetry_label)
         self.drawer_layout.addWidget(self.cfg_show_imgsize)
 
         self.cfg_show_preview = QCheckBox("Preview")
@@ -937,14 +933,14 @@ class FastCropApp(QMainWindow):
 
         # Secondary Right Edge Metrics Tracker
         self.info_bar.addStretch(1)
-        self.lbl__metrics = QLabel("")
-        self.lbl__metrics.setAlignment(
+        self.lbl_metrics = QLabel("")
+        self.lbl_metrics.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        self.lbl__metrics.setStyleSheet(
+        self.lbl_metrics.setStyleSheet(
             "color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;"
         )
-        self.info_bar.addWidget(self.lbl__metrics)
+        self.info_bar.addWidget(self.lbl_metrics)
 
         self.main_layout.addWidget(self.info_bar_widget)
 
@@ -1078,6 +1074,7 @@ class FastCropApp(QMainWindow):
         self.position_commands_overlay()
         self.apply_drawer_visibility_rules()
         self.update_resolution_metrics_display()
+        self.update_telemetry_label()
         if hasattr(self, "update_zoom_hud_payload"):
             self.update_zoom_hud_payload()
 
@@ -1210,6 +1207,7 @@ class FastCropApp(QMainWindow):
             self.lbl_commands_overlay.show()
             self.lbl_commands_overlay.raise_()
         self.update_resolution_metrics_display()
+        self.update_telemetry_label()
 
     def position_commands_overlay(self):
         """Positions the command overlay in the top left corner of the container."""
@@ -1774,6 +1772,7 @@ class FastCropApp(QMainWindow):
 
         # 3. Trigger telemetry router recalculations to shift paths matching the updated layout
         self.update_resolution_metrics_display()
+        self.update_telemetry_label()
 
     def closeEvent(self, event):
         """Standard PyQt window intercept routine executing right before closing down."""
@@ -1940,6 +1939,7 @@ class FastCropApp(QMainWindow):
             if self.image_files:
                 self.current_index = 0
                 self.load_image_to_viewport()
+
         else:
             # 🌟 Startup is completely empty! Reveal our floating typographic guidelines HUD layout card 🌟
             if hasattr(self, "lbl_splash_hud"):
@@ -2228,10 +2228,6 @@ class FastCropApp(QMainWindow):
             or not self.current_pil_image
             or self.crop_box_selector.isHidden()
         ):
-            self.lbl_status.setText("Ready. Open a folder to start cropping.")
-            self.lbl_metrics.setText("")
-            self.lbl_telemetry_hud.setText("")
-            self.lbl_telemetry_hud.hide()
             return
 
         pixmap = self.image_display_container.pixmap()
@@ -2296,10 +2292,28 @@ class FastCropApp(QMainWindow):
             self.spin_height.setValue(final_h)
             self._updating_spinboxes = False
 
-        # 5. Synchronize the status bar HUD text labels
-        # -------------------------------------------------------------
-        #  THE TRAFFIC ROUTER ENGINE
-        # -------------------------------------------------------------
+    def update_telemetry_label(self):
+        """
+        Synchronize the status bar HUD text labels
+        """
+        if self.current_index == -1 or not self.current_pil_image:
+            self.lbl_status.setText("Ready. Open a folder to start cropping.")
+            self.lbl_metrics.setText("")
+            self.lbl_telemetry_hud.setText("")
+            self.lbl_telemetry_hud.hide()
+            return
+
+        # 1. Compile file status tracking elements
+        src_w, src_h = self.current_pil_image.size
+
+        filename_string = ""
+        if self.cfg_show_filename.isChecked():
+            filename_string = f"[{self.current_index + 1}/{len(self.image_files)}] {self.image_files[self.current_index]}"
+
+        metrics_string = ""
+        if self.cfg_show_imgsize.isChecked():
+            metrics_string = f"IMG: {src_w}x{src_h}"
+
         if self.cfg_show_infobar.isChecked():
             # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
             self.lbl_telemetry_hud.hide()
@@ -2372,7 +2386,6 @@ class FastCropApp(QMainWindow):
         """Calculates coordinates, slices memory, and passes the payload to the HUD."""
         # Abort if the HUD window is hidden or no image selection is active
 
-        ## TODO
         if not PILLOW_AVAILABLE:
             self.show_center_notification("Preview not possible without Pillow")
         if (
