@@ -210,7 +210,12 @@ class FastCropApp(QMainWindow):
         self.setWindowTitle("LossLess Crop")
         self.resize(900, 700)
 
-        #  Core Application Icon Registry Initialization 🌟
+        #  Create a single-shot timer for layout throttling
+        self.resize_throttle_timer = QTimer(self)
+        self.resize_throttle_timer.setSingleShot(True)
+        self.resize_throttle_timer.timeout.connect(self.execute_deferred_resize_recalc)
+
+        #  Core Application Icon Registry Initialization
 
         if os.path.exists(ICON_PATH):
             app_icon = QIcon(ICON_PATH)
@@ -1611,6 +1616,10 @@ class FastCropApp(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        # 2. Restart the timer on every pixel drag (prevents premature execution)
+        self.resize_throttle_timer.start(50)  # 50 milliseconds delay
+
+    def execute_deferred_resize_recalc(self):
         self.refresh_display_canvas()
         self.position_commands_overlay()
 
