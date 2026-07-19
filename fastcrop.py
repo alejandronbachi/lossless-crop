@@ -321,11 +321,6 @@ class FastCropApp(QMainWindow):
                 border: 1px solid #5a7fb5;
             }
             
-            /* Bottom Split Structural Information Framework Widget */
-            QWidget#info_bar_widget {
-                background-color: #0a0a0a;
-                border-top: 1px solid #222222;
-            }
         """)
 
         # Image Pipeline Management Variables
@@ -429,7 +424,6 @@ class FastCropApp(QMainWindow):
         spin_layout.setContentsMargins(5, 0, 5, 0)
         spin_layout.setSpacing(6)
 
-        # s
         #  SPINBOX STYLESHEET: Explicit internal target routing prevents mouse click hijacking! 🌟
         spin_box_stylesheet = """
             /* Main base container footprint */
@@ -1030,6 +1024,23 @@ class FastCropApp(QMainWindow):
 
         # Load through Pillow memory pipelines safely
         self.current_pil_image = Image.open(file_path)
+
+        # 2. Check if its a true jpeg file
+        self.is_current_file_true_jpeg = False
+        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
+        if file_ext in (".jpg", ".jpeg"):
+            try:
+                with open(file_path, "rb") as f:
+                    self.is_current_file_true_jpeg = f.read(3) == b"\xff\xd8\xff"
+            except Exception:
+                self.is_current_file_true_jpeg = False
+                print("Not a real jpeg")
+
+        if self.is_current_file_true_jpeg:
+            print("Real jpeg")
+        else:
+            print("Not a jpeg")
+
         self.refresh_display_canvas()
 
         # -----------------------------------------------------------------
@@ -1037,15 +1048,9 @@ class FastCropApp(QMainWindow):
         # -----------------------------------------------------------------
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
             # 1. Grab the fresh file extension properties
-            _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
-            is_jpeg = file_ext in (".jpg", ".jpeg")
-            is_lossless = (
-                (self.combo_engine.currentText() == "Lossless")
-                and LOSSLESS_AVAILABLE
-                and is_jpeg
-            )
+            use_lossless = self.determine_if_lossless_active()
 
-            if is_lossless:
+            if use_lossless:
                 # Force the stationary screen box geometry through our core math engine.
                 # This leaves the box position alone but calculates the perfect 16x16 image-space conversion.
                 self.last_crop_geometry = self.calculate_snapped_rect(
@@ -1140,17 +1145,8 @@ class FastCropApp(QMainWindow):
             return
 
         current_point = event.position().toPoint()
-        ratio_type = self.combo_ratio.currentText()
 
-        # FIX: Extract extension from tuple correctly using index [1]
-        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
-        file_ext = file_ext.lower()
-        is_jpeg = file_ext in (".jpg", ".jpeg")
-        is_lossless = (
-            (self.combo_engine.currentText() == "Lossless")
-            and LOSSLESS_AVAILABLE
-            and is_jpeg
-        )
+        use_lossless = self.determine_if_lossless_active()
 
         # -----------------------------------------------------------------
         # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box smoothly)
@@ -1165,7 +1161,7 @@ class FastCropApp(QMainWindow):
             target_y = self.box_start_pos.y() + total_mouse_delta.y()
 
             # Apply 16x16 grid snap ONLY to the visible layout coordinates
-            if is_lossless:
+            if use_lossless:
                 render_x = round(target_x / 16) * 16
                 render_y = round(target_y / 16) * 16
             else:
@@ -1245,11 +1241,9 @@ class FastCropApp(QMainWindow):
         # CHECK BOTH ENGINE AND EXTENSION
         original_name = self.image_files[self.current_index]
         _, ext = os.path.splitext(original_name.lower())
-        is_lossless = (self.combo_engine.currentText() == "Lossless") and (
-            ext in (".jpg", ".jpeg")
-        )
+        use_lossless = self.determine_if_lossless_active
 
-        if is_lossless:
+        if use_lossless:
             new_width = round(new_width / 16) * 16
             new_height = round((new_width / aspect_ratio) / 16) * 16
         else:
@@ -1267,6 +1261,19 @@ class FastCropApp(QMainWindow):
             # and push the brand new numbers straight into your toolbar input cells instantly
             self.update_resolution_metrics_display()
 
+    def determine_if_lossless_active(self):
+        """A single source of truth to check if Lossless operation is currently legal.
+        Validates engine toggle, file extension, and binary file signatures.
+        """
+        if self.current_index == -1 or not self.image_files:
+            return False
+
+        # 1. Quick setting check
+        if self.combo_engine.currentText() != "Lossless" or not LOSSLESS_AVAILABLE:
+            return False
+
+        return getattr(self, "is_current_file_true_jpeg", False)
+
     # -----------------------------------------------------------------
     # PIPELINE EDITING SUBROUTINES AND WRITING LOGIC
     # -----------------------------------------------------------------
@@ -1274,11 +1281,18 @@ class FastCropApp(QMainWindow):
         if not self.current_pil_image or self.crop_box_selector.isHidden():
             return False
 
+        # Original asset fallback defaults
+        original_name = self.image_files[self.current_index]
+        current_filepath = os.path.join(self.image_folder, original_name)
+        use_lossless = self.determine_if_lossless_active()
+
         box_rect = self.crop_box_selector.geometry()
         pixmap = self.image_display_container.pixmap()
 
         if not pixmap:
             return False
+
+        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
 
         # Map raw window pixels back onto underlying higher-resolution source geometries
         lbl_w, lbl_h = (
@@ -1309,10 +1323,6 @@ class FastCropApp(QMainWindow):
         scale_factor_x = src_w / pix_w
         scale_factor_y = src_h / pix_h
 
-        # Original asset fallback defaults
-        original_name = self.image_files[self.current_index]
-        current_filepath = os.path.join(self.image_folder, original_name)
-
         # SAVE PATH REDIRECTION LOGIC
         if self.chk_overwrite.isChecked():
             # If overwrite is active, save directly over the source file
@@ -1338,27 +1348,6 @@ class FastCropApp(QMainWindow):
         self.current_pil_image.close()
 
         #  UPDATED ENGINE ROUTER WITH DETAILED LOGGING PIPELINES
-
-        _, file_ext = os.path.splitext(original_name)
-        file_ext = (
-            file_ext.lower()
-        )  # ✅ Normalizes .JPG / .JPEG down to lowercase strings
-        is_jpeg = file_ext in (".jpg", ".jpeg")
-
-        # Verify the actual internal file signature structure for JPEG
-        is_true_jpeg = False
-        if is_jpeg:
-            try:
-                with open(current_filepath, "rb") as f:
-                    is_true_jpeg = f.read(3) == b"\xff\xd8\xff"
-            except Exception:
-                is_true_jpeg = False
-
-        use_lossless = (
-            (self.combo_engine.currentText() == "Lossless")
-            and LOSSLESS_AVAILABLE
-            and is_true_jpeg
-        )
 
         # Fix: Pull directly from the accurate spinboxes in Pixel-Perfect mode
         if use_lossless:
@@ -1442,7 +1431,7 @@ class FastCropApp(QMainWindow):
             print(
                 f" 🧮 Crop Math     : Left={crop_left}, Top={crop_top}, Right={crop_right}, Bottom={crop_bottom}"
             )
-            if not is_jpeg:
+            if not getattr(self, "is_current_file_true_jpeg", False):
                 print(
                     f" 📝 Format Notice : Non-JPEG format ({file_ext.upper()}) dynamically routed to Pillow engine."
                 )
@@ -1466,17 +1455,7 @@ class FastCropApp(QMainWindow):
 
             # 3. CRITICAL RESYNC LAYER PRESERVATION & NAV BUG CLEANUP
             if self.chk_preserve.isChecked() and self.last_crop_geometry:
-                _, file_ext = os.path.splitext(
-                    self.image_files[self.current_index].lower()
-                )
-                is_jpeg = file_ext in (".jpg", ".jpeg")
-                is_lossless = (
-                    (self.combo_engine.currentText() == "Lossless")
-                    and LOSSLESS_AVAILABLE
-                    and is_jpeg
-                )
-
-                if is_lossless:
+                if use_lossless:
                     # Re-snap to 16x16 grid to prevent leaking raw off-grid coordinates
                     snap_x, snap_y = (
                         round(self.last_crop_geometry.x() / 16) * 16,
@@ -1510,6 +1489,7 @@ class FastCropApp(QMainWindow):
                 self.last_crop_geometry = None
 
         else:
+            # TODO why
             # If we saved a copy inside /cropped, re-open our original file
             self.current_pil_image = Image.open(current_filepath)
 
@@ -2056,12 +2036,10 @@ class FastCropApp(QMainWindow):
 
         # 4. Engine Validation Check: Is Lossless Active?
         _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
-        is_lossless = (self.combo_engine.currentText() == "Lossless") and (
-            file_ext in (".jpg", ".jpeg")
-        )
+        use_lossless = self.determine_if_lossless_active()
 
         # Calculate what the grid mapped rectangle represents
-        if is_lossless:
+        if use_lossless:
             snapped_rect = self.calculate_snapped_rect(fluid_rect)
         else:
             snapped_rect = (
@@ -2092,7 +2070,7 @@ class FastCropApp(QMainWindow):
             self.last_crop_geometry = fluid_rect
 
             # Show the ghost block grid overlay ONLY if we are operating in Lossless mode
-            if is_lossless:
+            if use_lossless:
                 self.ghost_selector.setGeometry(snapped_rect)
                 self.ghost_selector.show()
                 self.ghost_selector.raise_()
@@ -2104,7 +2082,7 @@ class FastCropApp(QMainWindow):
         scale_x = src_w / pix_w
         scale_y = src_h / pix_h
 
-        if is_lossless:
+        if use_lossless:
             # Map width/height based on the 16-pixel snapped matrix footprint
             img_raw_w = snapped_rect.width() * scale_x
             img_raw_h = snapped_rect.height() * scale_y
@@ -2188,12 +2166,10 @@ class FastCropApp(QMainWindow):
         )
 
         _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
-        is_lossless = (self.combo_engine.currentText() == "Lossless") and (
-            file_ext in (".jpg", ".jpeg")
-        )
+        use_lossless = self.determine_if_lossless_active()
 
         # 4. Enforce Math Transformations Directly in True Image Space
-        if is_lossless:
+        if use_lossless:
             # Step A: Snap the width onto the 16px MCU block boundary first
             img_w = max(16, round(img_w / 16) * 16)
 
@@ -2253,6 +2229,7 @@ class FastCropApp(QMainWindow):
             self.image_display_container.height(),
         )
         pix_w, pix_h = pixmap.width(), pixmap.height()
+        # TODO
         offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
 
         # 2. Map back to true source image pixel dimensions
@@ -2265,12 +2242,9 @@ class FastCropApp(QMainWindow):
 
         # 3. CRITICAL ASPECT RATIO UI CORRECTION
         ratio_type = self.combo_ratio.currentText()
-        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
-        is_lossless = (self.combo_engine.currentText() == "Lossless") and (
-            file_ext in (".jpg", ".jpeg")
-        )
+        use_lossless = self.determine_if_lossless_active()
 
-        if is_lossless:
+        if use_lossless:
             # Force lossless increments to line up with 16px MCU blocks
             final_w = max(16, round(img_w / 16) * 16)
             if ratio_type != "Freeform":
@@ -2612,9 +2586,7 @@ class FastCropApp(QMainWindow):
         _, ext = os.path.splitext(self.image_files[self.current_index].lower())
 
         # Lossless snapping
-        if (self.combo_engine.currentText() == "Lossless") and (
-            ext in (".jpg", ".jpeg")
-        ):
+        if self.determine_if_lossless_active():
             tw, th = max(16, round(tw / 16) * 16), max(16, round(th / 16) * 16)
             if not self._updating_spinboxes:
                 self._updating_spinboxes = True
