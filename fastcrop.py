@@ -35,7 +35,8 @@ from PyQt6.QtWidgets import (
 
 # Check for Pillow availability
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image
+    from PIL.ImageQt import ImageQt
 
     PILLOW_AVAILABLE = True
 except ImportError:
@@ -55,6 +56,8 @@ else:
 # Verify if the binary is sitting in your project directory
 binary_path = os.path.join(current_dir, "binaries", BINARY_FILE)
 LOSSLESS_AVAILABLE = os.path.exists(binary_path)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+ICON_PATH = os.path.join(CURRENT_DIR, "icon.png")
 
 
 class FloatingZoomPreview(QWidget):
@@ -101,11 +104,11 @@ class FloatingZoomPreview(QWidget):
             self.lbl_canvas.clear()
             return
         try:
-            pil_rgba = self.cached_crop_slice.convert("RGBA")
-            data = pil_rgba.tobytes("raw", "RGBA")
-            img_w, img_h = pil_rgba.size
-            qimg = QImage(data, img_w, img_h, QImage.Format.Format_RGBA8888)
-            pixmap = QPixmap.fromImage(qimg)
+            if PILLOW_AVAILABLE:
+                self._current_qimg = ImageQt(self.cached_crop_slice)
+                pixmap = QPixmap.fromImage(self._current_qimg)
+            else:
+                print("Pillow not available not possible to use preview hud")
 
             current_window_size = self.size()
             if current_window_size.width() <= 0 or current_window_size.height() <= 0:
@@ -207,13 +210,10 @@ class FastCropApp(QMainWindow):
         self.setWindowTitle("LossLess Crop")
         self.resize(900, 700)
 
-        # 🌟 NEW: Core Application Icon Registry Initialization 🌟
-        icon_path = os.path.join(
-            os.path.dirname(__index__ if "__index__" in locals() else __file__),
-            "icon.png",
-        )
-        if os.path.exists(icon_path):
-            app_icon = QIcon(icon_path)
+        #  Core Application Icon Registry Initialization 🌟
+
+        if os.path.exists(ICON_PATH):
+            app_icon = QIcon(ICON_PATH)
             self.setWindowIcon(app_icon)  # Sets Title Bar Icon
 
         self.setStyleSheet("""
@@ -1241,7 +1241,7 @@ class FastCropApp(QMainWindow):
         # CHECK BOTH ENGINE AND EXTENSION
         original_name = self.image_files[self.current_index]
         _, ext = os.path.splitext(original_name.lower())
-        use_lossless = self.determine_if_lossless_active
+        use_lossless = self.determine_if_lossless_active()
 
         if use_lossless:
             new_width = round(new_width / 16) * 16
@@ -2315,7 +2315,15 @@ class FastCropApp(QMainWindow):
     def update_zoom_hud_payload(self):
         """Calculates coordinates, slices memory, and passes the payload to the HUD."""
         # Abort if the HUD window is hidden or no image selection is active
-        if not self.cfg_show_preview.isChecked() or self.crop_box_selector.isHidden():
+
+        ## TODO
+        if not PILLOW_AVAILABLE:
+            self.show_center_notification("Preview not possible without Pillow")
+        if (
+            not PILLOW_AVAILABLE
+            or not self.cfg_show_preview.isChecked()
+            or self.crop_box_selector.isHidden()
+        ):
             self.zoom_hud.update_zoom_payload(None)
             return
 
