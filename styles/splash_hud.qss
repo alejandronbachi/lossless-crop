@@ -1,0 +1,9 @@
+QLabel#SplashHUD {
+    color: #ffffff;
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    background-color: rgba(15, 15, 15, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 35px 50px;
+    line-height: 150%;
+}

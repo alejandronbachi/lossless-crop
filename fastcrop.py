@@ -33,6 +33,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+import constants
+
 # Check for Pillow availability
 try:
     from PIL import Image
@@ -44,7 +46,7 @@ except ImportError:
 
 # Check for Local Lossless Binaries on your drive
 # Calculate the path to your new binaries folder
-current_dir = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if os.name == "nt":
     BINARY_FILE = "jpegtran.exe"
@@ -54,10 +56,10 @@ else:
     BINARY_FILE = "jpegtran_linux"
 
 # Verify if the binary is sitting in your project directory
-binary_path = os.path.join(current_dir, "binaries", BINARY_FILE)
-LOSSLESS_AVAILABLE = os.path.exists(binary_path)
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-ICON_PATH = os.path.join(CURRENT_DIR, "icon.png")
+BINARY_PATH = os.path.join(APP_DIR, "binaries", BINARY_FILE)
+LOSSLESS_AVAILABLE = os.path.exists(BINARY_PATH)
+
+ICON_PATH = os.path.join(APP_DIR, "icon.png")
 
 
 class FloatingZoomPreview(QWidget):
@@ -221,112 +223,9 @@ class FastCropApp(QMainWindow):
             app_icon = QIcon(ICON_PATH)
             self.setWindowIcon(app_icon)  # Sets Title Bar Icon
 
-        self.setStyleSheet("""
-            /* Main Window Workspace Context Background */
-
-            /*  Main Window Workspace Context Background (Explicitly target QMainWindow) */
-            QMainWindow {
-                background-color: #121212;
-            }
-            
-            /*  Target actual visual widgets individually instead of a broad QWidget wrapper 
-               This keeps internal dropdown delegate lists safe from -1 font inheritance death! */
-            QLabel, QCheckBox, QPushButton, QComboBox {
-                font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-                color: #e0e0e0;
-            }
-                            
-            /* Premium Micro flat Interactive Toolbar Buttons */
-            QPushButton {
-                background-color: #222222;
-                border: 1px solid #333333;
-                border-radius: 4px;
-                color: #ffffff;
-                padding: 5px 12px;
-                font-size: 13px;
-                font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #2b2b2b;
-                border: 1px solid #444444;
-            }
-            QPushButton:pressed {
-                background-color: #1a1a1a;
-                border: 1px solid #222222;
-            }
-            
-            QComboBox {
-                background-color: #1e1e1e;
-                border: 1px solid #333333;
-                border-radius: 4px;
-                padding: 4px 25px 4px 10px;
-                color: #ffffff;
-                min-width: 100px;
-            }
-            QComboBox:hover {
-                border: 1px solid #444444;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left-width: 0px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #1e1e1e;
-                border: 1px solid #333333;
-                selection-background-color: #2d2d2d;
-                selection-color: #ffffff;
-                color: #cccccc;
-            }
-            
-            /* Bottom Split Structural Information Framework Widget */
-            QWidget#info_bar_widget {
-                background-color: #0a0a0a;
-                border-top: 1px solid #222222;
-            }
-
-            
-                        /* Sleek Space-Saving Checkboxes Layout Options */
-            QCheckBox {
-                font-size: 13px;
-                color: #cccccc;
-                spacing: 6px;
-                background-color: transparent;
-            }
-            QCheckBox:hover {
-                color: #ffffff;
-            }
-            
-            /* Base layout definition for ALL checkbox indicator boxes */
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border: 1px solid #444444;
-                border-radius: 3px;
-                background-color: #1e1e1e;
-            }
-            
-            /* Unchecked Hover State */
-            QCheckBox::indicator:unchecked:hover {
-                border: 1px solid #666666;
-                background-color: #252525;
-            }
-            
-            /* Safe, fully-quoted Base64 data string blocks all console logs & syntax warnings  */
-            QCheckBox::indicator:checked {
-                background-color: #3b5998;
-                border: 1px solid #4a6fa5;
-                image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjIwIDYgOSAxNyA0IDEyIi8+PC9zdmc+");
-            }
-            
-            /* Checked Hover State */
-            QCheckBox::indicator:checked:hover {
-                background-color: #4a6fa5;
-                border: 1px solid #5a7fb5;
-            }
-            
-        """)
+        self.setStyleSheet(
+            self.load_asset(constants.STYLE_MAIN, constants.FOLDER_STYLES)
+        )
 
         # Image Pipeline Management Variables
         self.image_folder = ""
@@ -343,6 +242,24 @@ class FastCropApp(QMainWindow):
         self.zoom_hud = FloatingZoomPreview(self)
 
         self.load_application_state()
+
+    def load_asset(self, filename, folder):
+        """
+        Dynamically fetches file content using structural constants.
+
+        :param filename: The exact filename constant (e.g., THEME_DARK)
+        :param folder: The directory constant (e.g., FOLDER_STYLES)
+        """
+        # 3. Build the full cross-platform path
+        file_path = os.path.join(APP_DIR, folder, filename)
+
+        # 4. Read and return the content safely
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            print(f"Warning: Asset not found at {file_path}")
+            return ""
 
     def init_ui(self):
         # Master Structural Layout
@@ -430,78 +347,9 @@ class FastCropApp(QMainWindow):
         spin_layout.setSpacing(6)
 
         #  SPINBOX STYLESHEET: Explicit internal target routing prevents mouse click hijacking! 🌟
-        spin_box_stylesheet = """
-            /* Main base container footprint */
-            QSpinBox {
-                background-color: #1e1e1e;
-                border: 1px solid #333333;
-                border-radius: 4px;
-                color: #ffffff;
-                font-family: monospace;
-                font-size: 13px;
-                font-weight: bold;
-                min-width: 95px;
-            }
-            QSpinBox:hover {
-                border: 1px solid #444444;
-            }
-            
-            /* Clean structural positioning for the text cursor layer */
-            QSpinBox::editor {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                padding-top: 3px;
-                padding-bottom: 3px;
-                padding-left: 5px;
-                padding-right: 20px; /* Keep text safely clear of the buttons layer zone */
-            }
-            
-            /* 🌟 THE REAL FIX PART 1: Explicitly lock the top right position for the Up Button 🌟 */
-            QSpinBox::up-button {
-                subcontrol-origin: border;
-                subcontrol-position: top right;
-                width: 18px;
-                height: 12px; /* Force an explicit height so it can NEVER collapse to zero! */
-                border-left: 1px solid #333333;
-                border-bottom: 1px solid #333333;
-                background-color: #252525;
-            }
-            QSpinBox::up-button:hover {
-                background-color: #353535;
-            }
-            QSpinBox::up-button:pressed {
-                background-color: #151515;
-            }
-            
-            /* 🌟 THE REAL FIX PART 2: Explicitly lock the bottom right position for the Down Button 🌟 */
-            QSpinBox::down-button {
-                subcontrol-origin: border;
-                subcontrol-position: bottom right;
-                width: 18px;
-                height: 12px; /* Force an explicit height to match the Up button perfectly */
-                border-left: 1px solid #333333;
-                background-color: #252525;
-            }
-            QSpinBox::down-button:hover {
-                background-color: #353535;
-            }
-            QSpinBox::down-button:pressed {
-                background-color: #151515;
-            }
-            
-            /* Optional: Render clean native geometric triangle pointers inside the boxes */
-            QSpinBox::up-arrow {
-                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjE4IDE1IDEyIDkgNiAxNSIvPjwvc3ZnPg==);
-                width: 10px;
-                height: 10px;
-            }
-            QSpinBox::down-arrow {
-                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ii8+PC9zdmc+);
-                width: 10px;
-                height: 10px;
-            }
-
-        """
+        spin_box_stylesheet = self.load_asset(
+            constants.STYLE_SPINBOXES, constants.FOLDER_STYLES
+        )
 
         # 1. Custom Numeric Width Input Field Cell
         self.spin_width = QSpinBox()
@@ -553,24 +401,9 @@ class FastCropApp(QMainWindow):
         self.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_settings.setToolTip("Toggle configuration choices")
         self.btn_settings.setFixedSize(38, 38)  # Slightly larger bounding frame layout
-        self.btn_settings.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                border-radius: 6px;
-                font-size: 16px; /* Perfectly optimized glyph scaling */
-                color: #888888;
-                padding: 0px;   /* Clears implicit layout margins blocking edges */
-                margin: 0px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.08);
-                color: #ffffff;
-            }
-            QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 0.04);
-            }
-        """)
+        self.btn_settings.setStyleSheet(
+            self.load_asset(constants.STYLE_BTN_SETTINGS, constants.FOLDER_STYLES)
+        )
 
         self.btn_settings.clicked.connect(self.toggle_settings_drawer)
         self.toolbar.addWidget(self.btn_settings)
@@ -606,18 +439,9 @@ class FastCropApp(QMainWindow):
         self.lbl_telemetry_hud.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
-        self.lbl_telemetry_hud.setStyleSheet("""
-            QLabel#TelemetryHUD {
-                color: #888888;
-                font-family: monospace;
-                font-size: 13px;
-                font-weight: bold;
-                background-color: rgba(10, 10, 10, 0.75);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 6px;
-                padding: 10px;
-            }
-        """)
+        self.lbl_telemetry_hud.setStyleSheet(
+            self.load_asset(constants.STYLE_TELEMETRY_HUD, constants.FOLDER_STYLES)
+        )
 
         self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
 
@@ -628,24 +452,9 @@ class FastCropApp(QMainWindow):
         self.drawer.setObjectName("SettingsDrawer")
 
         # Style the drawer with semi-transparent obsidian glass aesthetics
-        self.drawer.setStyleSheet("""
-            QWidget#SettingsDrawer {
-                background-color: rgba(20, 20, 20, 0.94);
-                border-left: 1px solid rgba(255, 255, 255, 0.15);
-            }
-            QCheckBox {
-                color: #e0e0e0;
-                font-size: 13px;
-                padding: 4px;
-            }
-            QLabel {
-                color: #ffffff;
-                font-size: 14px;
-                font-weight: bold;
-                padding-bottom: 5px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-        """)
+        self.drawer.setStyleSheet(
+            self.load_asset(constants.STYLE_DRAWER, constants.FOLDER_STYLES)
+        )
 
         # Build the structural menu inner checkboxes layout
         self.drawer_layout = QVBoxLayout(self.drawer)
@@ -791,18 +600,9 @@ class FastCropApp(QMainWindow):
         #  ADD THIS NEW COMMAND OVERLAY PANEL
         self.lbl_commands_overlay = QLabel(self.image_display_container)
         self.lbl_commands_overlay.hide()  # Will show once an image loads
-        self.lbl_commands_overlay.setStyleSheet("""
-            QLabel {
-                color: #ffffff;
-                font-family: monospace;
-                font-size: 13px;
-                font-weight: bold;
-                background-color: rgba(10, 10, 10, 0.55);
-                border: 1px solid rgba(255, 255, 255, 0.05);
-                border-radius: 6px;
-                padding: 10px;
-            }
-        """)
+        self.lbl_commands_overlay.setStyleSheet(
+            self.load_asset(constants.STYLE_COMMANDS, constants.FOLDER_STYLES)
+        )
         # Populate the exact hotkey roadmap text
         self.lbl_commands_overlay.setText(
             "<b>[Hotkeys Layout]</b><br>"
@@ -839,17 +639,9 @@ class FastCropApp(QMainWindow):
         self.lbl_notification.setWordWrap(True)
         self.lbl_notification.hide()
 
-        self.lbl_notification.setStyleSheet("""
-            QLabel {
-                color: #ffffff;
-                font-size: 28px;
-                font-weight: bold;
-                background-color: rgba(0, 0, 0, 0.75);
-                border: 2px solid rgba(255, 255, 255, 0.4);
-                border-radius: 12px;
-                padding: 15px 30px;
-            }
-        """)
+        self.lbl_notification.setStyleSheet(
+            self.load_asset(constants.STYLE_NOTIFICATIONS, constants.FOLDER_STYLES)
+        )
 
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(15)
@@ -874,43 +666,14 @@ class FastCropApp(QMainWindow):
         self.lbl_splash_hud.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Premium Obsidian themed typography card styling layout with 85% translucent backing
-        self.lbl_splash_hud.setStyleSheet("""
-            QLabel#SplashHUD {
-                color: #ffffff;
-                font-family: 'Segoe UI', -apple-system, sans-serif;
-                background-color: rgba(15, 15, 15, 0.85);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 12px;
-                padding: 35px 50px;
-                line-height: 150%;
-            }
-        """)
+        self.lbl_splash_hud.setStyleSheet(
+            self.load_asset(constants.STYLE_SPLASH_HUD, constants.FOLDER_STYLES)
+        )
 
         # Build the exact typographic text block structure using clean Unicode pointers
         # We increase the padding gaps inside the inner line elements for greater vertical depth
-        splash_text = (
-            "<div style='text-align: center; font-family: \"Segoe UI\", -apple-system, sans-serif;'>"
-            # Row 1: The Core Hotkey Prompt
-            "<div style='margin-bottom: 22px;'>"
-            "<span style='font-size: 26px; font-weight: bold; color: #ffffff;'>[O] &nbsp;▸&nbsp; Open Directory &nbsp;|&nbsp; [I] &nbsp;▸&nbsp; Open Image </span>"
-            "</div>"
-            # Row 2: Minimalist Small "OR" Divider 1
-            "<div style='margin-bottom: 22px;'>"
-            "<span style='font-size: 11px; font-weight: 800; color: #555555; letter-spacing: 2px; text-transform: uppercase;'>— or —</span>"
-            "</div>"
-            # Row 3: Drag Folder Guideline
-            "<div style='margin-bottom: 22px;'>"
-            "<span style='font-size: 19px; font-weight: 500; color: #bbbbbb;'>Drag & Drop a Directory Folder</span>"
-            "</div>"
-            # Row 4: Second Small "OR" Divider 2
-            "<div style='margin-bottom: 22px;'>"
-            "<span style='font-size: 11px; font-weight: 800; color: #555555; letter-spacing: 2px; text-transform: uppercase;'>— or —</span>"
-            "</div>"
-            # Row 5: Drag File Guideline (No bottom margin needed on the final line element)
-            "<div>"
-            "<span style='font-size: 19px; font-weight: 500; color: #bbbbbb;'>Drag & Drop an Image File</span>"
-            "</div>"
-            "</div>"
+        splash_text = self.load_asset(
+            constants.TEMPLATE_SPLASH, constants.FOLDER_TEMPLATES
         )
         self.lbl_splash_hud.setText(splash_text)
         self.lbl_splash_hud.hide()  # Maintained hidden by default until evaluated on launch
@@ -1388,18 +1151,9 @@ class FastCropApp(QMainWindow):
                 f" 🧮 Crop Math     : X={crop_left}, Y={crop_top}, W={crop_width}, H={crop_height}"
             )
 
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            if os.name == "nt":
-                bin_name = "jpegtran.exe"
-            elif platform.system() == "Darwin":
-                bin_name = "jpegtran_mac"
-            else:
-                bin_name = "jpegtran_linux"
-            binary_path = os.path.join(current_dir, "binaries", bin_name)
-
             crop_argument = f"{crop_width}x{crop_height}+{crop_left}+{crop_top}"
             command = [
-                binary_path,
+                BINARY_PATH,
                 "-crop",
                 crop_argument,
                 "-outfile",
