@@ -33,7 +33,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import constants
+import config.ui_constants as ui_constants
 
 # Check for Pillow availability
 try:
@@ -224,7 +224,7 @@ class FastCropApp(QMainWindow):
             self.setWindowIcon(app_icon)  # Sets Title Bar Icon
 
         self.setStyleSheet(
-            self.load_asset(constants.STYLE_MAIN, constants.FOLDER_STYLES)
+            self.load_asset(ui_constants.STYLE_MAIN, ui_constants.FOLDER_STYLES)
         )
 
         # Image Pipeline Management Variables
@@ -348,7 +348,7 @@ class FastCropApp(QMainWindow):
 
         #  SPINBOX STYLESHEET: Explicit internal target routing prevents mouse click hijacking! 🌟
         spin_box_stylesheet = self.load_asset(
-            constants.STYLE_SPINBOXES, constants.FOLDER_STYLES
+            ui_constants.STYLE_SPINBOXES, ui_constants.FOLDER_STYLES
         )
 
         # 1. Custom Numeric Width Input Field Cell
@@ -402,7 +402,7 @@ class FastCropApp(QMainWindow):
         self.btn_settings.setToolTip("Toggle configuration choices")
         self.btn_settings.setFixedSize(38, 38)  # Slightly larger bounding frame layout
         self.btn_settings.setStyleSheet(
-            self.load_asset(constants.STYLE_BTN_SETTINGS, constants.FOLDER_STYLES)
+            self.load_asset(ui_constants.STYLE_BTN_SETTINGS, ui_constants.FOLDER_STYLES)
         )
 
         self.btn_settings.clicked.connect(self.toggle_settings_drawer)
@@ -440,7 +440,9 @@ class FastCropApp(QMainWindow):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
         self.lbl_telemetry_hud.setStyleSheet(
-            self.load_asset(constants.STYLE_TELEMETRY_HUD, constants.FOLDER_STYLES)
+            self.load_asset(
+                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
+            )
         )
 
         self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
@@ -453,7 +455,7 @@ class FastCropApp(QMainWindow):
 
         # Style the drawer with semi-transparent obsidian glass aesthetics
         self.drawer.setStyleSheet(
-            self.load_asset(constants.STYLE_DRAWER, constants.FOLDER_STYLES)
+            self.load_asset(ui_constants.STYLE_DRAWER, ui_constants.FOLDER_STYLES)
         )
 
         # Build the structural menu inner checkboxes layout
@@ -601,22 +603,13 @@ class FastCropApp(QMainWindow):
         self.lbl_commands_overlay = QLabel(self.image_display_container)
         self.lbl_commands_overlay.hide()  # Will show once an image loads
         self.lbl_commands_overlay.setStyleSheet(
-            self.load_asset(constants.STYLE_COMMANDS, constants.FOLDER_STYLES)
+            self.load_asset(ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES)
         )
         # Populate the exact hotkey roadmap text
         self.lbl_commands_overlay.setText(
-            "<b>[Hotkeys Layout]</b><br>"
-            "[<b>Space</b>]       : Crop & Next Image<br>"
-            "[<b>S</b>] / <b>Enter</b>]   : Crop & Stay<br>"
-            "[<b>O</b>]           : Open Directory<br>"
-            "[<b>I</b>]           : Open Image<br>"
-            "[<b>F</b>] / [<b>→</b>]      : Skip Forward<br>"
-            "[<b>B</b>] / [<b>←</b>]      : Skip Backward<br>"
-            "[<b>R</b>]           : Rotate Clockwise<br>"
-            "[<b>P</b>] Toggle Zoom HUD Preview<br>"
-            "[<b>Esc</b>]         : Exit App<br><br>"
-            "<i>Left-Click Drag: Draw Box<br>"
-            "Right-Click Drag: Move Box</i>"
+            self.load_asset(
+                ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
+            )
         )
 
         # 🌟 SHADOW EFFECT A: For your top-left Shortcut Commands Overlay
@@ -640,7 +633,9 @@ class FastCropApp(QMainWindow):
         self.lbl_notification.hide()
 
         self.lbl_notification.setStyleSheet(
-            self.load_asset(constants.STYLE_NOTIFICATIONS, constants.FOLDER_STYLES)
+            self.load_asset(
+                ui_constants.STYLE_NOTIFICATIONS, ui_constants.FOLDER_STYLES
+            )
         )
 
         shadow = QGraphicsDropShadowEffect()
@@ -667,13 +662,13 @@ class FastCropApp(QMainWindow):
 
         # Premium Obsidian themed typography card styling layout with 85% translucent backing
         self.lbl_splash_hud.setStyleSheet(
-            self.load_asset(constants.STYLE_SPLASH_HUD, constants.FOLDER_STYLES)
+            self.load_asset(ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES)
         )
 
         # Build the exact typographic text block structure using clean Unicode pointers
         # We increase the padding gaps inside the inner line elements for greater vertical depth
         splash_text = self.load_asset(
-            constants.TEMPLATE_SPLASH, constants.FOLDER_TEMPLATES
+            ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
         )
         self.lbl_splash_hud.setText(splash_text)
         self.lbl_splash_hud.hide()  # Maintained hidden by default until evaluated on launch
