@@ -1,0 +1,18 @@
+# 1. Ignore Python Compilation Caches
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# 2. Ignore Local Plugin Logs
+*.log
+
+# 3. Ignore Operating System Hidden Desktop Artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 4. Ignore Local Workspace/Editor Configurations (Optional safety net)
+.vscode/
+.idea/
+*.swp
+backend/__pycache__/launcher.cpython-313.pyc
