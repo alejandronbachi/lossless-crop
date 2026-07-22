@@ -986,9 +986,13 @@ class FastCropApp(QMainWindow):
         if self.drag_start_origin.isNull() or not self.last_crop_geometry:
             return
 
-        snap_mode = self.combo_snap.currentText()
         fluid_rect = self.crop_box_selector.geometry()
-        snapped_rect = self.calculate_snapped_rect(fluid_rect)
+        use_lossless = self.determine_if_lossless_active()
+        # If pixel-perfect mode is active, force "No snap feedback" behavior
+        if not use_lossless:
+            snap_mode = "No snap feedback"
+        else:
+            snap_mode = self.combo_snap.currentText()
 
         print(
             f"[DEBUG RELEASE] Mode: {snap_mode} | Executing Final Snap Settlement Routine."
@@ -996,6 +1000,7 @@ class FastCropApp(QMainWindow):
 
         if snap_mode == "Post-release snap":
             # Visually snap the blue selection box right over the 16px grid coordinates
+            snapped_rect = self.calculate_snapped_rect(fluid_rect)
             self.crop_box_selector.setGeometry(snapped_rect)
             self.last_crop_geometry = snapped_rect
             print(
@@ -1007,6 +1012,7 @@ class FastCropApp(QMainWindow):
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
             # Position the main selector box precisely over the ghost frame coordinates
+            snapped_rect = self.calculate_snapped_rect(fluid_rect)
             self.crop_box_selector.setGeometry(snapped_rect)
             self.last_crop_geometry = snapped_rect
 
