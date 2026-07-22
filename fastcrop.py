@@ -1314,13 +1314,7 @@ class FastCropApp(QMainWindow):
 
         # 1. Get current selection box screen geometry
         geom = self.crop_box_selector.geometry()
-        lbl_w, lbl_h = (
-            self.image_display_container.width(),
-            self.image_display_container.height(),
-        )
         pix_w, pix_h = pixmap.width(), pixmap.height()
-        # TODO
-        offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
 
         # 2. Map back to true source image pixel dimensions
         src_w, src_h = self.current_pil_image.size
