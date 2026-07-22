@@ -33,7 +33,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+import config.app_constants as app_constants
 import config.ui_constants as ui_constants
+from managers.file_manager import FileManager
+from managers.image_manager import ImageProcessor
 from managers.settings_manager import SettingsManager
 from models.app_settings import AppSettings
 from widgets.floating_zoom_preview import FloatingZoomPreview
@@ -49,7 +52,7 @@ except ImportError:
 
 # Check for Local Lossless Binaries on your drive
 # Calculate the path to your new binaries folder
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 if os.name == "nt":
     BINARY_FILE = "jpegtran.exe"
@@ -59,10 +62,10 @@ else:
     BINARY_FILE = "jpegtran_linux"
 
 # Verify if the binary is sitting in your project directory
-BINARY_PATH = os.path.join(APP_DIR, "binaries", BINARY_FILE)
+BINARY_PATH = os.path.join(app_constants.APP_ROOT_DIR, "binaries", BINARY_FILE)
 LOSSLESS_AVAILABLE = os.path.exists(BINARY_PATH)
 
-ICON_PATH = os.path.join(APP_DIR, "icon.png")
+ICON_PATH = os.path.join(app_constants.APP_ROOT_DIR, "icon.png")
 
 
 class FastCropApp(QMainWindow):
@@ -72,6 +75,7 @@ class FastCropApp(QMainWindow):
         self.resize(900, 700)
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()
+        self.file_manager = FileManager()
         #  Create a single-shot timer for layout throttling
         self.resize_throttle_timer = QTimer(self)
         self.resize_throttle_timer.setSingleShot(True)
@@ -84,7 +88,9 @@ class FastCropApp(QMainWindow):
             self.setWindowIcon(app_icon)  # Sets Title Bar Icon
 
         self.setStyleSheet(
-            self.load_asset(ui_constants.STYLE_MAIN, ui_constants.FOLDER_STYLES)
+            self.file_manager.load_asset(
+                ui_constants.STYLE_MAIN, ui_constants.FOLDER_STYLES
+            )
         )
 
         # Image Pipeline Management Variables
@@ -101,24 +107,6 @@ class FastCropApp(QMainWindow):
         self.init_ui()
         self.zoom_hud = FloatingZoomPreview(self)
         self.load_application_state()
-
-    def load_asset(self, filename, folder):
-        """
-        Dynamically fetches file content using structural constants.
-
-        :param filename: The exact filename constant (e.g., THEME_DARK)
-        :param folder: The directory constant (e.g., FOLDER_STYLES)
-        """
-        # 3. Build the full cross-platform path
-        file_path = os.path.join(APP_DIR, folder, filename)
-
-        # 4. Read and return the content safely
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except FileNotFoundError:
-            print(f"Warning: Asset not found at {file_path}")
-            return ""
 
     def init_ui(self):
         # Master Structural Layout
@@ -206,7 +194,7 @@ class FastCropApp(QMainWindow):
         spin_layout.setSpacing(6)
 
         #  SPINBOX STYLESHEET: Explicit internal target routing prevents mouse click hijacking! 🌟
-        spin_box_stylesheet = self.load_asset(
+        spin_box_stylesheet = self.file_manager.load_asset(
             ui_constants.STYLE_SPINBOXES, ui_constants.FOLDER_STYLES
         )
 
@@ -261,7 +249,9 @@ class FastCropApp(QMainWindow):
         self.btn_settings.setToolTip("Toggle configuration choices")
         self.btn_settings.setFixedSize(38, 38)  # Slightly larger bounding frame layout
         self.btn_settings.setStyleSheet(
-            self.load_asset(ui_constants.STYLE_BTN_SETTINGS, ui_constants.FOLDER_STYLES)
+            self.file_manager.load_asset(
+                ui_constants.STYLE_BTN_SETTINGS, ui_constants.FOLDER_STYLES
+            )
         )
 
         self.btn_settings.clicked.connect(self.toggle_settings_drawer)
@@ -299,7 +289,7 @@ class FastCropApp(QMainWindow):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
         self.lbl_telemetry_hud.setStyleSheet(
-            self.load_asset(
+            self.file_manager.load_asset(
                 ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
             )
         )
@@ -314,7 +304,9 @@ class FastCropApp(QMainWindow):
 
         # Style the drawer with semi-transparent obsidian glass aesthetics
         self.drawer.setStyleSheet(
-            self.load_asset(ui_constants.STYLE_DRAWER, ui_constants.FOLDER_STYLES)
+            self.file_manager.load_asset(
+                ui_constants.STYLE_DRAWER, ui_constants.FOLDER_STYLES
+            )
         )
 
         # Build the structural menu inner checkboxes layout
@@ -462,11 +454,13 @@ class FastCropApp(QMainWindow):
         self.lbl_commands_overlay = QLabel(self.image_display_container)
         self.lbl_commands_overlay.hide()  # Will show once an image loads
         self.lbl_commands_overlay.setStyleSheet(
-            self.load_asset(ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES)
+            self.file_manager.load_asset(
+                ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES
+            )
         )
         # Populate the exact hotkey roadmap text
         self.lbl_commands_overlay.setText(
-            self.load_asset(
+            self.file_manager.load_asset(
                 ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
             )
         )
@@ -492,7 +486,7 @@ class FastCropApp(QMainWindow):
         self.lbl_notification.hide()
 
         self.lbl_notification.setStyleSheet(
-            self.load_asset(
+            self.file_manager.load_asset(
                 ui_constants.STYLE_NOTIFICATIONS, ui_constants.FOLDER_STYLES
             )
         )
@@ -521,12 +515,14 @@ class FastCropApp(QMainWindow):
 
         # Premium Obsidian themed typography card styling layout with 85% translucent backing
         self.lbl_splash_hud.setStyleSheet(
-            self.load_asset(ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES)
+            self.file_manager.load_asset(
+                ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES
+            )
         )
 
         # Build the exact typographic text block structure using clean Unicode pointers
         # We increase the padding gaps inside the inner line elements for greater vertical depth
-        splash_text = self.load_asset(
+        splash_text = self.file_manager.load_asset(
             ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
         )
         self.lbl_splash_hud.setText(splash_text)
@@ -633,32 +629,18 @@ class FastCropApp(QMainWindow):
 
         if hasattr(self, "lbl_splash_hud"):
             self.lbl_splash_hud.hide()
-        file_path = os.path.join(
-            self.image_folder, self.image_files[self.current_index]
-        )
+        current_image_path = self.image_files[self.current_index]
         self.lbl_status.setText(
-            f"[{self.current_index + 1}/{len(self.image_files)}] - {self.image_files[self.current_index]}"
+            f"[{self.current_index + 1}/{len(self.image_files)}] - {current_image_path.name}"
         )
-
         # Load through Pillow memory pipelines safely
-        self.current_pil_image = Image.open(file_path)
-
+        self.current_pil_image = Image.open(current_image_path)
         # 2. Check if its a true jpeg file
-        self.is_current_file_true_jpeg = False
-        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
-        if file_ext in (".jpg", ".jpeg"):
-            try:
-                with open(file_path, "rb") as f:
-                    self.is_current_file_true_jpeg = f.read(3) == b"\xff\xd8\xff"
-            except Exception:
-                self.is_current_file_true_jpeg = False
-                print("Not a real jpeg")
-
+        self.is_current_file_true_jpeg = ImageProcessor.is_true_jpeg(current_image_path)
         if self.is_current_file_true_jpeg:
             print("Real jpeg")
         else:
             print("Not a jpeg")
-
         self.refresh_display_canvas()
 
         # -----------------------------------------------------------------
@@ -859,8 +841,7 @@ class FastCropApp(QMainWindow):
         current_geom = self.crop_box_selector.geometry()
         new_width = current_geom.width()
         # CHECK BOTH ENGINE AND EXTENSION
-        original_name = self.image_files[self.current_index]
-        _, ext = os.path.splitext(original_name.lower())
+
         use_lossless = self.determine_if_lossless_active()
 
         if use_lossless:
@@ -949,19 +930,10 @@ class FastCropApp(QMainWindow):
             output_filepath = current_filepath
         else:
             # If overwrite is OFF, ensure we create unique versions
-            output_subfolder = os.path.join(self.image_folder, "cropped")
-            os.makedirs(output_subfolder, exist_ok=True)
-
-            # Split filename and extension (e.g., 'photo' and '.jpg')
-            name, ext = os.path.splitext(original_name)
-            output_filepath = os.path.join(output_subfolder, original_name)
-
-            # If the file already exists, loop until a unique _X index is found
-            version_counter = 1
-            while os.path.exists(output_filepath):
-                new_filename = f"{name}_{version_counter}{ext}"
-                output_filepath = os.path.join(output_subfolder, new_filename)
-                version_counter += 1
+            unique_path_object = self.file_manager.generate_unique_crop_path(
+                self.image_folder, original_name
+            )
+            output_filepath = str(unique_path_object)
 
         # CRITICAL STEP FOR OVERWRITING FILE LOCKS
         # Close the Pillow memory handler connection to the source file before overwriting it
@@ -1507,22 +1479,21 @@ class FastCropApp(QMainWindow):
         else:
             self.show_startup_splash_hud()
 
-    def automate_folder_loading(self, target_folder):
-        """Handles parsing and opening images from the last validated path profile."""
-        self.image_folder = target_folder
-        folder_name = os.path.basename(os.path.normpath(target_folder))
-        self.lbl_folder_name.setText(f"📁 {folder_name}")
-
-        SAFE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
-        self.image_files = [
-            f for f in os.listdir(target_folder) if f.lower().endswith(SAFE_EXTENSIONS)
-        ]
-        self.image_files.sort()
+    def automate_folder_loading(self, target_folder_str: str):
+        """Asks the FileManager to scan the directory and updates current tracking indices."""
+        # Scan via our new manager layer
+        self.image_files = self.file_manager.scan_image_directory(target_folder_str)
 
         if self.image_files:
-            self.current_index = 0
+            self.image_folder = target_folder_str
+            self.current_index = 0  # Move from -1 to the first valid image!
+
+            # Update your UI folder tag labels using modern pathlib property calls
+            self.lbl_folder_name.setText(f"📁 {self.image_files[0].parent.name}")
             self.load_image_to_viewport()
         else:
+            # Fall back to empty states if the folder has zero supported files
+            self.current_index = -1
             self.show_startup_splash_hud()
 
     def show_startup_splash_hud(self):
@@ -1632,8 +1603,6 @@ class FastCropApp(QMainWindow):
         fluid_rect = QRect(x1, y1, raw_w, raw_h).normalized()
         snap_mode = self.combo_snap.currentText()
 
-        # 4. Engine Validation Check: Is Lossless Active?
-        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
         use_lossless = self.determine_if_lossless_active()
 
         # Calculate what the grid mapped rectangle represents
@@ -1763,7 +1732,6 @@ class FastCropApp(QMainWindow):
             else 1.0
         )
 
-        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
         use_lossless = self.determine_if_lossless_active()
 
         # 4. Enforce Math Transformations Directly in True Image Space
@@ -2245,7 +2213,6 @@ class FastCropApp(QMainWindow):
             min(self.spin_width.value(), src_w),
             min(self.spin_height.value(), src_h),
         )
-        _, ext = os.path.splitext(self.image_files[self.current_index].lower())
 
         # Lossless snapping
         if self.determine_if_lossless_active():
