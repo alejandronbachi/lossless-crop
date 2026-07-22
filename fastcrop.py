@@ -162,7 +162,8 @@ class FastCropApp(QMainWindow):
         # Convert and cache the texture into RAM once on load
         self._qimg_reference = ImageQt(self.current_pil_image)
         self.master_pixmap = QPixmap.fromImage(self._qimg_reference)
-
+        if hasattr(self, "zoom_hud"):
+            self.zoom_hud.master_pixmap = self.master_pixmap
         # Check if its a true jpeg file
         self.is_current_file_true_jpeg = ImageProcessor.is_true_jpeg(current_image_path)
 
@@ -1330,26 +1331,22 @@ class FastCropApp(QMainWindow):
             self.zoom_hud.hide()
 
     def update_zoom_hud_payload(self):
-        """Calculates coordinates, slices memory, and passes the payload to the HUD."""
-        # Abort if the HUD window is hidden or no image selection is active
-
-        if not PILLOW_AVAILABLE:
-            self.status_manager.show_center_notification(
-                "Preview not possible without Pillow"
-            )
+        """Calculates high-res coordinates and triggers instant GPU-side cropping."""
         if (
             not PILLOW_AVAILABLE
             or not self.cfg_show_preview.isChecked()
             or self.crop_box_selector.isHidden()
+            or self.current_index == -1
         ):
-            self.zoom_hud.update_zoom_payload(None)
+            if hasattr(self, "zoom_hud"):
+                self.zoom_hud.master_pixmap = None
+                self.zoom_hud.lbl_canvas.clear()
             return
 
         box_rect = self.crop_box_selector.geometry()
         pixmap = self.image_display_container.pixmap()
 
         if pixmap and box_rect.width() > 5 and box_rect.height() > 5:
-            # Map screen pixel coordinates back into high-resolution image space
             lbl_w, lbl_h = (
                 self.image_display_container.width(),
                 self.image_display_container.height(),
@@ -1373,27 +1370,22 @@ class FastCropApp(QMainWindow):
             crop_bottom = int((adj_y + adj_h) * scale_y)
 
             if (crop_right > crop_left) and (crop_bottom > crop_top):
-                try:
-                    # 🚀 THE OPTIMIZATION: Slice directly from the pre-loaded RAM cache!
-                    if hasattr(self, "current_pil_image") and self.current_pil_image:
-                        img = self.current_pil_image
+                # Clamp coordinates safely
+                crop_left = max(0, min(crop_left, src_w - 1))
+                crop_top = max(0, min(crop_top, src_h - 1))
+                crop_right = max(crop_left + 1, min(crop_right, src_w))
+                crop_bottom = max(crop_top + 1, min(crop_bottom, src_h))
 
-                        # Apply orientation rotations if the user flipped the canvas
-                        if (
-                            hasattr(self, "current_rotation_angle")
-                            and self.current_rotation_angle != 0
-                        ):
-                            img = img.rotate(self.current_rotation_angle, expand=True)
+                pil_coords = (crop_left, crop_top, crop_right, crop_bottom)
 
-                        crop_slice = img.crop(
-                            (crop_left, crop_top, crop_right, crop_bottom)
-                        )
-                        self.zoom_hud.update_zoom_payload(crop_slice)
-                        return
-                except Exception as e:
-                    print(f"[HUD Memory Slicing Block] Fail: {e}")
+                # 🚀 THE FIX: Pass your live, active master texture handle directly down!
+                self.zoom_hud.refresh_scaled_preview_live(
+                    self.master_pixmap, pil_coords
+                )
+                return
 
-        self.zoom_hud.update_zoom_payload(None)
+        if hasattr(self, "zoom_hud"):
+            self.zoom_hud.lbl_canvas.clear()
 
     def dragEnterEvent(self, event):
         """Fires when a user hovers a dragging mouse cargo over the application frame."""

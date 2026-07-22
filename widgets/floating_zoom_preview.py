@@ -1,15 +1,5 @@
 from PyQt6.QtCore import QPoint, QRect, Qt
-from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
-
-# Check for Pillow availability
-try:
-    from PIL import Image
-    from PIL.ImageQt import ImageQt
-
-    PILLOW_AVAILABLE = True
-except ImportError:
-    PILLOW_AVAILABLE = False
 
 
 class FloatingZoomPreview(QWidget):
@@ -26,7 +16,7 @@ class FloatingZoomPreview(QWidget):
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
         self.main_app = parent_window
-        self.cached_crop_slice = None
+        self.master_pixmap = None
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -47,40 +37,49 @@ class FloatingZoomPreview(QWidget):
         self.is_resizing = False
         self.is_moving = False
 
-    def update_zoom_payload(self, pil_crop_slice):
-        self.cached_crop_slice = pil_crop_slice
-        self.refresh_scaled_image()
-
-    def refresh_scaled_image(self):
-        if not self.cached_crop_slice:
+    #  Accept the live texture reference straight from the caller parameters
+    def refresh_scaled_preview_live(self, current_pixmap, crop_box_pil_coords: tuple):
+        """Hardware-accelerated slice and scale directly inside VRAM (Instant)."""
+        # Read directly from the incoming texture parameter instead of self.master_pixmap
+        if current_pixmap is None or current_pixmap.isNull():
             self.lbl_canvas.clear()
             return
+
         try:
-            if PILLOW_AVAILABLE:
-                self._current_qimg = ImageQt(self.cached_crop_slice)
-                pixmap = QPixmap.fromImage(self._current_qimg)
-            else:
-                print("Pillow not available not possible to use preview hud")
+            left, top, right, bottom = crop_box_pil_coords
+            width = right - left
+            height = bottom - top
+
+            if width <= 0 or height <= 0:
+                return
+
+            # 1. Define target rectangle matching full high-res image pixels
+            target_rect = QRect(int(left), int(top), int(width), int(height))
+
+            # 2. ⚡ INSTANT VRAM TEXTURE COPY (Slices directly out of the active image memory!)
+            cropped_pixmap = current_pixmap.copy(target_rect)
 
             current_window_size = self.size()
             if current_window_size.width() <= 0 or current_window_size.height() <= 0:
                 return
 
-            scaled_pixmap = pixmap.scaled(
+            # 3. Scale the sub-section to fit HUD view layout rules
+            scaled_pixmap = cropped_pixmap.scaled(
                 current_window_size,
                 Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                 Qt.TransformationMode.SmoothTransformation,
             )
             self.lbl_canvas.setPixmap(scaled_pixmap)
+
         except Exception as e:
-            print(f"[HUD INTERCEPT] Render pipeline block: {e}")
+            print(f"[HUD INTERCEPT] GPU Render pipeline block: {e}")
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self.is_resizing and hasattr(self.main_app, "update_zoom_hud_payload"):
-            self.main_app.update_zoom_hud_payload()
-        else:
-            self.refresh_scaled_image()
+        #  Instead of forcing an immediate heavy update,
+        # tell the main app's lazy engine to redraw the frame on its next 16ms tick!
+        if hasattr(self, "main_app") and hasattr(self.main_app, "status_manager"):
+            self.main_app.status_manager.invalidate_ui_state()
 
     # =================================================================
     # 🖱️ FINALIZED COHESIVE INPUT MAPS: LEFT = RESIZE, RIGHT = MOVE ANYWHERE
@@ -134,7 +133,11 @@ class FloatingZoomPreview(QWidget):
         # 🌟 MATCHED COHESION: Double right-click to close (so double-left doesn't misfire during resizing)
         if event.button() == Qt.MouseButton.RightButton:
             self.hide()
-            if hasattr(self.main_app, "cfg_show_preview"):
+            #  Bulletproof Guard: Check that the checkbox widget object actually exists
+            if (
+                hasattr(self.main_app, "cfg_show_preview")
+                and self.main_app.cfg_show_preview is not None
+            ):
                 self.main_app.cfg_show_preview.setChecked(False)
             event.accept()
 
@@ -147,6 +150,7 @@ class FloatingZoomPreview(QWidget):
             # Uncheck the matching drawer checkbox in the main window for sync consistency
             if (
                 hasattr(self.main_app, "cfg_show_preview")
+                and self.main_app.cfg_show_preview is not None
                 and self.main_app.cfg_show_preview
             ):
                 self.main_app.cfg_show_preview.setChecked(False)
