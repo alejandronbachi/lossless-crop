@@ -101,3 +101,11 @@ QCheckBox::indicator:checked:hover {
     background-color: #4a6fa5;
     border: 1px solid #5a7fb5;
 }
+
+/* Custom Extracted Toolbar Row Container Alignment */
+ControlToolbar {
+    background-color: transparent;
+    border: none;
+    margin: 0px;
+    padding: 0px;
+}

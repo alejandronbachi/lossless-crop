@@ -12,21 +12,16 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QColor, QFont, QIcon, QImage, QKeyEvent, QPixmap
+from PyQt6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
-    QCheckBox,
-    QComboBox,
     QFileDialog,
-    QFrame,
     QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
-    QPushButton,
     QRubberBand,
     QSizePolicy,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -37,6 +32,7 @@ from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.settings_manager import SettingsManager
 from models.app_settings import AppSettings
+from widgets.control_toolbar import ControlToolbar
 from widgets.floating_zoom_preview import FloatingZoomPreview
 from widgets.settings_drawer import SettingsDrawer
 
@@ -98,150 +94,17 @@ class FastCropApp(QMainWindow):
         self.main_layout = QVBoxLayout(self.central_widget)
 
         # -------------------------------------------------------------
-        # TOP SYSTEM TOOLBAR CONTROL PANELS
+        # TOP SYSTEM TOOLBAR
         # -------------------------------------------------------------
-        self.toolbar = QHBoxLayout()
-        self.toolbar.setSpacing(10)
-
-        self.lbl_folder_name = QPushButton("No directory loaded")
-        self.lbl_folder_name.setStyleSheet(
-            "font-weight: bold; color: #aaa; margin-left: 5px; min-width: 140px;text-align: left;"
+        self.control_toolbar = ControlToolbar(
+            parent=self,
+            image_manager=self.image_manager,
+            file_manager=self.file_manager,
+            ui_constants=ui_constants,
+            pillow_available=PILLOW_AVAILABLE,
         )
-        self.lbl_folder_name.clicked.connect(self.select_directory)
-
-        self.toolbar.addWidget(self.lbl_folder_name)
-
-        self.toolbar.addStretch()
-
-        # Engine Options Dropdown
-        self.combo_engine = QComboBox()
-        self.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.combo_engine.setToolTip(
-            "Choose processing engine mode for saving operations."
-        )
-
-        native_font = QFont(
-            "Segoe UI", 10
-        )  # Binds a solid, valid 10pt/13px font profile
-        self.combo_engine.setFont(native_font)
-        self.combo_engine.view().setFont(
-            native_font
-        )  # Binds the internal dropdown view list too!
-
-        if self.image_manager.is_lossless_available:
-            self.combo_engine.addItem("Lossless")
-        if PILLOW_AVAILABLE:
-            self.combo_engine.addItem("Pixel-Perfect")
-        if not self.image_manager.is_lossless_available and PILLOW_AVAILABLE:
-            self.combo_engine.setCurrentText("Pixel-Perfect")
-        self.toolbar.addWidget(self.combo_engine)
-
-        # Aspect Ratio Dropdown
-        self.combo_ratio = QComboBox()
-        self.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.combo_ratio.setToolTip(
-            "Force the cropping rectangle selection box to lock onto specific aspect ratios."
-        )
-        self.combo_ratio.setFont(native_font)
-        self.combo_ratio.view().setFont(native_font)
-        self.combo_ratio.addItems(
-            ["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"]
-        )
-        self.combo_ratio.currentIndexChanged.connect(self.on_ratio_changed)
-        self.toolbar.addWidget(self.combo_ratio)
-
-        self.combo_snap = QComboBox()
-        self.combo_snap.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.combo_snap.setToolTip(
-            "Select layout feedback mode for Left-Click mouse drawing."
-        )
-        self.combo_snap.setFont(native_font)
-        self.combo_snap.view().setFont(native_font)
-        self.combo_snap.addItems(["No snap feedback", "Post-release snap", "Ghosting"])
-        self.toolbar.addWidget(self.combo_snap)
-
-        # -------------------------------------------------------------
-        # TOP TOOLBAR: PRECISION MANUAL CROP INPUT SPINBOXES
-        # -------------------------------------------------------------
-
-        # Guard flag variable to block recursive input echo storms
-        self._updating_spinboxes = False
-
-        # Build a small layout container frame to hold our spinboxes on the toolbar row
-        self.spin_container = QFrame()
-        self.spin_container.setStyleSheet(
-            "background-color: transparent; border: none; margin: 0; padding: 0;"
-        )
-        spin_layout = QHBoxLayout(self.spin_container)
-        spin_layout.setContentsMargins(5, 0, 5, 0)
-        spin_layout.setSpacing(6)
-
-        #  SPINBOX STYLESHEET: Explicit internal target routing prevents mouse click hijacking! 🌟
-        spin_box_stylesheet = self.file_manager.load_asset(
-            ui_constants.STYLE_SPINBOXES, ui_constants.FOLDER_STYLES
-        )
-
-        # 1. Custom Numeric Width Input Field Cell
-        self.spin_width = QSpinBox()
-        self.spin_width.setRange(10, 10000)  # Support massive high-res cameras safely
-        self.spin_width.setValue(0)
-        self.spin_width.setPrefix("W: ")
-        self.spin_width.setSuffix(" px")
-        self.spin_width.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-        self.spin_width.setStyleSheet(spin_box_stylesheet)
-
-        # Connect input changing events straight to our mapping engine
-        self.spin_width.valueChanged.connect(self.on_spin_width_changed)
-        spin_layout.addWidget(self.spin_width)
-
-        # 2. Custom Numeric Height Input Field Cell
-        self.spin_height = QSpinBox()
-        self.spin_height.setRange(10, 10000)
-        self.spin_height.setValue(0)
-        self.spin_height.setPrefix("H: ")
-        self.spin_height.setSuffix(" px")
-        self.spin_height.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-        self.spin_height.setStyleSheet(spin_box_stylesheet)
-        self.spin_height.valueChanged.connect(self.on_spin_height_changed)
-        spin_layout.addWidget(self.spin_height)
-
-        # Add the spin container frame directly to your top toolbar stack right next to the dropdown!
-        self.toolbar.addWidget(self.spin_container)
-
-        # Shortened Toolbar Checkboxes
-        self.chk_preserve = QCheckBox("Keep selection")
-        self.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.chk_preserve.setToolTip(
-            "Conserve current selection box size and position coordinates across images."
-        )
-        self.chk_preserve.setChecked(True)
-        self.toolbar.addWidget(self.chk_preserve)
-
-        self.chk_overwrite = QCheckBox("Overwrite")
-        self.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.chk_overwrite.setToolTip(
-            "Directly overwrite original source image files instead of nesting copies in a subfolder."
-        )
-        self.chk_overwrite.setChecked(False)
-        self.toolbar.addWidget(self.chk_overwrite)
-
-        #  Custom Gear Button - Far Left & Borderless
-
-        self.btn_settings = QPushButton("⚙️")
-        self.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.btn_settings.setToolTip("Toggle configuration choices")
-        self.btn_settings.setFixedSize(38, 38)  # Slightly larger bounding frame layout
-        self.btn_settings.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_BTN_SETTINGS, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        self.btn_settings.clicked.connect(self.toggle_settings_drawer)
-        self.toolbar.addWidget(self.btn_settings)
-
-        self.main_layout.addLayout(self.toolbar)
-
+        # Add the frame directly to your main layout tree channels
+        self.main_layout.addWidget(self.control_toolbar)
         # -------------------------------------------------------------
         # MIDDLE VISUAL DISPLAY CANVAS PANEL
         # -------------------------------------------------------------
@@ -278,8 +141,9 @@ class FastCropApp(QMainWindow):
         )
 
         self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
-
-        # Construct Settings Drawer
+        # -------------------------------------------------------------
+        #           SIDE DRAWER
+        # -----------------------------------------------------
         self.settings_drawer = SettingsDrawer(self, self.file_manager)
 
         # Maintain your legacy geometry tracking shortcuts
@@ -294,7 +158,7 @@ class FastCropApp(QMainWindow):
 
         self.drag_start_origin = QPoint()
 
-        #  ADD THIS NEW COMMAND OVERLAY PANEL
+        #   COMMAND OVERLAY PANEL
         self.lbl_commands_overlay = QLabel(self.image_display_container)
         self.lbl_commands_overlay.hide()  # Will show once an image loads
         self.lbl_commands_overlay.setStyleSheet(
