@@ -12,12 +12,10 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QColor, QIcon, QImage, QKeyEvent, QPixmap
+from PyQt6.QtGui import QIcon, QImage, QKeyEvent, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
-    QGraphicsDropShadowEffect,
-    QHBoxLayout,
     QLabel,
     QMainWindow,
     QRubberBand,
@@ -30,12 +28,12 @@ import config.app_constants as app_constants
 import config.ui_constants as ui_constants
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
-from managers.notification_manager import NotificationManager
 from managers.settings_manager import SettingsManager
+from managers.status_manager import StatusManager
 from models.app_settings import AppSettings
-from widgets.center_notification import CenterNotification
 from widgets.control_toolbar import ControlToolbar
 from widgets.floating_zoom_preview import FloatingZoomPreview
+from widgets.infor_bar import InfoBar
 from widgets.settings_drawer import SettingsDrawer
 
 # Check for Pillow availability
@@ -112,6 +110,22 @@ class FastCropApp(QMainWindow):
         # -------------------------------------------------------------
         self.build_main_canvas()
         # -------------------------------------------------------------
+        # BOTTOM INFO BAR LAYOUT PANEL (Split Structure)
+        # -------------------------------------------------------------
+        self.info_bar_widget = InfoBar(self)
+        self.main_layout.addWidget(self.info_bar_widget)
+        # -------------------------------------------------------------
+        #  INITIALIZE ORCHESTRATION & FLOATING OVERLAYS
+        # -------------------------------------------------------------
+        # The StatusManager handles creating your overlays (Splash, Commands, Toast)
+        self.status_manager = StatusManager(
+            main_app=self,
+            canvas_container=self.image_display_container,
+            info_bar_widget=self.info_bar_widget,
+            file_manager=self.file_manager,
+            ui_constants=ui_constants,
+        )
+        # -------------------------------------------------------------
         # SIDE DRAWER
         # -------------------------------------------------------------
         self.settings_drawer = SettingsDrawer(self, self.file_manager)
@@ -119,23 +133,12 @@ class FastCropApp(QMainWindow):
         self.drawer = self.settings_drawer
         self.drawer_width = self.settings_drawer.drawer_width
         self.drawer_is_open = False
+
         # Interactive Selection Component Initialization
         self.crop_box_selector = QRubberBand(
             QRubberBand.Shape.Rectangle, self.image_display_container
         )
         self.drag_start_origin = QPoint()
-        # -------------------------------------------------------------
-        #   COMMANDS and TELEMETRY OVERLAYS
-        # -------------------------------------------------------------
-        self.build_canvas_overlays()
-        # =============================================================
-        # FLOATING INTERACTIVE HUB SPLASH HUD OVERLAY (Collision-Proof)
-        # =============================================================
-        self.build_floating_hub()
-        # -------------------------------------------------------------
-        # BOTTOM INFO BAR LAYOUT PANEL (Split Structure)
-        # -------------------------------------------------------------
-        self.build_info_bar()
 
     def load_image_to_viewport(self):
         if (
@@ -143,26 +146,19 @@ class FastCropApp(QMainWindow):
             or not self.image_files
             or not (0 <= self.current_index < len(self.image_files))
         ):
-            # ⬇️ No image active: Reveal the floating instruction overlay card over empty canvas space ⬇️
-            if hasattr(self, "lbl_splash_hud"):
-                self.lbl_splash_hud.show()
-                # Force instant repositioning call
-                self.lbl_splash_hud.adjustSize()
-                cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
-                cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
-                self.lbl_splash_hud.move(cx, max(50, cy))
-                self.lbl_splash_hud.raise_()
+            # 🚀 FIX: Delegate the empty workspace state entirely to the manager
+            self.status_manager.set_empty_workspace_state()
             return
 
-        if hasattr(self, "lbl_splash_hud"):
-            self.lbl_splash_hud.hide()
         current_image_path = self.image_files[self.current_index]
-        self.lbl_status.setText(
-            f"[{self.current_index + 1}/{len(self.image_files)}] - {current_image_path.name}"
-        )
+
+        # 🚀 FIX: Removed the direct self.lbl_status.setText crash loop!
+        # The text orchestration is handled cleanly by update_status_and_telemetry() at the bottom.
+
         # Load through Pillow memory pipelines safely
         self.current_pil_image = Image.open(current_image_path)
-        # 2. Check if its a true jpeg file
+
+        # Check if its a true jpeg file
         self.is_current_file_true_jpeg = ImageProcessor.is_true_jpeg(current_image_path)
         if self.is_current_file_true_jpeg:
             print("Real jpeg")
@@ -174,12 +170,11 @@ class FastCropApp(QMainWindow):
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
         # -----------------------------------------------------------------
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
-            # 1. Grab the fresh file extension properties
+            # Grab the fresh file extension properties
             use_lossless = self.determine_if_lossless_active()
 
             if use_lossless:
-                # Force the stationary screen box geometry through our core math engine.
-                # This leaves the box position alone but calculates the perfect 16x16 image-space conversion.
+                # Force the stationary screen box geometry through our core math engine
                 self.last_crop_geometry = self.calculate_snapped_rect(
                     self.last_crop_geometry
                 )
@@ -197,10 +192,16 @@ class FastCropApp(QMainWindow):
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
 
-        self.position_commands_overlay()
-        self.apply_drawer_visibility_rules()
+        # 🚀 FIX: Relocate the floating components correctly via the StatusManager overlay calculations
+        self.status_manager.reposition_commands_overlay()
+        self.status_manager.sync_drawer_visibility_rules()
+
+        # Run your pixel scaling conversion spinboxes
         self.update_resolution_metrics_display()
-        self.update_telemetry_label()
+
+        # 🚀 FIX: Let the manager route the new filename and index to the correct UI surfaces
+        self.status_manager.update_status_and_telemetry()
+
         if hasattr(self, "update_zoom_hud_payload"):
             self.update_zoom_hud_payload()
 
@@ -241,10 +242,8 @@ class FastCropApp(QMainWindow):
             return
 
         # Hide the commands panel instantly so it doesn't obstruct cropping fields
-        self.lbl_commands_overlay.hide()
+        self.status_manager.hide_overlays_on_mouse_press()
 
-        if not self.cfg_show_infobar.isChecked() and hasattr(self, "lbl_telemetry_hud"):
-            self.lbl_telemetry_hud.hide()
         if event.button() == Qt.MouseButton.LeftButton:
             # Left Click: Draw a new crop box
             self.drag_start_origin = event.position().toPoint()
@@ -329,23 +328,10 @@ class FastCropApp(QMainWindow):
         elif event.button() == Qt.MouseButton.RightButton:
             self.is_moving_box = False
             self.drag_start_origin = QPoint()
-        if self.cfg_show_shortcuts.isChecked() and self.current_index != -1:
-            self.lbl_commands_overlay.show()
-            self.lbl_commands_overlay.raise_()
+
+        self.status_manager.restore_overlays_on_mouse_release()
+        # Keep recalculating your numeric scale spinbox fields as normal
         self.update_resolution_metrics_display()
-        self.update_telemetry_label()
-
-    def position_commands_overlay(self):
-        """Positions the command overlay in the top left corner of the container."""
-        self.lbl_commands_overlay.adjustSize()
-
-        # Define a clean 15-pixel padding buffer away from the left bezel edge
-        padding = 15
-        x = padding
-        y = padding
-
-        # Snap the floating panel smoothly to the top-left corner
-        self.lbl_commands_overlay.move(x, y)
 
     def on_ratio_changed(self):
         """Instantly morphs the active selection box when the aspect ratio dropdown changes."""
@@ -618,13 +604,13 @@ class FastCropApp(QMainWindow):
                 self.last_crop_geometry = None
 
         if use_lossless:
-            self.notification_manager.show_center_notification("Lossless Crop")
+            self.status_manager.show_center_notification("Lossless Crop")
         else:
             # Check if the output file is a naturally lossless format like PNG
             if file_ext in (".png", ".bmp"):
-                self.notification_manager.show_center_notification("Lossless Crop")
+                self.status_manager.show_center_notification("Lossless Crop")
             else:
-                self.notification_manager.show_center_notification("Lossy Crop")
+                self.status_manager.show_center_notification("Lossy Crop")
 
         self.update_resolution_metrics_display()
         self.update_zoom_hud_payload()
@@ -685,9 +671,7 @@ class FastCropApp(QMainWindow):
                 self.load_image_to_viewport()
             else:
                 # Feedback fallback when hitting space on the last image
-                self.notification_manager.show_center_notification(
-                    "Last image of directory"
-                )
+                self.status_manager.show_center_notification("Last image of directory")
 
         elif key in (Qt.Key.Key_S, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Crop + Stay
@@ -700,9 +684,7 @@ class FastCropApp(QMainWindow):
                 self.load_image_to_viewport()
             else:
                 # Feedback fallback when trying to skip past the last image
-                self.notification_manager.show_center_notification(
-                    "Last image of directory"
-                )
+                self.status_manager.show_center_notification("Last image of directory")
 
         elif key in (Qt.Key.Key_B, Qt.Key.Key_Left):
             # Backward Skip
@@ -710,9 +692,7 @@ class FastCropApp(QMainWindow):
                 self.current_index -= 1
                 self.load_image_to_viewport()
             else:
-                self.notification_manager.show_center_notification(
-                    "First image of directory"
-                )
+                self.status_manager.show_center_notification("First image of directory")
 
         elif key == Qt.Key.Key_R:
             # Rotate Action
@@ -734,7 +714,7 @@ class FastCropApp(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
-        self.position_commands_overlay()
+        self.status_manager.reposition_commands_overlay()
 
         #  CENTER THE FLOATING SPLASH HUD CARD IN ABSOLUTE WORKSPACE ROOM
         if hasattr(self, "lbl_splash_hud") and not self.lbl_splash_hud.isHidden():
@@ -777,7 +757,7 @@ class FastCropApp(QMainWindow):
                 )
 
         if hasattr(self, "lbl_notification") and self.lbl_notification.isVisible():
-            self.notification_manager.reposition_notification()
+            self.status_manager.reposition_center_notification()
 
         # 2. Restart the timer on every pixel drag (prevents premature execution)
         self.resize_throttle_timer.start(50)  # 50 milliseconds delay
@@ -842,28 +822,6 @@ class FastCropApp(QMainWindow):
             self.drawer.raise_()
 
         self.drawer_animation.start()
-
-    def apply_drawer_visibility_rules(self):
-        """Instantly toggles layout components visibility mapping based on drawer checkbox inputs."""
-        # 1. Evaluate shortcuts guide cheat-sheet overlay
-        if self.cfg_show_shortcuts.isChecked() and self.current_index != -1:
-            self.lbl_commands_overlay.show()
-            self.lbl_commands_overlay.raise_()
-        else:
-            self.lbl_commands_overlay.hide()
-
-        # 2. Evaluate lower status-bar tracking panel labels
-        if self.cfg_show_infobar.isChecked():
-            self.info_bar_widget.show()
-        else:
-            self.info_bar_widget.hide()
-
-        self.central_widget.layout().activate()
-        self.refresh_display_canvas()
-
-        # 3. Trigger telemetry router recalculations to shift paths matching the updated layout
-        self.update_resolution_metrics_display()
-        self.update_telemetry_label()
 
     def closeEvent(self, event):
         """Standard PyQt window intercept routine executing right before closing down."""
@@ -931,6 +889,8 @@ class FastCropApp(QMainWindow):
 
         # 2. Push the completed data container straight into the visual interface
         self.apply_settings_to_ui()
+        QTimer.singleShot(0, self.status_manager.reposition_splash_hud)
+        QTimer.singleShot(0, self.status_manager.update_status_and_telemetry)
 
     def apply_settings_to_ui(self):
         """Applies the internal data model properties directly to UI components."""
@@ -940,7 +900,7 @@ class FastCropApp(QMainWindow):
 
         # If the user toggled off "remember settings", bypass visual layout population
         if not self.settings.remember_settings:
-            self.show_startup_splash_hud()
+            self.status_manager.set_empty_workspace_state()
             return
 
         # 2. Restore Component Toggles & Checkboxes
@@ -989,19 +949,19 @@ class FastCropApp(QMainWindow):
             self.combo_engine.setCurrentText(self.settings.engine_preference)
 
         # Refresh structural UI systems
-        self.apply_drawer_visibility_rules()
+        self.status_manager.sync_drawer_visibility_rules()
         self.update_resolution_metrics_display()
 
         # 6. Folder Automation & Boot Checks
         if self.settings.auto_open_folder and self.settings.last_used_folder:
             self.automate_folder_loading(self.settings.last_used_folder)
         else:
-            self.show_startup_splash_hud()
+            self.status_manager.set_empty_workspace_state()
 
     def automate_folder_loading(self, target_folder_str: str):
         """Asks the FileManager to scan the directory and updates current tracking indices."""
         if not target_folder_str:
-            self.show_startup_splash_hud()
+            self.status_manager.set_empty_workspace_state()
             return
 
         # 1. Process the folder string into our unified pipeline output tuple
@@ -1010,7 +970,7 @@ class FastCropApp(QMainWindow):
         # 2. Match your old fallback logic if no valid image files are present
         if not valid_files:
             self.current_index = -1
-            self.show_startup_splash_hud()
+            self.status_manager.set_empty_workspace_state()
             return
 
         # 3. Hand off the clean dataset to our central UI engine to paint the canvas
@@ -1020,16 +980,6 @@ class FastCropApp(QMainWindow):
             target_file=None,  # Defaults index sorting directly to 0
             error_msg="",  # Not needed since splash handles the empty state above
         )
-
-    def show_startup_splash_hud(self):
-        """Centers and prints your custom floating guide HUD card over an empty project workspace."""
-        if hasattr(self, "lbl_splash_hud"):
-            self.lbl_splash_hud.show()
-            self.lbl_splash_hud.adjustSize()
-            cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
-            cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
-            self.lbl_splash_hud.move(cx, max(50, cy))
-            self.lbl_splash_hud.raise_()
 
     def handle_left_click_release(self):
         """Finalizes left-click box drawing by processing grid alignment transformations."""
@@ -1364,67 +1314,6 @@ class FastCropApp(QMainWindow):
             self.spin_height.setValue(final_h)
             self._updating_spinboxes = False
 
-    def update_telemetry_label(self):
-        """
-        Synchronize the status bar HUD text labels
-        """
-        if self.current_index == -1 or not self.current_pil_image:
-            self.lbl_status.setText("Ready. Open a folder to start cropping.")
-            self.lbl_metrics.setText("")
-            self.lbl_telemetry_hud.setText("")
-            self.lbl_telemetry_hud.hide()
-            return
-
-        # 1. Compile file status tracking elements
-        src_w, src_h = self.current_pil_image.size
-
-        filename_string = ""
-        if self.cfg_show_filename.isChecked():
-            filename_string = f"[{self.current_index + 1}/{len(self.image_files)}] {self.image_files[self.current_index]}"
-
-        metrics_string = ""
-        if self.cfg_show_imgsize.isChecked():
-            metrics_string = f"IMG: {src_w}x{src_h}"
-
-        if self.cfg_show_infobar.isChecked():
-            # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
-            self.lbl_telemetry_hud.hide()
-            self.lbl_status.setText(filename_string if filename_string else "")
-            self.lbl_metrics.setText(metrics_string)
-        else:
-            # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
-            self.lbl_status.setText("")
-            self.lbl_metrics.setText("")
-            is_user_actively_editing = getattr(self, "is_moving_box", False) or (
-                hasattr(self, "drag_start_origin")
-                and not self.drag_start_origin.isNull()
-                and not getattr(self, "is_moving_box", False)
-            )
-            hud_lines = []
-            if filename_string:
-                hud_lines.append(filename_string)
-            if metrics_string:
-                hud_lines.append(metrics_string)
-
-            if hud_lines and not is_user_actively_editing:
-                # Update text array layout and force a layout redraw pass
-                self.lbl_telemetry_hud.setText("\n".join(hud_lines))
-                self.lbl_telemetry_hud.show()
-                self.lbl_telemetry_hud.adjustSize()
-                self.lbl_telemetry_hud.raise_()
-
-                # Re-calculate geometry offsets so card sits perfectly at lower-left margin bounds
-                padding = 15
-                x = padding
-                y = (
-                    self.central_widget.height()
-                    - self.lbl_telemetry_hud.height()
-                    - padding
-                )
-                self.lbl_telemetry_hud.move(x, y)
-            else:
-                self.lbl_telemetry_hud.hide()
-
     def toggle_zoom_hud_window_visibility(self):
         """Strictly displays or hides the floating zoom view based on checkbox rules."""
         if not hasattr(self, "zoom_hud"):
@@ -1443,7 +1332,7 @@ class FastCropApp(QMainWindow):
         # Abort if the HUD window is hidden or no image selection is active
 
         if not PILLOW_AVAILABLE:
-            self.notification_manager.show_center_notification(
+            self.status_manager.show_center_notification(
                 "Preview not possible without Pillow"
             )
         if (
@@ -1629,9 +1518,10 @@ class FastCropApp(QMainWindow):
             self.current_index = -1
 
             if error_msg:
-                self.lbl_status.setText(error_msg)
+                # 🚀 FIX: Route the error message safely through your central orchestrator!
+                self.status_manager.info_bar.lbl_status.setText(error_msg)
             else:
-                self.show_startup_splash_hud()
+                self.status_manager.set_empty_workspace_state()
             return
 
         self.image_folder = folder_path
@@ -1640,9 +1530,8 @@ class FastCropApp(QMainWindow):
         folder_name = Path(folder_path).name
         self.lbl_folder_name.setText(f"📁 {folder_name}")
 
-        # 🚨 FIX: Match string target_file against the .name property of Path elements
+        # Match string target_file against the .name property of Path elements
         if target_file:
-            # Find matching Path element by its filename string
             matched_index = next(
                 (i for i, p in enumerate(self.image_files) if p.name == target_file),
                 None,
@@ -1651,9 +1540,11 @@ class FastCropApp(QMainWindow):
         else:
             self.current_index = 0
 
-        # Refresh interface views and save path history
+        # Refresh interface views
         self.load_image_to_viewport()
-        self.settings_manager.save_last_used_folder(folder_path)
+
+        # 🚀 FIX: Update the memory-safe runtime configuration model directly
+        self.settings.last_used_folder = str(folder_path)
 
     def select_directory(self):
         fallback_path = self.settings_manager.get_fallback_path_str()
@@ -1731,108 +1622,6 @@ class FastCropApp(QMainWindow):
         self.image_display_container.mousePressEvent = self.on_mouse_press
         self.image_display_container.mouseMoveEvent = self.on_mouse_move
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
-
-    def build_canvas_overlays(self):
-        self.lbl_commands_overlay = QLabel(self.image_display_container)
-        self.lbl_commands_overlay.hide()  # Will show once an image loads
-        self.lbl_commands_overlay.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES
-            )
-        )
-        # Populate the exact hotkey roadmap text
-        self.lbl_commands_overlay.setText(
-            self.file_manager.load_asset(
-                ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
-            )
-        )
-
-        #  SHADOW EFFECT A: For your top-left Shortcut Commands Overlay
-        commands_shadow = QGraphicsDropShadowEffect(self)
-        commands_shadow.setBlurRadius(4)  # Softness of the shadow edge
-        commands_shadow.setColor(QColor("#000000"))  # Pure black shadow mapping
-        commands_shadow.setOffset(1, 1)  # Shunt the shadow down 1px and right 1px
-        self.lbl_commands_overlay.setGraphicsEffect(commands_shadow)
-
-        # Construct the secondary, floating text overlay widget
-        self.lbl_telemetry_hud = QLabel(self.central_widget)
-        self.lbl_telemetry_hud.setObjectName("TelemetryHUD")
-        self.lbl_telemetry_hud.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents
-        )  # Clicks pass right through it!
-        self.lbl_telemetry_hud.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
-        self.lbl_telemetry_hud.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
-        #  SHADOW EFFECT B: For your lower-left Telemetry HUD Card
-        telemetry_shadow = QGraphicsDropShadowEffect(self)
-        telemetry_shadow.setBlurRadius(3)
-        telemetry_shadow.setColor(QColor("#000000"))
-        telemetry_shadow.setOffset(1, 1)
-        self.lbl_telemetry_hud.setGraphicsEffect(telemetry_shadow)
-
-        # notification ecosystem structures
-        self.lbl_notification = CenterNotification(
-            self.image_display_container, self.file_manager, ui_constants
-        )
-        self.notification_manager = NotificationManager(self, self.lbl_notification)
-
-    def build_floating_hub(self):
-        self.lbl_splash_hud = QLabel(self.central_widget)
-        self.lbl_splash_hud.setObjectName("SplashHUD")
-        # Ensure mouse clicks pass straight through the text box so they don't block canvas drops
-        self.lbl_splash_hud.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents
-        )
-        self.lbl_splash_hud.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Premium Obsidian themed typography card styling layout with 85% translucent backing
-        self.lbl_splash_hud.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        # Build the exact typographic text block structure using clean Unicode pointers
-        # We increase the padding gaps inside the inner line elements for greater vertical depth
-        splash_text = self.file_manager.load_asset(
-            ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
-        )
-        self.lbl_splash_hud.setText(splash_text)
-        self.lbl_splash_hud.hide()  # Maintained hidden by default until evaluated on launch
-
-    def build_info_bar(self):
-        self.info_bar_widget = QWidget()
-        self.info_bar = QHBoxLayout(self.info_bar_widget)
-        self.info_bar.setContentsMargins(10, 5, 10, 5)
-
-        # Left spacing stretch item to balance center filenames tracking
-        self.info_bar.addStretch(1)
-
-        # Primary Centered File Status Label
-        self.lbl_status = QLabel("Ready. Open a folder to start cropping.")
-        self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500;")
-        self.info_bar.addWidget(self.lbl_status)
-
-        # Secondary Right Edge Metrics Tracker
-        self.info_bar.addStretch(1)
-        self.lbl_metrics = QLabel("")
-        self.lbl_metrics.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.lbl_metrics.setStyleSheet(
-            "color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;"
-        )
-        self.info_bar.addWidget(self.lbl_metrics)
-
-        self.main_layout.addWidget(self.info_bar_widget)
 
 
 if __name__ == "__main__":

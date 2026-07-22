@@ -1,10 +1,12 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QCheckBox, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QCheckBox, QFrame, QLabel, QVBoxLayout, QWidget
 
 from config.ui_constants import FOLDER_STYLES, STYLE_DRAWER
 
 
-class SettingsDrawer(QWidget):
+class SettingsDrawer(
+    QFrame
+):  # 🚀 Modernized: Switched to QFrame to handle background QSS natively
     def __init__(self, parent, file_manager):
         # We explicitly pass the central widget as the parent to keep the floating canvas layout intact
         super().__init__(parent.central_widget)
@@ -66,7 +68,7 @@ class SettingsDrawer(QWidget):
         self.main_app.cfg_show_shortcuts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_shortcuts.setChecked(True)
         self.main_app.cfg_show_shortcuts.stateChanged.connect(
-            self.main_app.apply_drawer_visibility_rules
+            self.main_app.status_manager.sync_drawer_visibility_rules
         )
         self.layout.addWidget(self.main_app.cfg_show_shortcuts)
 
@@ -79,23 +81,25 @@ class SettingsDrawer(QWidget):
         self.main_app.cfg_show_infobar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_infobar.setChecked(True)
         self.main_app.cfg_show_infobar.stateChanged.connect(
-            self.main_app.apply_drawer_visibility_rules
+            self.main_app.status_manager.sync_drawer_visibility_rules
         )
         self.layout.addWidget(self.main_app.cfg_show_infobar)
 
         self.main_app.cfg_show_filename = QCheckBox("Image Filename")
         self.main_app.cfg_show_filename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_filename.setChecked(True)
+        # 🚀 FIX: Point callback away from deleted method straight to your centralized StatusManager engine
         self.main_app.cfg_show_filename.stateChanged.connect(
-            self.main_app.update_telemetry_label
+            self.main_app.status_manager.update_status_and_telemetry
         )
         self.layout.addWidget(self.main_app.cfg_show_filename)
 
         self.main_app.cfg_show_imgsize = QCheckBox("Image Resolution")
         self.main_app.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_imgsize.setChecked(True)
+        # 🚀 FIX: Point callback to StatusManager here too
         self.main_app.cfg_show_imgsize.stateChanged.connect(
-            self.main_app.update_telemetry_label
+            self.main_app.status_manager.update_status_and_telemetry
         )
         self.layout.addWidget(self.main_app.cfg_show_imgsize)
 
@@ -103,6 +107,7 @@ class SettingsDrawer(QWidget):
         self.main_app.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_preview.setToolTip("Display Zoom Preview HUD")
         self.main_app.cfg_show_preview.setChecked(False)
+        # 🚀 FIX: Redirect callback to your unified main window visibility toggle
         self.main_app.cfg_show_preview.stateChanged.connect(
             self.main_app.toggle_zoom_hud_window_visibility
         )
@@ -127,13 +132,3 @@ class SettingsDrawer(QWidget):
         self.layout.addWidget(self.main_app.cfg_persist_hud_win)
 
         self.layout.addStretch()
-
-    def paintEvent(self, event):
-        """Forces custom QWidget subclasses to honor stylesheet background rules."""
-        from PyQt6.QtGui import QPainter
-        from PyQt6.QtWidgets import QStyle, QStyleOption
-
-        opt = QStyleOption()
-        opt.initFrom(self)
-        p = QPainter(self)
-        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, opt, p, self)
