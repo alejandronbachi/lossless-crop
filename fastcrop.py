@@ -30,8 +30,10 @@ import config.app_constants as app_constants
 import config.ui_constants as ui_constants
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
+from managers.notification_manager import NotificationManager
 from managers.settings_manager import SettingsManager
 from models.app_settings import AppSettings
+from widgets.center_notification import CenterNotification
 from widgets.control_toolbar import ControlToolbar
 from widgets.floating_zoom_preview import FloatingZoomPreview
 from widgets.settings_drawer import SettingsDrawer
@@ -113,17 +115,14 @@ class FastCropApp(QMainWindow):
         # SIDE DRAWER
         # -------------------------------------------------------------
         self.settings_drawer = SettingsDrawer(self, self.file_manager)
-
         # Maintain your legacy geometry tracking shortcuts
         self.drawer = self.settings_drawer
         self.drawer_width = self.settings_drawer.drawer_width
         self.drawer_is_open = False
-
         # Interactive Selection Component Initialization
         self.crop_box_selector = QRubberBand(
             QRubberBand.Shape.Rectangle, self.image_display_container
         )
-
         self.drag_start_origin = QPoint()
         # -------------------------------------------------------------
         #   COMMANDS and TELEMETRY OVERLAYS
@@ -619,13 +618,13 @@ class FastCropApp(QMainWindow):
                 self.last_crop_geometry = None
 
         if use_lossless:
-            self.show_center_notification("Lossless Crop")
+            self.notification_manager.show_center_notification("Lossless Crop")
         else:
             # Check if the output file is a naturally lossless format like PNG
             if file_ext in (".png", ".bmp"):
-                self.show_center_notification("Lossless Crop")
+                self.notification_manager.show_center_notification("Lossless Crop")
             else:
-                self.show_center_notification("Lossy Crop")
+                self.notification_manager.show_center_notification("Lossy Crop")
 
         self.update_resolution_metrics_display()
         self.update_zoom_hud_payload()
@@ -686,7 +685,9 @@ class FastCropApp(QMainWindow):
                 self.load_image_to_viewport()
             else:
                 # Feedback fallback when hitting space on the last image
-                self.show_center_notification("Last image of directory")
+                self.notification_manager.show_center_notification(
+                    "Last image of directory"
+                )
 
         elif key in (Qt.Key.Key_S, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Crop + Stay
@@ -699,7 +700,9 @@ class FastCropApp(QMainWindow):
                 self.load_image_to_viewport()
             else:
                 # Feedback fallback when trying to skip past the last image
-                self.show_center_notification("Last image of directory")
+                self.notification_manager.show_center_notification(
+                    "Last image of directory"
+                )
 
         elif key in (Qt.Key.Key_B, Qt.Key.Key_Left):
             # Backward Skip
@@ -707,7 +710,9 @@ class FastCropApp(QMainWindow):
                 self.current_index -= 1
                 self.load_image_to_viewport()
             else:
-                self.show_center_notification("First image of directory")
+                self.notification_manager.show_center_notification(
+                    "First image of directory"
+                )
 
         elif key == Qt.Key.Key_R:
             # Rotate Action
@@ -771,12 +776,8 @@ class FastCropApp(QMainWindow):
                     available_height,
                 )
 
-        if self.lbl_notification.isVisible():
-            parent_w = self.image_display_container.width()
-            parent_h = self.image_display_container.height()
-            x = (parent_w - self.lbl_notification.width()) // 2
-            y = (parent_h - self.lbl_notification.height()) // 2
-            self.lbl_notification.move(x, y)
+        if hasattr(self, "lbl_notification") and self.lbl_notification.isVisible():
+            self.notification_manager.reposition_notification()
 
         # 2. Restart the timer on every pixel drag (prevents premature execution)
         self.resize_throttle_timer.start(50)  # 50 milliseconds delay
@@ -785,30 +786,6 @@ class FastCropApp(QMainWindow):
         self.refresh_display_canvas()
         if hasattr(self, "zoom_hud"):
             self.update_zoom_hud_payload()
-
-    def show_center_notification(self, text):
-        """Displays a cinematic floating alert in the exact middle of the image area."""
-        if not self.cfg_show_toasts.isChecked():
-            return
-        self.lbl_notification.setText(text)
-        self.lbl_notification.adjustSize()
-
-        # Center calculation math relative to the viewport container size
-        parent_w = self.image_display_container.width()
-        parent_h = self.image_display_container.height()
-        box_w = self.lbl_notification.width()
-        box_h = self.lbl_notification.height()
-
-        x = (parent_w - box_w) // 2
-        y = (parent_h - box_h) // 2
-
-        # Snap to position and bring to the very front layer
-        self.lbl_notification.move(x, y)
-        self.lbl_notification.show()
-        self.lbl_notification.raise_()
-
-        # Restart the 3-second countdown clock
-        self.notification_timer.start()
 
     def toggle_settings_drawer(self):
         """Triggers the smooth sliding sidebar animation from the right bezel edge."""
@@ -1472,7 +1449,9 @@ class FastCropApp(QMainWindow):
         # Abort if the HUD window is hidden or no image selection is active
 
         if not PILLOW_AVAILABLE:
-            self.show_center_notification("Preview not possible without Pillow")
+            self.notification_manager.show_center_notification(
+                "Preview not possible without Pillow"
+            )
         if (
             not PILLOW_AVAILABLE
             or not self.cfg_show_preview.isChecked()
@@ -1759,23 +1738,6 @@ class FastCropApp(QMainWindow):
         self.image_display_container.mouseMoveEvent = self.on_mouse_move
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
 
-        # Construct the secondary, floating text overlay widget
-        self.lbl_telemetry_hud = QLabel(self.central_widget)
-        self.lbl_telemetry_hud.setObjectName("TelemetryHUD")
-        self.lbl_telemetry_hud.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents
-        )  # Clicks pass right through it!
-        self.lbl_telemetry_hud.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
-        self.lbl_telemetry_hud.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
-
     def build_canvas_overlays(self):
         self.lbl_commands_overlay = QLabel(self.image_display_container)
         self.lbl_commands_overlay.hide()  # Will show once an image loads
@@ -1798,6 +1760,22 @@ class FastCropApp(QMainWindow):
         commands_shadow.setOffset(1, 1)  # Shunt the shadow down 1px and right 1px
         self.lbl_commands_overlay.setGraphicsEffect(commands_shadow)
 
+        # Construct the secondary, floating text overlay widget
+        self.lbl_telemetry_hud = QLabel(self.central_widget)
+        self.lbl_telemetry_hud.setObjectName("TelemetryHUD")
+        self.lbl_telemetry_hud.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )  # Clicks pass right through it!
+        self.lbl_telemetry_hud.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+        )
+        self.lbl_telemetry_hud.setStyleSheet(
+            self.file_manager.load_asset(
+                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
+            )
+        )
+
+        self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
         #  SHADOW EFFECT B: For your lower-left Telemetry HUD Card
         telemetry_shadow = QGraphicsDropShadowEffect(self)
         telemetry_shadow.setBlurRadius(3)
@@ -1805,28 +1783,11 @@ class FastCropApp(QMainWindow):
         telemetry_shadow.setOffset(1, 1)
         self.lbl_telemetry_hud.setGraphicsEffect(telemetry_shadow)
 
-        self.lbl_notification = QLabel(self.image_display_container)
-        self.lbl_notification.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.lbl_notification.setWordWrap(True)
-        self.lbl_notification.hide()
-
-        self.lbl_notification.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_NOTIFICATIONS, ui_constants.FOLDER_STYLES
-            )
+        # notification ecosystem structures
+        self.lbl_notification = CenterNotification(
+            self.image_display_container, self.file_manager, ui_constants
         )
-
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(15)
-        shadow.setColor(QColor(0, 0, 0, 180))
-        shadow.setOffset(0, 4)
-        self.lbl_notification.setGraphicsEffect(shadow)
-
-        self.notification_timer = QTimer()
-        self.notification_timer.setInterval(1000)
-        self.notification_timer.setSingleShot(True)
-        self.notification_timer.timeout.connect(self.lbl_notification.hide)
+        self.notification_manager = NotificationManager(self, self.lbl_notification)
 
     def build_floating_hub(self):
         self.lbl_splash_hud = QLabel(self.central_widget)
