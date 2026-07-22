@@ -12,7 +12,7 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QIcon, QImage, QKeyEvent, QPixmap
+from PyQt6.QtGui import QIcon, QKeyEvent, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -77,6 +77,8 @@ class FastCropApp(QMainWindow):
         self.image_files = []
         self.current_index = -1
         self.current_pil_image = None
+        self._qimg_reference = None  # Prevents Python Garbage Collection Segfaults
+        self.master_pixmap = None  # Cached unscaled full-resolution image data
 
         # Bounding Box Memory Settings
         self.last_crop_geometry = None
@@ -157,13 +159,13 @@ class FastCropApp(QMainWindow):
 
         # Load through Pillow memory pipelines safely
         self.current_pil_image = Image.open(current_image_path)
+        # Convert and cache the texture into RAM once on load
+        self._qimg_reference = ImageQt(self.current_pil_image)
+        self.master_pixmap = QPixmap.fromImage(self._qimg_reference)
 
         # Check if its a true jpeg file
         self.is_current_file_true_jpeg = ImageProcessor.is_true_jpeg(current_image_path)
-        if self.is_current_file_true_jpeg:
-            print("Real jpeg")
-        else:
-            print("Not a jpeg")
+
         self.refresh_display_canvas()
 
         # -----------------------------------------------------------------
@@ -206,26 +208,22 @@ class FastCropApp(QMainWindow):
             self.update_zoom_hud_payload()
 
     def refresh_display_canvas(self):
-        if not self.current_pil_image:
+        """Handles fast memory-side hardware viewport scaling from cache data."""
+        # 🚀 Safe Gatekeeper: If no cache is ready, wipe viewport canvas and drop out
+        if self.master_pixmap is None or self.master_pixmap.isNull():
+            self.image_display_container.clear()
             return
-        # TODO should we load it like the preview?
-        # Convert pillow imaging data states to native PyQt QImage arrays cleanly
-        pil_img = self.current_pil_image.convert("RGBA")
-        data = pil_img.tobytes("raw", "RGBA")
-        qimg = QImage(
-            data, pil_img.size[0], pil_img.size[1], QImage.Format.Format_RGBA8888
-        )
 
-        master_pixmap = QPixmap.fromImage(qimg)
-
-        # Resize safely based on target constraints without stretching aspect values
         container_size = self.image_display_container.size()
-        scaled_pixmap = master_pixmap.scaled(
+        if container_size.width() <= 0 or container_size.height() <= 0:
+            return
+
+        # Instant memory-side graphics scaling: Read from cache texture directly!
+        scaled_pixmap = self.master_pixmap.scaled(
             container_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.AspectRatioMode.KeepAspectRatio,  # Or your custom active preference mode
             Qt.TransformationMode.SmoothTransformation,
         )
-
         self.image_display_container.setPixmap(scaled_pixmap)
 
     # -----------------------------------------------------------------
@@ -1376,10 +1374,10 @@ class FastCropApp(QMainWindow):
 
             if (crop_right > crop_left) and (crop_bottom > crop_top):
                 try:
-                    # Slice the high-speed image array straight from our memory handle
-                    # We open a tiny separate copy so it doesn't collide with saving rules
-                    file_path = self.image_files[self.current_index]
-                    with Image.open(file_path) as img:
+                    # 🚀 THE OPTIMIZATION: Slice directly from the pre-loaded RAM cache!
+                    if hasattr(self, "current_pil_image") and self.current_pil_image:
+                        img = self.current_pil_image
+
                         # Apply orientation rotations if the user flipped the canvas
                         if (
                             hasattr(self, "current_rotation_angle")
@@ -1392,8 +1390,8 @@ class FastCropApp(QMainWindow):
                         )
                         self.zoom_hud.update_zoom_payload(crop_slice)
                         return
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[HUD Memory Slicing Block] Fail: {e}")
 
         self.zoom_hud.update_zoom_payload(None)
 
