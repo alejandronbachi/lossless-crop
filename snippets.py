@@ -132,3 +132,33 @@ self.save_cropped_image(
 #The Optimization Bonus: Adding "-optimize" instructs jpegtran to compress the final file structures slightly tighter without altering a single pixel value
 #may confuse the user if they see smaller picture size give an option for it.
 #EXIF Data Survival: Camera tags, creation timestamps, and orientation values will copy over to the cropped file cleanly.True Colors: Any custom embedded ICC color profile is carried over, meaning your cropped image won't look washed out or color-shifted when viewed in image viewers.
+
+import subprocess
+
+def save_lossless_rotate_and_crop(image_path, output_path, angle, crop_x, crop_y, crop_w, crop_h):
+    """
+    Applies rotation and cropping losslessly via jpegtran.
+    Coordinates must be based on the VISUAL ROTATED image layout.
+    """
+    # 1. Enforce the 8x8 block alignment rule for a perfect lossless cut
+    # This snaps the X and Y coordinates down to the nearest multiple of 8
+    lossless_x = (crop_x // 8) * 8
+    lossless_y = (crop_y // 8) * 8
+    
+    # 2. Translate your UI angle to jpegtran format (90, 180, 270)
+    jpegtran_angle = str(angle % 360)
+    
+    # 3. Construct the geometry string: WidthxHeight+X+Y
+    crop_geometry = f"{crop_w}x{crop_h}+{lossless_x}+{lossless_y}"
+    
+    # 4. Execute single optimized command (Internal Order: Rotate then Crop)
+    cmd = [
+        "jpegtran",
+        "-rotate", jpegtran_angle,
+        "-crop", crop_geometry,
+        "-copy", "all",
+        image_path,
+        output_path
+    ]
+    
+    subprocess.run(cmd)
