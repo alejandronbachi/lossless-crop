@@ -314,8 +314,7 @@ class FastCropApp(QMainWindow):
             # Move the widget layout on the screen
             self.crop_box_selector.move(render_x, render_y)
             self.last_crop_geometry = self.crop_box_selector.geometry()
-            self.update_zoom_hud_payload()
-            self.update_resolution_metrics_display()
+            self.status_manager.invalidate_ui_state()
         # -----------------------------------------------------------------
         # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing the box)
         # -----------------------------------------------------------------
@@ -1173,8 +1172,7 @@ class FastCropApp(QMainWindow):
         self.spin_height.blockSignals(False)
 
         # Force status HUD calculations to refresh smoothly
-        if hasattr(self, "zoom_hud"):
-            self.update_zoom_hud_payload()
+        self.status_manager.invalidate_ui_state()
 
     def calculate_snapped_rect(self, screen_rect):
         """Translates a screen QRect to True Image Space, forces pure mathematical

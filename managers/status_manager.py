@@ -17,7 +17,7 @@ class StatusManager(QObject):
         self.canvas_container = canvas_container
         self.info_bar = info_bar_widget
 
-        # 🚀 Instantiate floating canvas overlays directly inside the manager
+        # Instantiate floating canvas overlays directly inside the manager
         self.lbl_notification = CenterNotification(
             canvas_container, file_manager, ui_constants
         )
@@ -34,6 +34,33 @@ class StatusManager(QObject):
         self.notification_timer.setInterval(1000)
         self.notification_timer.setSingleShot(True)
         self.notification_timer.timeout.connect(self.lbl_notification.hide)
+
+        #  60 FPS LAZY ENGINE: Setup a throttling heartbeat timer
+        self._is_dirty = False
+        self.lazy_timer = QTimer(self)
+        self.lazy_timer.setInterval(16)  # ~16ms matches roughly 60 Frames Per Second
+        self.lazy_timer.timeout.connect(self._on_lazy_heartbeat_tick)
+        self.lazy_timer.start()
+
+    def invalidate_ui_state(self):
+        """🚀 Mark the view state as dirty. High-frequency mouse events call this!"""
+        self._is_dirty = True
+
+    def _on_lazy_heartbeat_tick(self):
+        """🚀 The Frame-Rate Gatekeeper: Executes heavy updates ONLY if a change actually occurred."""
+        if not self._is_dirty:
+            return  # The mouse hasn't moved; drop out immediately to save CPU cycles!
+
+        # Reset flag state instantly to catch subsequent frames
+        self._is_dirty = False
+
+        #  Run heavy UI calculations exactly once per 16ms render window frame!
+        self.main_app.update_resolution_metrics_display()
+
+        if hasattr(self.main_app, "update_zoom_hud_payload"):
+            self.main_app.update_zoom_hud_payload()
+
+        self.update_status_and_telemetry()
 
     def show_center_notification(self, text: str):
         """Displays a cinematic floating alert in the exact middle of the image area."""
@@ -153,7 +180,7 @@ class StatusManager(QObject):
         if self.main_app.settings.show_shortcuts and self.main_app.current_index != -1:
             self.lbl_commands_overlay.show()
             self.lbl_commands_overlay.raise_()
-        self.update_status_and_telemetry()
+        self.invalidate_ui_state()
 
     def sync_drawer_visibility_rules(self):
         """Handles drawer checkbox toggles instantly across fixed and floating items."""
@@ -167,7 +194,7 @@ class StatusManager(QObject):
         else:
             self.lbl_commands_overlay.hide()
 
-        # 2. 🚀 THE TOGGLE FIX: Check the live checkbox widget state instead of the static dataclass property!
+        #  Check the live checkbox widget state instead of the static dataclass property!
         if self.main_app.cfg_show_infobar.isChecked():
             self.info_bar.show()
         else:
@@ -180,8 +207,9 @@ class StatusManager(QObject):
         ):
             self.main_app.central_widget.layout().activate()
 
-        # Re-sync text distributions across your tracking components
-        self.update_status_and_telemetry()
+        # Instead of running heavy text distributions instantly,
+        # mark it as dirty so the 60FPS heart-rate timer repaints it perfectly aligned!
+        self.invalidate_ui_state()
 
         # Refresh the primary canvas rendering pass
         self.main_app.refresh_display_canvas()
