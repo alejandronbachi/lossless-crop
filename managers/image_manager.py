@@ -17,8 +17,18 @@ class ImageProcessor:
             binary_file = "jpegtran_mac"
         else:
             binary_file = "jpegtran_linux"
-        self.binary_path = APP_ROOT_DIR / "binaries" / binary_file
-        self.lossless_available = os.path.exists(self.binary_path)
+        self._binary_path = APP_ROOT_DIR / "binaries" / binary_file
+        self._lossless_available = os.path.exists(self.binary_path)
+
+    @property
+    def binary_path(self) -> Path:
+        """Exposes the absolute target path to the system binary executable."""
+        return self._binary_path
+
+    @property
+    def is_lossless_available(self) -> bool:
+        """Dynamically verifies if the required lossless binary executable exists on disk."""
+        return self._binary_path.exists()
 
     def load_image(self, path):
         return Image.open(path)

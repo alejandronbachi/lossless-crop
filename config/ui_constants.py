@@ -15,3 +15,6 @@ STYLE_TELEMETRY_HUD = "telemetry_hud.qss"
 # --- HTML Template File Names ---
 TEMPLATE_SPLASH = "splash_hud.html"
 TEMPLATE_COMMANDS = "commands_overlay.html"
+
+#
+ICON_FILENAME = "icon.png"

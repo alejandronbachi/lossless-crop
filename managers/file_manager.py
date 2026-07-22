@@ -1,14 +1,16 @@
 # managers/file_manager.py
 from pathlib import Path
-from typing import List
 
-from config.app_constants import APP_ROOT_DIR
+from PIL import Image
+
+from config.app_constants import APP_ROOT_DIR, SUPPORTED_IMAGE_EXTENSIONS
+from managers.settings_manager import SettingsManager
 
 
 class FileManager:
-    def __init__(self):
-        # Universal supported media formats
-        self.SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+    def __init__(self, settings_manager: SettingsManager):
+        # Dependency Injection keeps components loosely coupled and testable
+        self.settings = settings_manager
 
     def load_asset(self, filename: str, folder_name: str) -> str:
         """Dynamically loads layout styling text / HTML / QSS content safely."""
@@ -18,26 +20,6 @@ class FileManager:
         except FileNotFoundError:
             print(f"Warning: Asset missing at: {file_path}")
             return ""
-
-    def scan_image_directory(self, folder_path_str: str) -> List[Path]:
-        """
-        Scans a target directory path and returns a sorted list of Path objects
-        matching our supported image extensions.
-        """
-        folder = Path(folder_path_str)
-        if not folder.exists() or not folder.is_dir():
-            return []
-
-        # Find all files, filter by extension, and sort them alphabetically
-        valid_images = [
-            file
-            for file in folder.iterdir()
-            if file.is_file() and file.suffix.lower() in self.SUPPORTED_EXTENSIONS
-        ]
-
-        # Sort by filename string
-        valid_images.sort(key=lambda path: path.name.lower())
-        return valid_images
 
     def generate_unique_crop_path(
         self, parent_folder_str: str, original_filename_str: str
@@ -67,3 +49,43 @@ class FileManager:
             version_counter += 1
 
         return output_filepath
+
+    def scan_and_validate_directory(self, directory: Path) -> list[Path]:
+        """Scans a directory using pathlib path loops and verifies image headers."""
+        if not directory or not directory.exists():
+            return []
+
+        raw_files = [
+            item
+            for item in directory.iterdir()
+            if item.is_file() and item.suffix.lower() in SUPPORTED_IMAGE_EXTENSIONS
+        ]
+        raw_files.sort(key=lambda x: x.name)
+
+        # 🚨 FIX: Save the full Path object, not just file_path.name
+        valid_paths = []
+        for file_path in raw_files:
+            try:
+                with Image.open(file_path) as img:
+                    img.verify()
+                valid_paths.append(file_path)  # Keep the full Path object!
+            except Exception:
+                print(
+                    f"[SECURITY SHIELD] Discarded fake or corrupted image: {file_path.name}"
+                )
+
+        return valid_paths
+
+    def process_path(self, target_str_path: str) -> tuple[str, str | None, list[str]]:
+        """
+        Processes any input file or folder string path using Path objects.
+        Returns a tuple of (folder_path_str, starting_file_name_str, list_of_valid_filenames)
+        """
+        path = Path(target_str_path)
+        target_folder = path if path.is_dir() else path.parent
+        target_starting_file = None if path.is_dir() else path.name
+
+        valid_files = self.scan_and_validate_directory(target_folder)
+
+        # Return string primitives back to the main UI functions
+        return str(target_folder), target_starting_file, valid_files

@@ -1,15 +1,13 @@
 import ctypes
-import os
-import platform
 import subprocess
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import (
     QEasingCurve,
     QPoint,
     QPropertyAnimation,
     QRect,
-    QSettings,
     QSize,
     Qt,
     QTimer,
@@ -50,23 +48,6 @@ try:
 except ImportError:
     PILLOW_AVAILABLE = False
 
-# Check for Local Lossless Binaries on your drive
-# Calculate the path to your new binaries folder
-
-
-if os.name == "nt":
-    BINARY_FILE = "jpegtran.exe"
-elif platform.system() == "Darwin":
-    BINARY_FILE = "jpegtran_mac"
-else:
-    BINARY_FILE = "jpegtran_linux"
-
-# Verify if the binary is sitting in your project directory
-BINARY_PATH = os.path.join(app_constants.APP_ROOT_DIR, "binaries", BINARY_FILE)
-LOSSLESS_AVAILABLE = os.path.exists(BINARY_PATH)
-
-ICON_PATH = os.path.join(app_constants.APP_ROOT_DIR, "icon.png")
-
 
 class FastCropApp(QMainWindow):
     def __init__(self):
@@ -75,17 +56,18 @@ class FastCropApp(QMainWindow):
         self.resize(900, 700)
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()
-        self.file_manager = FileManager()
+        self.file_manager = FileManager(self.settings_manager)
+        self.image_manager = ImageProcessor()
         #  Create a single-shot timer for layout throttling
         self.resize_throttle_timer = QTimer(self)
         self.resize_throttle_timer.setSingleShot(True)
         self.resize_throttle_timer.timeout.connect(self.execute_deferred_resize_recalc)
 
         #  Core Application Icon Registry Initialization
-
-        if os.path.exists(ICON_PATH):
-            app_icon = QIcon(ICON_PATH)
-            self.setWindowIcon(app_icon)  # Sets Title Bar Icon
+        icon_path = app_constants.APP_ROOT_DIR / ui_constants.ICON_FILENAME
+        if icon_path.exists():
+            # Convert Path to str since some older PyQt versions prefer string primitives for UI assets
+            self.setWindowIcon(QIcon(str(icon_path)))  # Sets Title Bar Icon
 
         self.setStyleSheet(
             self.file_manager.load_asset(
@@ -145,11 +127,11 @@ class FastCropApp(QMainWindow):
             native_font
         )  # Binds the internal dropdown view list too!
 
-        if LOSSLESS_AVAILABLE:
+        if self.image_manager.is_lossless_available:
             self.combo_engine.addItem("Lossless")
         if PILLOW_AVAILABLE:
             self.combo_engine.addItem("Pixel-Perfect")
-        if not LOSSLESS_AVAILABLE and PILLOW_AVAILABLE:
+        if not self.image_manager.is_lossless_available and PILLOW_AVAILABLE:
             self.combo_engine.setCurrentText("Pixel-Perfect")
         self.toolbar.addWidget(self.combo_engine)
 
@@ -557,59 +539,6 @@ class FastCropApp(QMainWindow):
 
         self.main_layout.addWidget(self.info_bar_widget)
 
-        # -----------------------------------------------------------------
-
-    # FILE PIPELINE AND RENDERING LOGIC
-    # -----------------------------------------------------------------
-    def select_directory(self):
-        settings = QSettings("LossLessCropTeam", "LossLessCrop")
-        # Pull down folder path registry memory fallback
-        fallback_path = settings.value("last_used_folder", "", type=str)
-
-        # Pass path memory directly as the starting browser location parameters argument
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select Image Directory",
-            fallback_path if os.path.exists(fallback_path) else "",
-        )
-        if not directory:
-            return
-
-        self.image_folder = directory
-        folder_name = os.path.basename(os.path.normpath(directory))
-        self.lbl_folder_name.setText(f"📁 {folder_name}")
-
-        # 1. Define our verified, universally safe format whitelist
-        SAFE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
-
-        # Pull all files matching the whitelist extension pool
-        raw_files = [
-            f for f in os.listdir(directory) if f.lower().endswith(SAFE_EXTENSIONS)
-        ]
-        raw_files.sort()
-
-        # 2. Defensive Pass: Filter out fake/corrupted images using binary headers
-        self.image_files = []
-        for filename in raw_files:
-            test_path = os.path.join(self.image_folder, filename)
-            try:
-                # Open just the head bytes. If it's an exe or raw data block, it will fail here.
-                with Image.open(test_path) as img:
-                    img.verify()
-                self.image_files.append(filename)
-            except Exception:
-                # Silently log the bypass in the terminal and keep moving
-                print(
-                    f"[SECURITY SHIELD] Discarded fake, renamed, or corrupted image file: {filename}"
-                )
-
-        # 3. Viewport Dispatch
-        if self.image_files:
-            self.current_index = 0
-            self.load_image_to_viewport()
-        else:
-            self.lbl_status.setText("No valid, readable images found in directory.")
-
     def load_image_to_viewport(self):
         if (
             self.current_index == -1
@@ -870,7 +799,10 @@ class FastCropApp(QMainWindow):
             return False
 
         # 1. Quick setting check
-        if self.combo_engine.currentText() != "Lossless" or not LOSSLESS_AVAILABLE:
+        if (
+            self.combo_engine.currentText() != "Lossless"
+            or not self.image_manager.is_lossless_available
+        ):
             return False
 
         return getattr(self, "is_current_file_true_jpeg", False)
@@ -883,8 +815,7 @@ class FastCropApp(QMainWindow):
             return False
 
         # Original asset fallback defaults
-        original_name = self.image_files[self.current_index]
-        current_filepath = os.path.join(self.image_folder, original_name)
+        current_filepath = self.image_files[self.current_index]
         use_lossless = self.determine_if_lossless_active()
 
         box_rect = self.crop_box_selector.geometry()
@@ -893,7 +824,11 @@ class FastCropApp(QMainWindow):
         if not pixmap:
             return False
 
-        _, file_ext = os.path.splitext(self.image_files[self.current_index].lower())
+        # 1. Grab the active path object safely
+        current_path = self.image_files[self.current_index]
+
+        # 2. Extract the lowercase extension directly using pathlib suffix properties
+        file_ext = current_path.suffix.lower()
 
         # Map raw window pixels back onto underlying higher-resolution source geometries
         lbl_w, lbl_h = (
@@ -931,7 +866,7 @@ class FastCropApp(QMainWindow):
         else:
             # If overwrite is OFF, ensure we create unique versions
             unique_path_object = self.file_manager.generate_unique_crop_path(
-                self.image_folder, original_name
+                self.image_folder, current_filepath.name
             )
             output_filepath = str(unique_path_object)
 
@@ -979,7 +914,7 @@ class FastCropApp(QMainWindow):
 
             crop_argument = f"{crop_width}x{crop_height}+{crop_left}+{crop_top}"
             command = [
-                BINARY_PATH,
+                self.image_manager.binary_path,
                 "-crop",
                 crop_argument,
                 "-outfile",
@@ -1018,7 +953,7 @@ class FastCropApp(QMainWindow):
                 print(
                     f" 📝 Format Notice : Non-JPEG format ({file_ext.upper()}) dynamically routed to Pillow engine."
                 )
-            elif not LOSSLESS_AVAILABLE:
+            elif not self.image_manager.is_lossless_available:
                 print(
                     " ⚠️ Engine Notice : jpegtran binary missing from environment. Defaulting to pixel re-compression."
                 )
@@ -1377,9 +1312,12 @@ class FastCropApp(QMainWindow):
     def save_application_state(self):
         """Updates the internal settings data model and passes it to the manager to store."""
 
-        # 1. Update the master values that ALWAYS store
-        if self.image_folder:
-            self.settings.last_used_folder = self.image_folder
+        #  SAFE TRAP: Only update history if the user actually has a valid folder open!
+        if hasattr(self, "image_folder") and self.image_folder:
+            from pathlib import Path
+
+            if Path(self.image_folder).exists():
+                self.settings.last_used_folder = self.image_folder
 
         self.settings.remember_settings = self.cfg_remember_settings.isChecked()
         self.settings.main_window_geometry_blob = self.saveGeometry()
@@ -1446,13 +1384,22 @@ class FastCropApp(QMainWindow):
         if self.settings.persist_main_win and self.settings.main_window_geometry_blob:
             self.restoreGeometry(self.settings.main_window_geometry_blob)
 
-        if hasattr(self, "zoom_hud") and self.settings.persist_hud_win:
-            self.zoom_hud.setGeometry(
-                self.settings.hud_win_x,
-                self.settings.hud_win_y,
-                self.settings.hud_win_w,
-                self.settings.hud_win_h,
-            )
+        # CENTRALIZED HUD GEOMETRY: Handle sizing, fallbacks, and user flags in ONE spot
+        if hasattr(self, "zoom_hud"):
+            if self.settings.persist_hud_win:
+                # If they want to remember it, restore their exact coordinates
+                self.zoom_hud.setGeometry(
+                    self.settings.hud_win_x,
+                    self.settings.hud_win_y,
+                    self.settings.hud_win_w,
+                    self.settings.hud_win_h,
+                )
+            else:
+                # If they UNCHECKED "remember", force it to the clean default fallback spot
+                main_geom = self.geometry()
+                self.zoom_hud.setGeometry(
+                    main_geom.right() + 10, main_geom.top() + 50, 250, 250
+                )
 
         # 4. Handle Zoom HUD Window Trigger
         if self.settings.show_preview_hud:
@@ -1470,31 +1417,33 @@ class FastCropApp(QMainWindow):
         self.update_resolution_metrics_display()
 
         # 6. Folder Automation & Boot Checks
-        if (
-            self.settings.auto_open_folder
-            and self.settings.last_used_folder
-            and os.path.exists(self.settings.last_used_folder)
-        ):
+        if self.settings.auto_open_folder and self.settings.last_used_folder:
             self.automate_folder_loading(self.settings.last_used_folder)
         else:
             self.show_startup_splash_hud()
 
     def automate_folder_loading(self, target_folder_str: str):
         """Asks the FileManager to scan the directory and updates current tracking indices."""
-        # Scan via our new manager layer
-        self.image_files = self.file_manager.scan_image_directory(target_folder_str)
+        if not target_folder_str:
+            self.show_startup_splash_hud()
+            return
 
-        if self.image_files:
-            self.image_folder = target_folder_str
-            self.current_index = 0  # Move from -1 to the first valid image!
+        # 1. Process the folder string into our unified pipeline output tuple
+        folder, _, valid_files = self.file_manager.process_path(target_folder_str)
 
-            # Update your UI folder tag labels using modern pathlib property calls
-            self.lbl_folder_name.setText(f"📁 {self.image_files[0].parent.name}")
-            self.load_image_to_viewport()
-        else:
-            # Fall back to empty states if the folder has zero supported files
+        # 2. Match your old fallback logic if no valid image files are present
+        if not valid_files:
             self.current_index = -1
             self.show_startup_splash_hud()
+            return
+
+        # 3. Hand off the clean dataset to our central UI engine to paint the canvas
+        self.update_ui_after_loadin_folder(
+            folder_path=folder,
+            valid_files=valid_files,
+            target_file=None,  # Defaults index sorting directly to 0
+            error_msg="",  # Not needed since splash handles the empty state above
+        )
 
     def show_startup_splash_hud(self):
         """Centers and prints your custom floating guide HUD card over an empty project workspace."""
@@ -1907,30 +1856,14 @@ class FastCropApp(QMainWindow):
                 self.lbl_telemetry_hud.hide()
 
     def toggle_zoom_hud_window_visibility(self):
-        """Displays or shuts down the floating zoom view based on checkbox rules."""
-        if self.cfg_show_preview.isChecked():
-            settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        """Strictly displays or hides the floating zoom view based on checkbox rules."""
+        if not hasattr(self, "zoom_hud"):
+            return
 
-            # 1. Force the window into existence first so the OS layout initializes
+        if self.cfg_show_preview.isChecked():
+            # Simply bring the window into view at whatever size it currently is
             self.zoom_hud.show()
             self.zoom_hud.raise_()
-
-            # 2. Immediately look up our explicit layout coordinates
-            hx = settings.value("hud_win_x")
-            hy = settings.value("hud_win_y")
-            hw = settings.value("hud_win_w")
-            hh = settings.value("hud_win_h")
-
-            # 🌟 FIXED: If explicit dimensions exist, enforce them AFTER the window is shown!
-            if hx is not None and hy is not None and hw is not None and hh is not None:
-                self.zoom_hud.setGeometry(int(hx), int(hy), int(hw), int(hh))
-            else:
-                # Helpfully place it to the right of the main window ONLY if it's the first run ever
-                main_geom = self.geometry()
-                self.zoom_hud.setGeometry(
-                    main_geom.right() + 10, main_geom.top() + 50, 250, 250
-                )
-
             self.update_zoom_hud_payload()
         else:
             self.zoom_hud.hide()
@@ -1980,9 +1913,7 @@ class FastCropApp(QMainWindow):
                 try:
                     # Slice the high-speed image array straight from our memory handle
                     # We open a tiny separate copy so it doesn't collide with saving rules
-                    file_path = os.path.join(
-                        self.image_folder, self.image_files[self.current_index]
-                    )
+                    file_path = self.image_files[self.current_index]
                     with Image.open(file_path) as img:
                         # Apply orientation rotations if the user flipped the canvas
                         if (
@@ -2007,144 +1938,6 @@ class FastCropApp(QMainWindow):
         if event.mimeData().hasUrls():
             # Dynamically change the cursor arrow to a premium link/drop icon copy state
             event.acceptProposedAction()
-
-    def dropEvent(self, event):
-        """Fires the exact millisecond the user lets go of their mouse drop cargo."""
-        urls = event.mimeData().urls()
-        if not urls:
-            return
-
-        # Extract the absolute local filesystem path from the very first dropped item
-        dropped_path = urls[0].toLocalFile()
-        if not dropped_path:
-            return
-
-        target_folder = ""
-        target_starting_file = None
-
-        # -------------------------------------------------------------
-        # 🌟 INDEPENDENT PATH PARSING ENGINE AUTOMATION 🌟
-        # -------------------------------------------------------------
-        if os.path.isdir(dropped_path):
-            # PIPELINE A: The asset dropped is a folder container raw
-            target_folder = dropped_path
-
-        elif os.path.isfile(dropped_path):
-            # PIPELINE B: The asset dropped is an individual image file path
-            # Isolate its parent folder directory, and capture the specific filename string
-            target_folder = os.path.dirname(dropped_path)
-            target_starting_file = os.path.basename(dropped_path)
-        # -------------------------------------------------------------
-
-        # Parse the folder queue matching our calculated target directory profiles
-        if target_folder and os.path.exists(target_folder):
-            self.image_folder = target_folder
-            folder_name = os.path.basename(os.path.normpath(target_folder))
-            self.lbl_folder_name.setText(f"📁 {folder_name}")
-
-            # Enforce strict defensive extension format parsing whitelists
-            SAFE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
-            raw_files = [
-                f
-                for f in os.listdir(target_folder)
-                if f.lower().endswith(SAFE_EXTENSIONS)
-            ]
-            raw_files.sort()
-
-            # Run image header validation check passes to discard bad assets early
-            self.image_files = []
-            for filename in raw_files:
-                test_path = os.path.join(self.image_folder, filename)
-                try:
-                    with Image.open(test_path) as img:
-                        img.verify()
-                    self.image_files.append(filename)
-                except Exception:
-                    pass
-
-            # Workspace Viewport Integration Dispatchers
-            if self.image_files:
-                # If a single file was dropped, search the array index map to find its position
-                if target_starting_file and (target_starting_file in self.image_files):
-                    self.current_index = self.image_files.index(target_starting_file)
-                else:
-                    self.current_index = 0
-
-                    # Force view refresh
-                self.load_image_to_viewport()
-
-                # Resync QSettings registry so the folder browser stays matched
-                QSettings("LossLessCropTeam", "LossLessCrop").setValue(
-                    "last_used_folder", self.image_folder
-                )
-            else:
-                self.lbl_status.setText(
-                    "No valid, readable images found in dropped payload."
-                )
-
-    def select_individual_image_file(self):
-        """Manually picks a specific image file via shortcut, cacing up the surrounding directory."""
-        settings = QSettings("LossLessCropTeam", "LossLessCrop")
-
-        # Pull down our saved path registry memory fallback
-        fallback_path = settings.value("last_used_folder", "", type=str)
-
-        if not fallback_path or not os.path.exists(fallback_path):
-            fallback_path = ""
-
-        # Open individual file-centric prompt target filter dialog bounds
-        file_filter = "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
-        selected_file_path, _ = QFileDialog.getOpenFileName(
-            self, "Target Starting Image File", fallback_path, file_filter
-        )
-
-        if not selected_file_path:
-            return  # User closed the prompt browser window smoothly
-
-        # Deconstruct absolute parent folder string paths and target file properties
-        target_folder = os.path.dirname(selected_file_path)
-        target_filename = os.path.basename(selected_file_path)
-
-        # Update application workspace states
-        self.image_folder = target_folder
-        folder_name = os.path.basename(os.path.normpath(target_folder))
-        self.lbl_folder_name.setText(f"📁 {folder_name}")
-
-        # Parse the surrounding container assets using strict whitelists shields
-        SAFE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
-        raw_files = [
-            f for f in os.listdir(target_folder) if f.lower().endswith(SAFE_EXTENSIONS)
-        ]
-        raw_files.sort()
-
-        # Execute header validation checking passes
-        self.image_files = []
-        for filename in raw_files:
-            test_path = os.path.join(self.image_folder, filename)
-            try:
-                with Image.open(test_path) as img:
-                    img.verify()
-                self.image_files.append(filename)
-            except Exception:
-                pass
-
-        # 🚀 WORKSPACE VIEWPORT LAYOUT DISPATCHERS
-        if self.image_files:
-            # INDEX LOOKUP LOOP: Find exactly where our selected photo sits in the queue array!
-            if target_filename in self.image_files:
-                self.current_index = self.image_files.index(target_filename)
-            else:
-                self.current_index = 0
-
-            # Render the targeted image onto your canvas view layout channels
-            self.load_image_to_viewport()
-
-            # Resync persistent folder memory boundaries
-            settings.setValue("last_used_folder", self.image_folder)
-        else:
-            self.lbl_status.setText(
-                "No valid, readable images found in target folder directory."
-            )
 
     def get_current_forced_ratio(self):
         """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
@@ -2250,6 +2043,103 @@ class FastCropApp(QMainWindow):
         )
         if hasattr(self, "zoom_hud"):
             self.update_zoom_hud_payload()
+
+    def update_ui_after_loadin_folder(
+        self,
+        folder_path: str,
+        valid_files: list,
+        target_file: str = None,
+        error_msg: str = "",
+    ):
+        """Helper method to handle the shared UI update logic and index mapping."""
+        if not valid_files:
+            self.image_files = []
+            self.current_index = -1
+
+            if error_msg:
+                self.lbl_status.setText(error_msg)
+            else:
+                self.show_startup_splash_hud()
+            return
+
+        self.image_folder = folder_path
+        self.image_files = valid_files
+
+        folder_name = Path(folder_path).name
+        self.lbl_folder_name.setText(f"📁 {folder_name}")
+
+        # 🚨 FIX: Match string target_file against the .name property of Path elements
+        if target_file:
+            # Find matching Path element by its filename string
+            matched_index = next(
+                (i for i, p in enumerate(self.image_files) if p.name == target_file),
+                None,
+            )
+            self.current_index = matched_index if matched_index is not None else 0
+        else:
+            self.current_index = 0
+
+        # Refresh interface views and save path history
+        self.load_image_to_viewport()
+        self.settings_manager.save_last_used_folder(folder_path)
+
+    def select_directory(self):
+        fallback_path = self.settings_manager.get_fallback_path_str()
+
+        directory = QFileDialog.getExistingDirectory(
+            self, "Select Image Directory", fallback_path
+        )
+        if not directory:
+            return
+
+        _, _, valid_files = self.file_manager.process_path(directory)
+
+        self.update_ui_after_loadin_folder(
+            folder_path=directory,
+            valid_files=valid_files,
+            error_msg="No valid, readable images found in directory.",
+        )
+
+    def dropEvent(self, event):
+        urls = event.mimeData().urls()
+        if not urls:
+            return
+
+        dropped_path = urls[0].toLocalFile()
+        if not dropped_path or not Path(dropped_path).exists():
+            return
+
+        folder, starting_file, valid_files = self.file_manager.process_path(
+            dropped_path
+        )
+
+        self.update_ui_after_loadin_folder(
+            folder_path=folder,
+            valid_files=valid_files,
+            target_file=starting_file,
+            error_msg="No valid, readable images found in dropped payload.",
+        )
+
+    def select_individual_image_file(self):
+        fallback_path = self.settings_manager.get_fallback_path_str()
+        file_filter = "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
+
+        selected_file_path, _ = QFileDialog.getOpenFileName(
+            self, "Target Starting Image File", fallback_path, file_filter
+        )
+        if not selected_file_path:
+            return
+
+        folder, starting_file, valid_files = self.file_manager.process_path(
+            selected_file_path
+        )
+
+        self.update_ui_after_loadin_folder(
+            folder_path=folder,
+            valid_files=valid_files,
+            target_file=starting_file,
+            error_msg="No valid, readable images found in target folder directory.",
+        )
 
 
 if __name__ == "__main__":
