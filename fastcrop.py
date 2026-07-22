@@ -108,42 +108,10 @@ class FastCropApp(QMainWindow):
         # -------------------------------------------------------------
         # MIDDLE VISUAL DISPLAY CANVAS PANEL
         # -------------------------------------------------------------
-        self.image_display_container = QLabel()
-        self.image_display_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_display_container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.image_display_container.setStyleSheet(
-            "background-color: #1a1a1a; border: 1px solid #333;"
-        )
-
-        self.image_display_container.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored
-        )
-        self.main_layout.addWidget(self.image_display_container, stretch=1)
-
-        # Attach Interactive Mouse Targets
-        self.image_display_container.mousePressEvent = self.on_mouse_press
-        self.image_display_container.mouseMoveEvent = self.on_mouse_move
-        self.image_display_container.mouseReleaseEvent = self.on_mouse_release
-
-        # Construct the secondary, floating text overlay widget
-        self.lbl_telemetry_hud = QLabel(self.central_widget)
-        self.lbl_telemetry_hud.setObjectName("TelemetryHUD")
-        self.lbl_telemetry_hud.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents
-        )  # Clicks pass right through it!
-        self.lbl_telemetry_hud.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
-        self.lbl_telemetry_hud.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
+        self.build_main_canvas()
         # -------------------------------------------------------------
-        #           SIDE DRAWER
-        # -----------------------------------------------------
+        # SIDE DRAWER
+        # -------------------------------------------------------------
         self.settings_drawer = SettingsDrawer(self, self.file_manager)
 
         # Maintain your legacy geometry tracking shortcuts
@@ -157,113 +125,18 @@ class FastCropApp(QMainWindow):
         )
 
         self.drag_start_origin = QPoint()
-
-        #   COMMAND OVERLAY PANEL
-        self.lbl_commands_overlay = QLabel(self.image_display_container)
-        self.lbl_commands_overlay.hide()  # Will show once an image loads
-        self.lbl_commands_overlay.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES
-            )
-        )
-        # Populate the exact hotkey roadmap text
-        self.lbl_commands_overlay.setText(
-            self.file_manager.load_asset(
-                ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
-            )
-        )
-
-        # 🌟 SHADOW EFFECT A: For your top-left Shortcut Commands Overlay
-        commands_shadow = QGraphicsDropShadowEffect(self)
-        commands_shadow.setBlurRadius(4)  # Softness of the shadow edge
-        commands_shadow.setColor(QColor("#000000"))  # Pure black shadow mapping
-        commands_shadow.setOffset(1, 1)  # Shunt the shadow down 1px and right 1px
-        self.lbl_commands_overlay.setGraphicsEffect(commands_shadow)
-
-        # 🌟 SHADOW EFFECT B: For your lower-left Telemetry HUD Card
-        telemetry_shadow = QGraphicsDropShadowEffect(self)
-        telemetry_shadow.setBlurRadius(3)
-        telemetry_shadow.setColor(QColor("#000000"))
-        telemetry_shadow.setOffset(1, 1)
-        self.lbl_telemetry_hud.setGraphicsEffect(telemetry_shadow)
-
-        self.lbl_notification = QLabel(self.image_display_container)
-        self.lbl_notification.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.lbl_notification.setWordWrap(True)
-        self.lbl_notification.hide()
-
-        self.lbl_notification.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_NOTIFICATIONS, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(15)
-        shadow.setColor(QColor(0, 0, 0, 180))
-        shadow.setOffset(0, 4)
-        self.lbl_notification.setGraphicsEffect(shadow)
-
-        self.notification_timer = QTimer()
-        self.notification_timer.setInterval(1000)
-        self.notification_timer.setSingleShot(True)
-        self.notification_timer.timeout.connect(self.lbl_notification.hide)
-
+        # -------------------------------------------------------------
+        #   COMMANDS and TELEMETRY OVERLAYS
+        # -------------------------------------------------------------
+        self.build_canvas_overlays()
         # =============================================================
         # FLOATING INTERACTIVE HUB SPLASH HUD OVERLAY (Collision-Proof)
         # =============================================================
-        self.lbl_splash_hud = QLabel(self.central_widget)
-        self.lbl_splash_hud.setObjectName("SplashHUD")
-        # Ensure mouse clicks pass straight through the text box so they don't block canvas drops
-        self.lbl_splash_hud.setAttribute(
-            Qt.WidgetAttribute.WA_TransparentForMouseEvents
-        )
-        self.lbl_splash_hud.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Premium Obsidian themed typography card styling layout with 85% translucent backing
-        self.lbl_splash_hud.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        # Build the exact typographic text block structure using clean Unicode pointers
-        # We increase the padding gaps inside the inner line elements for greater vertical depth
-        splash_text = self.file_manager.load_asset(
-            ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
-        )
-        self.lbl_splash_hud.setText(splash_text)
-        self.lbl_splash_hud.hide()  # Maintained hidden by default until evaluated on launch
-
+        self.build_floating_hub()
         # -------------------------------------------------------------
         # BOTTOM INFO BAR LAYOUT PANEL (Split Structure)
         # -------------------------------------------------------------
-        self.info_bar_widget = QWidget()
-        self.info_bar = QHBoxLayout(self.info_bar_widget)
-        self.info_bar.setContentsMargins(10, 5, 10, 5)
-
-        # Left spacing stretch item to balance center filenames tracking
-        self.info_bar.addStretch(1)
-
-        # Primary Centered File Status Label
-        self.lbl_status = QLabel("Ready. Open a folder to start cropping.")
-        self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500;")
-        self.info_bar.addWidget(self.lbl_status)
-
-        # Secondary Right Edge Metrics Tracker
-        self.info_bar.addStretch(1)
-        self.lbl_metrics = QLabel("")
-        self.lbl_metrics.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.lbl_metrics.setStyleSheet(
-            "color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;"
-        )
-        self.info_bar.addWidget(self.lbl_metrics)
-
-        self.main_layout.addWidget(self.info_bar_widget)
+        self.build_info_bar()
 
     def load_image_to_viewport(self):
         if (
@@ -1866,6 +1739,145 @@ class FastCropApp(QMainWindow):
             target_file=starting_file,
             error_msg="No valid, readable images found in target folder directory.",
         )
+
+    def build_main_canvas(self):
+
+        self.image_display_container = QLabel()
+        self.image_display_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_display_container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.image_display_container.setStyleSheet(
+            "background-color: #1a1a1a; border: 1px solid #333;"
+        )
+
+        self.image_display_container.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored
+        )
+        self.main_layout.addWidget(self.image_display_container, stretch=1)
+
+        # Attach Interactive Mouse Targets
+        self.image_display_container.mousePressEvent = self.on_mouse_press
+        self.image_display_container.mouseMoveEvent = self.on_mouse_move
+        self.image_display_container.mouseReleaseEvent = self.on_mouse_release
+
+        # Construct the secondary, floating text overlay widget
+        self.lbl_telemetry_hud = QLabel(self.central_widget)
+        self.lbl_telemetry_hud.setObjectName("TelemetryHUD")
+        self.lbl_telemetry_hud.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )  # Clicks pass right through it!
+        self.lbl_telemetry_hud.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+        )
+        self.lbl_telemetry_hud.setStyleSheet(
+            self.file_manager.load_asset(
+                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
+            )
+        )
+
+        self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
+
+    def build_canvas_overlays(self):
+        self.lbl_commands_overlay = QLabel(self.image_display_container)
+        self.lbl_commands_overlay.hide()  # Will show once an image loads
+        self.lbl_commands_overlay.setStyleSheet(
+            self.file_manager.load_asset(
+                ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES
+            )
+        )
+        # Populate the exact hotkey roadmap text
+        self.lbl_commands_overlay.setText(
+            self.file_manager.load_asset(
+                ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
+            )
+        )
+
+        #  SHADOW EFFECT A: For your top-left Shortcut Commands Overlay
+        commands_shadow = QGraphicsDropShadowEffect(self)
+        commands_shadow.setBlurRadius(4)  # Softness of the shadow edge
+        commands_shadow.setColor(QColor("#000000"))  # Pure black shadow mapping
+        commands_shadow.setOffset(1, 1)  # Shunt the shadow down 1px and right 1px
+        self.lbl_commands_overlay.setGraphicsEffect(commands_shadow)
+
+        #  SHADOW EFFECT B: For your lower-left Telemetry HUD Card
+        telemetry_shadow = QGraphicsDropShadowEffect(self)
+        telemetry_shadow.setBlurRadius(3)
+        telemetry_shadow.setColor(QColor("#000000"))
+        telemetry_shadow.setOffset(1, 1)
+        self.lbl_telemetry_hud.setGraphicsEffect(telemetry_shadow)
+
+        self.lbl_notification = QLabel(self.image_display_container)
+        self.lbl_notification.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.lbl_notification.setWordWrap(True)
+        self.lbl_notification.hide()
+
+        self.lbl_notification.setStyleSheet(
+            self.file_manager.load_asset(
+                ui_constants.STYLE_NOTIFICATIONS, ui_constants.FOLDER_STYLES
+            )
+        )
+
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 180))
+        shadow.setOffset(0, 4)
+        self.lbl_notification.setGraphicsEffect(shadow)
+
+        self.notification_timer = QTimer()
+        self.notification_timer.setInterval(1000)
+        self.notification_timer.setSingleShot(True)
+        self.notification_timer.timeout.connect(self.lbl_notification.hide)
+
+    def build_floating_hub(self):
+        self.lbl_splash_hud = QLabel(self.central_widget)
+        self.lbl_splash_hud.setObjectName("SplashHUD")
+        # Ensure mouse clicks pass straight through the text box so they don't block canvas drops
+        self.lbl_splash_hud.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
+        self.lbl_splash_hud.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Premium Obsidian themed typography card styling layout with 85% translucent backing
+        self.lbl_splash_hud.setStyleSheet(
+            self.file_manager.load_asset(
+                ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES
+            )
+        )
+
+        # Build the exact typographic text block structure using clean Unicode pointers
+        # We increase the padding gaps inside the inner line elements for greater vertical depth
+        splash_text = self.file_manager.load_asset(
+            ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
+        )
+        self.lbl_splash_hud.setText(splash_text)
+        self.lbl_splash_hud.hide()  # Maintained hidden by default until evaluated on launch
+
+    def build_info_bar(self):
+        self.info_bar_widget = QWidget()
+        self.info_bar = QHBoxLayout(self.info_bar_widget)
+        self.info_bar.setContentsMargins(10, 5, 10, 5)
+
+        # Left spacing stretch item to balance center filenames tracking
+        self.info_bar.addStretch(1)
+
+        # Primary Centered File Status Label
+        self.lbl_status = QLabel("Ready. Open a folder to start cropping.")
+        self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500;")
+        self.info_bar.addWidget(self.lbl_status)
+
+        # Secondary Right Edge Metrics Tracker
+        self.info_bar.addStretch(1)
+        self.lbl_metrics = QLabel("")
+        self.lbl_metrics.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.lbl_metrics.setStyleSheet(
+            "color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;"
+        )
+        self.info_bar.addWidget(self.lbl_metrics)
+
+        self.main_layout.addWidget(self.info_bar_widget)
 
 
 if __name__ == "__main__":
