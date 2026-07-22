@@ -34,6 +34,8 @@ from PyQt6.QtWidgets import (
 )
 
 import config.ui_constants as ui_constants
+from managers.settings_manager import SettingsManager
+from models.app_settings import AppSettings
 from widgets.floating_zoom_preview import FloatingZoomPreview
 
 # Check for Pillow availability
@@ -68,7 +70,8 @@ class FastCropApp(QMainWindow):
         super().__init__()
         self.setWindowTitle("LossLess Crop")
         self.resize(900, 700)
-
+        self.settings_manager = SettingsManager()
+        self.settings = AppSettings()
         #  Create a single-shot timer for layout throttling
         self.resize_throttle_timer = QTimer(self)
         self.resize_throttle_timer.setSingleShot(True)
@@ -1381,179 +1384,156 @@ class FastCropApp(QMainWindow):
 
     def closeEvent(self, event):
         """Standard PyQt window intercept routine executing right before closing down."""
-        self.save_application_state()
+        try:
+            # 1. Capture current states, write to model, and commit via SettingsManager
+            self.save_application_state()
+        except Exception as e:
+            print(f"Critical Error: Failed to save application state: {e}")
 
-        if hasattr(self, "zoom_hud") and self.zoom_hud:
-            # This forces the borderless satellite HUD to cleanly terminate right alongside the main app
-            self.zoom_hud.close()
+        # 2. Safely close your borderless floating zoom HUD component
+        if hasattr(self, "zoom_hud") and self.zoom_hud is not None:
+            # Using a try/except ensures an issue here won't block the main application from exiting
+            try:
+                self.zoom_hud.close()
+            except RuntimeError:
+                # Handles edge-case where zoom_hud might have already been deleted/cleaned up by Qt
+                pass
 
+        # 3. Allow the default window close process to proceed
         event.accept()
 
     def save_application_state(self):
-        """Saves current tool states and path preferences into OS settings registries."""
-        settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        """Updates the internal settings data model and passes it to the manager to store."""
 
-        # Always store the current folder directory no matter what
-
+        # 1. Update the master values that ALWAYS store
         if self.image_folder:
-            settings.setValue("last_used_folder", self.image_folder)
+            self.settings.last_used_folder = self.image_folder
 
-        # ALWAYS write the master preference toggle first!
-        master_remember = self.cfg_remember_settings.isChecked()
-        settings.setValue("remember_settings", master_remember)
-        # ALWAYS save geometry profiles, but we only restore them if 'Remember
-        settings.setValue("main_window_geometry_blob", self.saveGeometry())
+        self.settings.remember_settings = self.cfg_remember_settings.isChecked()
+        self.settings.main_window_geometry_blob = self.saveGeometry()
 
         if hasattr(self, "zoom_hud"):
-            settings.setValue("hud_win_x", self.zoom_hud.x())
-            settings.setValue("hud_win_y", self.zoom_hud.y())
-            settings.setValue("hud_win_w", self.zoom_hud.width())
-            settings.setValue("hud_win_h", self.zoom_hud.height())
-            settings.setValue("show_preview_hud", self.cfg_show_preview.isChecked())
+            self.settings.hud_win_x = self.zoom_hud.x()
+            self.settings.hud_win_y = self.zoom_hud.y()
+            self.settings.hud_win_w = self.zoom_hud.width()
+            self.settings.hud_win_h = self.zoom_hud.height()
+            self.settings.show_preview_hud = self.cfg_show_preview.isChecked()
 
-        # Write state variables if 'Remember settings' checkbox rule is active
-        if master_remember:
-            settings.setValue("persist_main_win", self.cfg_persist_main_win.isChecked())
-            settings.setValue("persist_hud_win", self.cfg_persist_hud_win.isChecked())
-            settings.setValue("auto_open_folder", self.cfg_auto_folder.isChecked())
-            settings.setValue("show_shortcuts", self.cfg_show_shortcuts.isChecked())
-            settings.setValue("show_toasts", self.cfg_show_toasts.isChecked())
-            settings.setValue("show_infobar", self.cfg_show_infobar.isChecked())
-            settings.setValue("show_filename", self.cfg_show_filename.isChecked())
-            settings.setValue("show_imgsize", self.cfg_show_imgsize.isChecked())
-            settings.setValue("conserve_selection", self.chk_preserve.isChecked())
-            settings.setValue("overwrite_files", self.chk_overwrite.isChecked())
-            settings.setValue("ratio_preference", self.combo_ratio.currentText())
-            settings.setValue("engine_preference", self.combo_engine.currentText())
-            settings.setValue("show_preview_hud", self.cfg_show_preview.isChecked())
+        # 2. Update toggle flags if 'Remember settings' is checked
+        if self.settings.remember_settings:
+            self.settings.persist_main_win = self.cfg_persist_main_win.isChecked()
+            self.settings.persist_hud_win = self.cfg_persist_hud_win.isChecked()
+            self.settings.auto_open_folder = self.cfg_auto_folder.isChecked()
+            self.settings.show_shortcuts = self.cfg_show_shortcuts.isChecked()
+            self.settings.show_toasts = self.cfg_show_toasts.isChecked()
+            self.settings.show_infobar = self.cfg_show_infobar.isChecked()
+            self.settings.show_filename = self.cfg_show_filename.isChecked()
+            self.settings.show_imgsize = self.cfg_show_imgsize.isChecked()
+            self.settings.conserve_selection = self.chk_preserve.isChecked()
+            self.settings.overwrite_files = self.chk_overwrite.isChecked()
+            self.settings.ratio_preference = self.combo_ratio.currentText()
+            self.settings.engine_preference = self.combo_engine.currentText()
+            self.settings.show_preview_hud = self.cfg_show_preview.isChecked()
+
+        # 3. Offload the file IO entirely to the manager
+        self.settings_manager.save(self.settings)
 
     def load_application_state(self):
-        """Restores previous session user state conditions on startup safely handling OS registries."""
-        settings = QSettings("LossLessCropTeam", "LossLessCrop")
+        """Fetches the state data model from the manager and pushes it to the layout views."""
+        # 1. Ask the manager to handle all disk/registry processing
+        self.settings = self.settings_manager.load()
 
-        # Helper function to safely translate OS string registries ("true"/"false") into Python booleans
+        # 2. Push the completed data container straight into the visual interface
+        self.apply_settings_to_ui()
 
-        def safe_bool(val, default):
-            if val is None:
-                return default
-            if isinstance(val, bool):
-                return val
-            if isinstance(val, int):
-                return bool(val)
-            return str(val).lower() in ("true", "1", "yes")
+    def apply_settings_to_ui(self):
+        """Applies the internal data model properties directly to UI components."""
 
-        # 1. Parse the master memory rule
-        raw_remember = settings.value("remember_settings", True)
-        remember = safe_bool(raw_remember, True)
-        self.cfg_remember_settings.setChecked(remember)
+        # 1. Configure master settings control rule
+        self.cfg_remember_settings.setChecked(self.settings.remember_settings)
 
-        if remember:
-            self.cfg_persist_main_win.setChecked(
-                safe_bool(settings.value("persist_main_win"), True)
-            )
-            self.cfg_persist_hud_win.setChecked(
-                safe_bool(settings.value("persist_hud_win"), True)
-            )
+        # If the user toggled off "remember settings", bypass visual layout population
+        if not self.settings.remember_settings:
+            self.show_startup_splash_hud()
+            return
 
-            if self.cfg_persist_main_win.isChecked():
-                main_geom_blob = settings.value("main_window_geometry_blob")
-                if main_geom_blob:
-                    self.restoreGeometry(main_geom_blob)
+        # 2. Restore Component Toggles & Checkboxes
+        self.cfg_persist_main_win.setChecked(self.settings.persist_main_win)
+        self.cfg_persist_hud_win.setChecked(self.settings.persist_hud_win)
+        self.cfg_auto_folder.setChecked(self.settings.auto_open_folder)
+        self.cfg_show_shortcuts.setChecked(self.settings.show_shortcuts)
+        self.cfg_show_toasts.setChecked(self.settings.show_toasts)
+        self.cfg_show_infobar.setChecked(self.settings.show_infobar)
+        self.cfg_show_filename.setChecked(self.settings.show_filename)
+        self.cfg_show_imgsize.setChecked(self.settings.show_imgsize)
+        self.chk_preserve.setChecked(self.settings.conserve_selection)
+        self.chk_overwrite.setChecked(self.settings.overwrite_files)
+        self.cfg_show_preview.setChecked(self.settings.show_preview_hud)
 
-            if hasattr(self, "zoom_hud") and self.cfg_persist_hud_win.isChecked():
-                hx = settings.value("hud_win_x")
-                hy = settings.value("hud_win_y")
-                hw = settings.value("hud_win_w")
-                hh = settings.value("hud_win_h")
-                if (
-                    hx is not None
-                    and hy is not None
-                    and hw is not None
-                    and hh is not None
-                ):
-                    self.zoom_hud.setGeometry(int(hx), int(hy), int(hw), int(hh))
+        # 3. Handle Geometry Layout Constraints
+        if self.settings.persist_main_win and self.settings.main_window_geometry_blob:
+            self.restoreGeometry(self.settings.main_window_geometry_blob)
 
-            # 2. Extract and translate all Boolean states safely using EXACT matching keys
-            self.cfg_auto_folder.setChecked(
-                safe_bool(settings.value("auto_open_folder"), False)
-            )
-            self.cfg_show_shortcuts.setChecked(
-                safe_bool(settings.value("show_shortcuts"), True)
-            )
-            self.cfg_show_toasts.setChecked(
-                safe_bool(settings.value("show_toasts"), True)
-            )
-            self.cfg_show_infobar.setChecked(
-                safe_bool(settings.value("show_infobar"), True)
-            )
-            self.cfg_show_filename.setChecked(
-                safe_bool(settings.value("show_filename"), True)
-            )
-            self.cfg_show_imgsize.setChecked(
-                safe_bool(settings.value("show_imgsize"), True)
-            )
-            self.chk_preserve.setChecked(
-                safe_bool(settings.value("conserve_selection"), True)
-            )
-            self.chk_overwrite.setChecked(
-                safe_bool(settings.value("overwrite_files"), False)
-            )
-            self.cfg_show_preview.setChecked(
-                safe_bool(settings.value("show_preview_hud"), False)
+        if hasattr(self, "zoom_hud") and self.settings.persist_hud_win:
+            self.zoom_hud.setGeometry(
+                self.settings.hud_win_x,
+                self.settings.hud_win_y,
+                self.settings.hud_win_w,
+                self.settings.hud_win_h,
             )
 
-            show_hud = safe_bool(settings.value("show_preview_hud"), False)
-            self.cfg_show_preview.setChecked(show_hud)
-            if show_hud:
-                self.toggle_zoom_hud_window_visibility()
+        # 4. Handle Zoom HUD Window Trigger
+        if self.settings.show_preview_hud:
+            self.toggle_zoom_hud_window_visibility()
 
-            # 3. Extract Dropdown String Values Safely
-            ratio = settings.value("ratio_preference", "Freeform")
-            if ratio and self.combo_ratio.findText(str(ratio)) != -1:
-                self.combo_ratio.setCurrentText(str(ratio))
+        # 5. Extract Dropdown String ComboBox Selections Safely
+        if self.combo_ratio.findText(self.settings.ratio_preference) != -1:
+            self.combo_ratio.setCurrentText(self.settings.ratio_preference)
 
-            engine = settings.value("engine_preference", "Pixel-Perfect")
-            if engine and self.combo_engine.findText(str(engine)) != -1:
-                self.combo_engine.setCurrentText(str(engine))
+        if self.combo_engine.findText(self.settings.engine_preference) != -1:
+            self.combo_engine.setCurrentText(self.settings.engine_preference)
 
-        # Refresh the UI layout elements to reflect the loaded choices
+        # Refresh structural UI systems
         self.apply_drawer_visibility_rules()
         self.update_resolution_metrics_display()
 
-        # 4. Folder Automation Check
-        last_folder = settings.value("last_used_folder", "")
+        # 6. Folder Automation & Boot Checks
         if (
-            last_folder
-            and isinstance(last_folder, str)
-            and os.path.exists(last_folder)
-            and remember
-            and self.cfg_auto_folder.isChecked()
+            self.settings.auto_open_folder
+            and self.settings.last_used_folder
+            and os.path.exists(self.settings.last_used_folder)
         ):
-            self.image_folder = last_folder
-            folder_name = os.path.basename(os.path.normpath(last_folder))
-            self.lbl_folder_name.setText(f"📁 {folder_name}")
-
-            SAFE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
-            self.image_files = [
-                f
-                for f in os.listdir(last_folder)
-                if f.lower().endswith(SAFE_EXTENSIONS)
-            ]
-            self.image_files.sort()
-
-            if self.image_files:
-                self.current_index = 0
-                self.load_image_to_viewport()
-
+            self.automate_folder_loading(self.settings.last_used_folder)
         else:
-            # 🌟 Startup is completely empty! Reveal our floating typographic guidelines HUD layout card 🌟
-            if hasattr(self, "lbl_splash_hud"):
-                self.lbl_splash_hud.show()
-                self.lbl_splash_hud.adjustSize()
-                cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
-                cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
-                self.lbl_splash_hud.move(cx, max(50, cy))
-                self.lbl_splash_hud.raise_()
+            self.show_startup_splash_hud()
+
+    def automate_folder_loading(self, target_folder):
+        """Handles parsing and opening images from the last validated path profile."""
+        self.image_folder = target_folder
+        folder_name = os.path.basename(os.path.normpath(target_folder))
+        self.lbl_folder_name.setText(f"📁 {folder_name}")
+
+        SAFE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+        self.image_files = [
+            f for f in os.listdir(target_folder) if f.lower().endswith(SAFE_EXTENSIONS)
+        ]
+        self.image_files.sort()
+
+        if self.image_files:
+            self.current_index = 0
+            self.load_image_to_viewport()
+        else:
+            self.show_startup_splash_hud()
+
+    def show_startup_splash_hud(self):
+        """Centers and prints your custom floating guide HUD card over an empty project workspace."""
+        if hasattr(self, "lbl_splash_hud"):
+            self.lbl_splash_hud.show()
+            self.lbl_splash_hud.adjustSize()
+            cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
+            cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
+            self.lbl_splash_hud.move(cx, max(50, cy))
+            self.lbl_splash_hud.raise_()
 
     def handle_left_click_release(self):
         """Finalizes left-click box drawing by processing grid alignment transformations."""
