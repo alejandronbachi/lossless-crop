@@ -38,6 +38,7 @@ from managers.image_manager import ImageProcessor
 from managers.settings_manager import SettingsManager
 from models.app_settings import AppSettings
 from widgets.floating_zoom_preview import FloatingZoomPreview
+from widgets.settings_drawer import SettingsDrawer
 
 # Check for Pillow availability
 try:
@@ -278,151 +279,12 @@ class FastCropApp(QMainWindow):
 
         self.lbl_telemetry_hud.hide()  # Hidden by default until bar collapses
 
-        #  CONSTRUCT THE SLIDING CONFIGURATION DRAWER INTERFACE
-        # We nest the drawer widget inside the main window, floating over the canvas
-        self.drawer_width = 240
-        self.drawer = QWidget(self.central_widget)
-        self.drawer.setObjectName("SettingsDrawer")
+        # Construct Settings Drawer
+        self.settings_drawer = SettingsDrawer(self, self.file_manager)
 
-        # Style the drawer with semi-transparent obsidian glass aesthetics
-        self.drawer.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_DRAWER, ui_constants.FOLDER_STYLES
-            )
-        )
-
-        # Build the structural menu inner checkboxes layout
-        self.drawer_layout = QVBoxLayout(self.drawer)
-        self.drawer_layout.setContentsMargins(15, 20, 15, 20)
-        self.drawer_layout.setSpacing(12)
-
-        # -------------------------------------------------------------
-        # CATEGORY 1: AUTOMATION & PERSISTENCE OPTIONS
-        # -------------------------------------------------------------
-        lbl_auto_section = QLabel("General")
-        lbl_auto_section.setStyleSheet(
-            "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;"
-        )
-        self.drawer_layout.addWidget(lbl_auto_section)
-
-        divider2 = QWidget()
-        divider2.setMinimumHeight(1)
-        divider2.setMaximumHeight(1)
-        divider2.setStyleSheet(
-            "background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;"
-        )
-        self.drawer_layout.addWidget(divider2)
-
-        self.cfg_remember_settings = QCheckBox("Save settings")
-        self.cfg_remember_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_remember_settings.setChecked(True)
-        self.drawer_layout.addWidget(self.cfg_remember_settings)
-
-        self.cfg_auto_folder = QCheckBox("Auto-open last folder")
-        self.cfg_auto_folder.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_auto_folder.setChecked(False)
-        self.drawer_layout.addWidget(self.cfg_auto_folder)
-
-        # -------------------------------------------------------------
-        # CATEGORY 2: SHOW / DISPLAY OPTIONS
-        # -------------------------------------------------------------
-        lbl_show_section = QLabel("Show / Display")
-        lbl_show_section.setStyleSheet(
-            "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 10px; padding-bottom: 2px;"
-        )
-        self.drawer_layout.addWidget(lbl_show_section)
-
-        divider1 = QWidget()
-        divider1.setMinimumHeight(1)
-        divider1.setMaximumHeight(1)
-        divider1.setStyleSheet(
-            "background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;"
-        )
-        self.drawer_layout.addWidget(divider1)
-
-        self.cfg_show_shortcuts = QCheckBox("Shortcuts Guide")
-        self.cfg_show_shortcuts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_shortcuts.setChecked(True)
-        self.cfg_show_shortcuts.stateChanged.connect(self.apply_drawer_visibility_rules)
-        self.drawer_layout.addWidget(self.cfg_show_shortcuts)
-
-        self.cfg_show_toasts = QCheckBox("Notifications")
-        self.cfg_show_toasts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_toasts.setChecked(True)
-        self.drawer_layout.addWidget(self.cfg_show_toasts)
-
-        self.cfg_show_infobar = QCheckBox("Bottom Info Bar")
-        self.cfg_show_infobar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_infobar.setChecked(True)
-        self.cfg_show_infobar.stateChanged.connect(self.apply_drawer_visibility_rules)
-        self.drawer_layout.addWidget(self.cfg_show_infobar)
-
-        self.cfg_show_filename = QCheckBox("Image Filename")
-        self.cfg_show_filename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_filename.setChecked(True)
-        self.cfg_show_filename.stateChanged.connect(self.update_telemetry_label)
-        self.drawer_layout.addWidget(self.cfg_show_filename)
-        #  Target resolution display toggles
-        self.cfg_show_imgsize = QCheckBox("Image Resolution")
-        self.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_imgsize.setChecked(True)
-        self.cfg_show_imgsize.stateChanged.connect(self.update_telemetry_label)
-        self.drawer_layout.addWidget(self.cfg_show_imgsize)
-
-        self.cfg_show_preview = QCheckBox("Preview")
-        self.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_show_preview.setToolTip("Display Zoom Preview HUD")
-        self.cfg_show_preview.setChecked(False)
-        self.cfg_show_preview.stateChanged.connect(
-            self.toggle_zoom_hud_window_visibility
-        )
-        self.drawer_layout.addWidget(self.cfg_show_preview)
-
-        # -------------------------------------------------------------
-        # CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE
-        # -------------------------------------------------------------
-        lbl_layout_section = QLabel("Layout Memory")
-        lbl_layout_section.setStyleSheet("""
-            QLabel {
-                color: #888888; 
-                font-size: 11px; 
-                font-weight: bold; 
-                text-transform: uppercase; 
-                letter-spacing: 1px; 
-                border: none; 
-                margin-top: 15px; 
-                padding-bottom: 2px;
-            }
-        """)
-        self.drawer_layout.addWidget(lbl_layout_section)
-
-        divider3 = QWidget()
-        divider3.setMinimumHeight(1)
-        divider3.setMaximumHeight(1)
-        divider3.setStyleSheet(
-            "background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;"
-        )
-        self.drawer_layout.addWidget(divider3)
-
-        self.cfg_persist_main_win = QCheckBox("Main Window")
-        self.cfg_persist_main_win.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_persist_main_win.setChecked(
-            True
-        )  # Checked by default for convenient startup
-        self.drawer_layout.addWidget(self.cfg_persist_main_win)
-
-        self.cfg_persist_hud_win = QCheckBox("Preview HUD")
-        self.cfg_persist_hud_win.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cfg_persist_hud_win.setChecked(
-            True
-        )  # Checked by default for convenient startup
-        self.drawer_layout.addWidget(self.cfg_persist_hud_win)
-
-        ##########################
-        self.drawer_layout.addStretch()
-
-        # Positions the drawer completely tucked away out of sight behind the left edge
-        self.drawer.setGeometry(-self.drawer_width, 0, self.drawer_width, 0)
+        # Maintain your legacy geometry tracking shortcuts
+        self.drawer = self.settings_drawer
+        self.drawer_width = self.settings_drawer.drawer_width
         self.drawer_is_open = False
 
         # Interactive Selection Component Initialization
