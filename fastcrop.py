@@ -1394,6 +1394,7 @@ class FastCropApp(QMainWindow):
         """Helper method to handle the shared UI update logic and index mapping."""
         if not valid_files:
             self.image_session.close_session()
+            self.crop_box_selector.hide()
             self.status_manager.set_empty_workspace_state()
             alert_text = (
                 error_msg if error_msg else "No valid images found in target folder."
