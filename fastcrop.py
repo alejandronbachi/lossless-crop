@@ -1,5 +1,4 @@
 import ctypes
-import subprocess
 import sys
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QIcon, QKeyEvent, QPixmap
+from PyQt6.QtGui import QIcon, QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -28,6 +27,7 @@ import config.app_constants as app_constants
 import config.ui_constants as ui_constants
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
+from managers.image_session import ImageSession
 from managers.settings_manager import SettingsManager
 from managers.status_manager import StatusManager
 from models.app_settings import AppSettings
@@ -73,12 +73,7 @@ class FastCropApp(QMainWindow):
         )
 
         # Image Pipeline Management Variables
-        self.image_folder = ""
-        self.image_files = []
-        self.current_index = -1
-        self.current_pil_image = None
-        self._qimg_reference = None  # Prevents Python Garbage Collection Segfaults
-        self.master_pixmap = None  # Cached unscaled full-resolution image data
+        self.image_session = ImageSession()
 
         # Bounding Box Memory Settings
         self.last_crop_geometry = None
@@ -143,49 +138,29 @@ class FastCropApp(QMainWindow):
         self.drag_start_origin = QPoint()
 
     def load_image_to_viewport(self):
-        if (
-            self.current_index == -1
-            or not self.image_files
-            or not (0 <= self.current_index < len(self.image_files))
-        ):
-            # 🚀 FIX: Delegate the empty workspace state entirely to the manager
+        # 🚀 CHANGE ONLY: Evaluate session status instead of loose variables
+        if not self.image_session.has_active_image:
             self.status_manager.set_empty_workspace_state()
             return
 
-        current_image_path = self.image_files[self.current_index]
-
-        # 🚀 FIX: Removed the direct self.lbl_status.setText crash loop!
-        # The text orchestration is handled cleanly by update_status_and_telemetry() at the bottom.
-
-        # Load through Pillow memory pipelines safely
-        self.current_pil_image = Image.open(current_image_path)
-        # Convert and cache the texture into RAM once on load
-        self._qimg_reference = ImageQt(self.current_pil_image)
-        self.master_pixmap = QPixmap.fromImage(self._qimg_reference)
-        if hasattr(self, "zoom_hud"):
-            self.zoom_hud.master_pixmap = self.master_pixmap
-        # Check if its a true jpeg file
-        self.is_current_file_true_jpeg = ImageProcessor.is_true_jpeg(current_image_path)
-
+        # Update display views by drawing directly out of the active session context
         self.refresh_display_canvas()
+        self.sync_workspace_after_loading_image()
+
+    def sync_workspace_after_loading_image(self):
+        # 🚀 CHANGE ONLY: Push the live session VRAM handle directly to the HUD tool!
+        if hasattr(self, "zoom_hud"):
+            self.zoom_hud.master_pixmap = self.image_session.master_pixmap
 
         # -----------------------------------------------------------------
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
         # -----------------------------------------------------------------
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
-            # Grab the fresh file extension properties
-            use_lossless = self.determine_if_lossless_active()
-
-            if use_lossless:
-                # Force the stationary screen box geometry through our core math engine
+            if self.determine_if_lossless_active():
                 self.last_crop_geometry = self.calculate_snapped_rect(
                     self.last_crop_geometry
                 )
-                print(
-                    "[DEBUG NAV] Landed on Lossless JPEG. Selection aligned to underlying MCU grid."
-                )
 
-            # Render the stationary box onto your viewport canvas exactly where it belongs
             self.crop_box_selector.setGeometry(self.last_crop_geometry)
             self.crop_box_selector.show()
             self.crop_box_selector.raise_()
@@ -195,23 +170,23 @@ class FastCropApp(QMainWindow):
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
 
-        # 🚀 FIX: Relocate the floating components correctly via the StatusManager overlay calculations
+        # Update status manager system layout overlays
         self.status_manager.reposition_commands_overlay()
         self.status_manager.sync_drawer_visibility_rules()
 
-        # Run your pixel scaling conversion spinboxes
         self.update_resolution_metrics_display()
-
-        # 🚀 FIX: Let the manager route the new filename and index to the correct UI surfaces
-        self.status_manager.update_status_and_telemetry()
+        self.status_manager.invalidate_ui_state()
 
         if hasattr(self, "update_zoom_hud_payload"):
             self.update_zoom_hud_payload()
 
     def refresh_display_canvas(self):
-        """Handles fast memory-side hardware viewport scaling from cache data."""
-        # 🚀 Safe Gatekeeper: If no cache is ready, wipe viewport canvas and drop out
-        if self.master_pixmap is None or self.master_pixmap.isNull():
+        """Handles fast memory-side hardware viewport scaling from session data."""
+        # 🚀 CHANGE ONLY: Target the single-source-of-truth session texture block natively
+        if (
+            not self.image_session.master_pixmap
+            or self.image_session.master_pixmap.isNull()
+        ):
             self.image_display_container.clear()
             return
 
@@ -219,10 +194,10 @@ class FastCropApp(QMainWindow):
         if container_size.width() <= 0 or container_size.height() <= 0:
             return
 
-        # Instant memory-side graphics scaling: Read from cache texture directly!
-        scaled_pixmap = self.master_pixmap.scaled(
+        # 🚀 CHANGE ONLY: Read straight out of the active session
+        scaled_pixmap = self.image_session.master_pixmap.scaled(
             container_size,
-            Qt.AspectRatioMode.KeepAspectRatio,  # Or your custom active preference mode
+            Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
         self.image_display_container.setPixmap(scaled_pixmap)
@@ -237,7 +212,10 @@ class FastCropApp(QMainWindow):
             self.toggle_settings_drawer()
             return  # Block the click from drawing a box on this specific tap
 
-        if not self.image_display_container.pixmap() or self.current_index == -1:
+        if (
+            not self.image_display_container.pixmap()
+            or not self.image_session.has_active_image
+        ):
             return
 
         # Hide the commands panel instantly so it doesn't obstruct cropping fields
@@ -377,7 +355,8 @@ class FastCropApp(QMainWindow):
         """A single source of truth to check if Lossless operation is currently legal.
         Validates engine toggle, file extension, and binary file signatures.
         """
-        if self.current_index == -1 or not self.image_files:
+
+        if not self.image_session.has_active_image:
             return False
 
         # 1. Quick setting check
@@ -387,184 +366,117 @@ class FastCropApp(QMainWindow):
         ):
             return False
 
-        return getattr(self, "is_current_file_true_jpeg", False)
+        return self.image_session.is_true_jpeg
 
     # -----------------------------------------------------------------
-    # PIPELINE EDITING SUBROUTINES AND WRITING LOGIC
+    # CROPING ENGINES CALLS
     # -----------------------------------------------------------------
-    def process_and_execute_crop(self):
-        if not self.current_pil_image or self.crop_box_selector.isHidden():
+    def process_and_execute_crop(self) -> bool:
+        """Coordinates view metrics and routes cropping tasks directly to the ImageProcessor service layer."""
+        if not self.image_session.has_active_image or self.crop_box_selector.isHidden():
             return False
 
-        # Original asset fallback defaults
-        current_filepath = self.image_files[self.current_index]
-        use_lossless = self.determine_if_lossless_active()
-
-        box_rect = self.crop_box_selector.geometry()
         pixmap = self.image_display_container.pixmap()
-
         if not pixmap:
             return False
 
-        # 1. Grab the active path object safely
-        current_path = self.image_files[self.current_index]
+        # 1. Look up data states straight from your unified managers and models
+        current_filepath = self.image_session.current_path
+        use_lossless = self.determine_if_lossless_active()
+        box_rect = self.crop_box_selector.geometry()
+        file_ext = current_filepath.suffix.lower()
 
-        # 2. Extract the lowercase extension directly using pathlib suffix properties
-        file_ext = current_path.suffix.lower()
-
-        # Map raw window pixels back onto underlying higher-resolution source geometries
+        # 2. Translate view layout dimensions to screen proportions
         lbl_w, lbl_h = (
             self.image_display_container.width(),
             self.image_display_container.height(),
         )
         pix_w, pix_h = pixmap.width(), pixmap.height()
-
-        # Calculate viewport scaling canvas offsets offsets
         offset_x = (lbl_w - pix_w) // 2
         offset_y = (lbl_h - pix_h) // 2
 
-        # Adjust screen selections box bounds relative to image canvas positioning metrics
-        adj_x = box_rect.x() - offset_x
-        adj_y = box_rect.y() - offset_y
-
-        # Constrain dimensions safely inside bounding canvas rules
-        adj_x = max(0, min(adj_x, pix_w))
-        adj_y = max(0, min(adj_y, pix_h))
+        # 3. Constrain selection geometries safely inside boundaries
+        adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
+        adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
         adj_w = min(box_rect.width(), pix_w - adj_x)
         adj_h = min(box_rect.height(), pix_h - adj_y)
 
         if adj_w <= 0 or adj_h <= 0:
             return False
 
-        # Transform viewport bounding values back into underlying raw image matrix mappings
-        src_w, src_h = self.current_pil_image.size
-        scale_factor_x = src_w / pix_w
-        scale_factor_y = src_h / pix_h
+        # 4. Map back onto underlying high-resolution source pixels
+        src_w, src_h = self.image_session.width, self.image_session.height
+        scale_x = src_w / pix_w
+        scale_y = src_h / pix_h
 
-        # SAVE PATH REDIRECTION LOGIC
+        # 5. AUTOMATED SAVE PATH ROUTING ENGINE
         if self.chk_overwrite.isChecked():
-            # If overwrite is active, save directly over the source file
-            output_filepath = current_filepath
+            output_filepath = str(current_filepath)
         else:
-            # If overwrite is OFF, ensure we create unique versions
-            unique_path_object = self.file_manager.generate_unique_crop_path(
-                self.image_folder, current_filepath.name
+            unique_path = self.file_manager.generate_unique_crop_path(
+                self.image_session.folder_path, current_filepath.name
             )
-            output_filepath = str(unique_path_object)
+            output_filepath = str(unique_path)
 
-        # CRITICAL STEP FOR OVERWRITING FILE LOCKS
-        # Close the Pillow memory handler connection to the source file before overwriting it
-        self.current_pil_image.close()
-
-        #  UPDATED ENGINE ROUTER WITH DETAILED LOGGING PIPELINES
-
-        # Fix: Pull directly from the accurate spinboxes in Pixel-Perfect mode
+        # 6. COMPUTE GEOMETRIC TARGET CROPS ACCORDING TO ENGINE STATES
         if use_lossless:
-            # Lossless Mode: Keep the mathematically secure 16x16 MCU block snapping
-            crop_left = max(0, round((adj_x * scale_factor_x) / 16) * 16)
-            crop_top = max(0, round((adj_y * scale_factor_y) / 16) * 16)
-            crop_right = crop_left + max(16, round((adj_w * scale_factor_x) / 16) * 16)
-            crop_bottom = crop_top + max(16, round((adj_h * scale_factor_y) / 16) * 16)
-
+            crop_left = max(0, round((adj_x * scale_x) / 16) * 16)
+            crop_top = max(0, round((adj_y * scale_y) / 16) * 16)
+            crop_width = max(16, round((adj_w * scale_x) / 16) * 16)
+            crop_height = max(16, round((adj_h * scale_y) / 16) * 16)
+            crop_right = crop_left + crop_width
+            crop_bottom = crop_top + crop_height
         else:
-            # Pixel-Perfect Mode: Trust the spinbox dimensions as the true target size
-            # Calculate the top-left starting position precisely from the screen offset
-            crop_left = max(0, round(adj_x * scale_factor_x))
-            crop_top = max(0, round(adj_y * scale_factor_y))
+            crop_left = max(0, round(adj_x * scale_x))
+            crop_top = max(0, round(adj_y * scale_y))
+            crop_width = self.spin_width.value()
+            crop_height = self.spin_height.value()
+            crop_right = min(src_w, crop_left + crop_width)
+            crop_bottom = min(src_h, crop_top + crop_height)
 
-            # Read the absolute intended dimensions directly from the UI elements
-            target_width = self.spin_width.value()
-            target_height = self.spin_height.value()
-
-            # Force the right and bottom boundaries to yield those exact pixel dimensions
-            crop_right = min(src_w, crop_left + target_width)
-            crop_bottom = min(src_h, crop_top + target_height)
-
-        # Calculate width and height for jpegtran command arguments
-        crop_width = crop_right - crop_left
-        crop_height = crop_bottom - crop_top
+        # 7. CHANNELS DISPATCHER ROUTING
+        crop_dimensions_tuple = (crop_width, crop_height, crop_left, crop_top)
 
         if use_lossless:
-            # 🚀 ENGINE A: TRUE LOSSLESS JPEG TRANSLATION
-            print("\n[ENGINE ACTIVATION] ---> LOSSLESS MODE (jpegtran)")
-            print(f" 📂 Source File   : {current_filepath}")
-            print(f" 💾 Target Output : {output_filepath}")
-            print(f" 📐 File Dimensions: {src_w}x{src_h}")
-            print(
-                f" 🧮 Crop Math     : X={crop_left}, Y={crop_top}, W={crop_width}, H={crop_height}"
-            )
-
-            crop_argument = f"{crop_width}x{crop_height}+{crop_left}+{crop_top}"
-            command = [
-                self.image_manager.binary_path,
-                "-crop",
-                crop_argument,
-                "-outfile",
-                output_filepath,
+            self.image_manager.log_engine_activation(
+                "LOSSLESS MODE (jpegtran)",
                 current_filepath,
-            ]
-
-            try:
-                # Fire the background native command process execution
-                subprocess.run(
-                    command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-                )
-                print(
-                    "[SUCCESS] Lossless binary block transformation completed with 0% quality loss."
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                # Emergency safe fallback if jpegtran fails on a malformed JPEG block
-                print(
-                    f"❌ [EMERGENCY FALLBACK] jpegtran failed, shifting to Pillow: {e}"
-                )
-                img = Image.open(current_filepath)
-                cropped_image = img.crop((crop_left, crop_top, crop_right, crop_bottom))
-                cropped_image.save(output_filepath)
-                img.close()
-                print("[SUCCESS] Fallback image re-compression save finalized safely.")
-        else:
-            # 🎨 ENGINE B: STANDARD PILLOW RE-COMPRESSION
-            print("\n[ENGINE ACTIVATION] ---> PIXEL-PERFECT MODE (Pillow)")
-            print(f" 📂 Source File   : {current_filepath}")
-            print(f" 💾 Target Output : {output_filepath}")
-            print(f" 📐 File Dimensions: {src_w}x{src_h}")
-            print(
-                f" 🧮 Crop Math     : Left={crop_left}, Top={crop_top}, Right={crop_right}, Bottom={crop_bottom}"
+                output_filepath,
+                (src_w, src_h),
+                crop_dimensions_tuple,
             )
-            if not getattr(self, "is_current_file_true_jpeg", False):
-                print(
-                    f" 📝 Format Notice : Non-JPEG format ({file_ext.upper()}) dynamically routed to Pillow engine."
-                )
-            elif not self.image_manager.is_lossless_available:
-                print(
-                    " ⚠️ Engine Notice : jpegtran binary missing from environment. Defaulting to pixel re-compression."
-                )
+            crop_success = self.image_manager.execute_lossless_jpegtran_crop(
+                current_filepath, output_filepath, crop_dimensions_tuple
+            )
+        else:
+            self.image_manager.log_engine_activation(
+                "PIXEL-PERFECT MODE (Pillow)",
+                current_filepath,
+                output_filepath,
+                (src_w, src_h),
+                crop_dimensions_tuple,
+            )
+            crop_success = self.image_manager.execute_lossy_pillow_crop(
+                current_filepath,
+                output_filepath,
+                (crop_left, crop_top, crop_right, crop_bottom),
+            )
 
-            img = Image.open(current_filepath)
-            cropped_image = img.crop((crop_left, crop_top, crop_right, crop_bottom))
-            cropped_image.save(output_filepath)
-            img.close()
-            print("[SUCCESS] Image pixel re-compression slice saved successfully.")
-        # -------------------------------------------------------------
-
-        # Reload the newly saved file back into memory so navigation doesn't throw errors
-        if self.chk_overwrite.isChecked():
-            # Load the newly overwritten file path directly
-            self.current_pil_image = Image.open(output_filepath)
-            self.refresh_display_canvas()
+        # 8. WORKSPACE SYNC REFRESH PASS
+        if crop_success:
+            if self.chk_overwrite.isChecked():
+                # Re-hydrate the active index memory cache instantly since its file was rewritten on disk
+                self.image_session.hydrate_current_image()
+                self.load_image_to_viewport()
 
             # 3. CRITICAL RESYNC LAYER PRESERVATION & NAV BUG CLEANUP
             if self.chk_preserve.isChecked() and self.last_crop_geometry:
                 if use_lossless:
                     # Re-snap to 16x16 grid to prevent leaking raw off-grid coordinates
-                    snap_x, snap_y = (
-                        round(self.last_crop_geometry.x() / 16) * 16,
-                        round(self.last_crop_geometry.y() / 16) * 16,
-                    )
-                    snap_w, snap_h = (
-                        round(self.last_crop_geometry.width() / 16) * 16,
-                        round(self.last_crop_geometry.height() / 16) * 16,
-                    )
+                    snap_x = round(self.last_crop_geometry.x() / 16) * 16
+                    snap_y = round(self.last_crop_geometry.y() / 16) * 16
+                    snap_w = round(self.last_crop_geometry.width() / 16) * 16
+                    snap_h = round(self.last_crop_geometry.height() / 16) * 16
 
                     if self.combo_ratio.currentText() != "Freeform":
                         aspect_ratio = (
@@ -584,66 +496,49 @@ class FastCropApp(QMainWindow):
                 self.crop_box_selector.show()
                 self.crop_box_selector.raise_()
             else:
-                # FIX: Explicitly hide and purge old image selection boundaries during navigation
+                # Explicitly hide and purge old image selection boundaries during navigation
                 self.crop_box_selector.hide()
                 self.last_crop_geometry = None
 
-        else:
-            # Prevent the File-Locking & Directory Scan Race Condition
-            # If we saved a copy inside /cropped, re-open our original file
-            self.current_pil_image = Image.open(current_filepath)
-
-            if self.chk_preserve.isChecked() and self.last_crop_geometry:
-                self.crop_box_selector.setGeometry(self.last_crop_geometry)
-                self.crop_box_selector.show()
-                self.crop_box_selector.raise_()
-            else:
-                self.crop_box_selector.hide()
-                self.last_crop_geometry = None
-
-        if use_lossless:
-            self.status_manager.show_center_notification("Lossless Crop")
-        else:
-            # Check if the output file is a naturally lossless format like PNG
-            if file_ext in (".png", ".bmp"):
+            #  4. DYNAMIC SYSTEM NOTIFICATIONS PIXELS DISPATCHER
+            if use_lossless:
                 self.status_manager.show_center_notification("Lossless Crop")
             else:
-                self.status_manager.show_center_notification("Lossy Crop")
+                # Check if the output file is a naturally lossless format like PNG
+                if file_ext in (".png", ".bmp"):
+                    self.status_manager.show_center_notification("Lossless Crop")
+                else:
+                    self.status_manager.show_center_notification("Lossy Crop")
 
-        self.update_resolution_metrics_display()
-        self.update_zoom_hud_payload()
-        return True
+            # Update layout readout boxes and the lazy engine tick
+            self.update_resolution_metrics_display()
+            self.status_manager.invalidate_ui_state()
+            return True
+
+        return False
 
     def rotate_current_image(self):
-        """Rotates the image matrix underneath the stationary viewport selection frame,
-        instantly re-aligning the box to the new underlying grid.
-        """
-        if not self.current_pil_image:
+        """Delegates layout transformations directly to the core ImageProcessor engine."""
+        if not self.image_session.has_active_image:
             return
 
-        # 1. Update our tracking angle so the Zoom Preview HUD knows what to do
-        if not hasattr(self, "current_rotation_angle"):
-            self.current_rotation_angle = 0
-        self.current_rotation_angle = (self.current_rotation_angle - 90) % 360
+        #  THE PROCESSOR UPGRADE: Hand off the session context to your processor utility!
+        self.image_manager.rotate_session_view(self.image_session)
 
-        # 2. Execute the literal rotation layout expansion
-        self.current_pil_image = self.current_pil_image.rotate(-90, expand=True)
+        # Immediately push the updated texture changes out to your UI views
         self.refresh_display_canvas()
 
-        # 3. Re-align the stationary screen stencil to the new underlying JPEG blocks
+        # Re-align the stationary selection frame box geometry
         if not self.crop_box_selector.isHidden() and self.last_crop_geometry:
-            # Let our unified utility process the snap to prevent 1-pixel rounding drift
             snapped_rect = self.calculate_snapped_rect(self.last_crop_geometry)
-
             self.last_crop_geometry = snapped_rect
             self.crop_box_selector.setGeometry(self.last_crop_geometry)
             self.crop_box_selector.show()
             self.crop_box_selector.raise_()
 
-        # 4. Synchronize status bars, spinboxes, and the zoom preview engine
+        # Synchronize status bars, spinboxes, and the zoom preview engine
         self.update_resolution_metrics_display()
-        if hasattr(self, "update_zoom_hud_payload"):
-            self.update_zoom_hud_payload()
+        self.status_manager.invalidate_ui_state()
 
     # -----------------------------------------------------------------
     # GLOBAL APPLICATION HOTKEY INTERCEPT CAPABILITIES
@@ -664,33 +559,30 @@ class FastCropApp(QMainWindow):
         elif key == Qt.Key.Key_Space:
             # Crop + Advance
             self.process_and_execute_crop()
-            if self.current_index < len(self.image_files) - 1:
-                self.current_index += 1
-                self.load_image_to_viewport()
+
+            # 🚀 Forward Skip via the session engine!
+            if alert := self.image_session.next():
+                self.status_manager.show_center_notification(alert)
             else:
-                # Feedback fallback when hitting space on the last image
-                self.status_manager.show_center_notification("Last image of directory")
+                self.load_image_to_viewport()
 
         elif key in (Qt.Key.Key_S, Qt.Key.Key_Return, Qt.Key.Key_Enter):
             # Crop + Stay
             self.process_and_execute_crop()
 
         elif key in (Qt.Key.Key_F, Qt.Key.Key_Right):
-            # Forward Skip
-            if self.current_index < len(self.image_files) - 1:
-                self.current_index += 1
-                self.load_image_to_viewport()
+            # 🚀 Forward Skip: Delegate entirely to the session engine!
+            if alert := self.image_session.next():
+                self.status_manager.show_center_notification(alert)
             else:
-                # Feedback fallback when trying to skip past the last image
-                self.status_manager.show_center_notification("Last image of directory")
+                self.load_image_to_viewport()
 
         elif key in (Qt.Key.Key_B, Qt.Key.Key_Left):
-            # Backward Skip
-            if self.current_index > 0:
-                self.current_index -= 1
-                self.load_image_to_viewport()
+            # 🚀 Backward Skip: Delegate entirely to the session engine!
+            if alert := self.image_session.previous():
+                self.status_manager.show_center_notification(alert)
             else:
-                self.status_manager.show_center_notification("First image of directory")
+                self.load_image_to_viewport()
 
         elif key == Qt.Key.Key_R:
             # Rotate Action
@@ -844,12 +736,9 @@ class FastCropApp(QMainWindow):
     def save_application_state(self):
         """Updates the internal settings data model and passes it to the manager to store."""
 
-        #  SAFE TRAP: Only update history if the user actually has a valid folder open!
-        if hasattr(self, "image_folder") and self.image_folder:
-            from pathlib import Path
-
-            if Path(self.image_folder).exists():
-                self.settings.last_used_folder = self.image_folder
+        #  Only update history if the user actually has a valid folder open
+        if self.image_session.folder_path and self.image_session.folder_path.exists():
+            self.settings.last_used_folder = str(self.image_session.folder_path)
 
         self.settings.remember_settings = self.cfg_remember_settings.isChecked()
         self.settings.main_window_geometry_blob = self.saveGeometry()
@@ -967,7 +856,7 @@ class FastCropApp(QMainWindow):
 
         # 2. Match your old fallback logic if no valid image files are present
         if not valid_files:
-            self.current_index = -1
+            self.image_session.close_session()
             self.status_manager.set_empty_workspace_state()
             return
 
@@ -1034,7 +923,7 @@ class FastCropApp(QMainWindow):
         """Drives left-click drawing. Snaps strictly to a 16x16 grid ONLY in Lossless mode.
         Forces spinbox updates in real-time across ALL feedback modes.
         """
-        if self.drag_start_origin.isNull() or not self.current_pil_image:
+        if self.drag_start_origin.isNull() or not self.image_session.has_active_image:
             return
 
         pixmap = self.image_display_container.pixmap()
@@ -1124,7 +1013,7 @@ class FastCropApp(QMainWindow):
                 self.ghost_selector.hide()
 
         # 6. Source-Pixel Mapping for Spinbox Synchronization
-        src_w, src_h = self.current_pil_image.size
+        src_w, src_h = self.image_session.width, self.image_session.height
         scale_x = src_w / pix_w
         scale_y = src_h / pix_h
 
@@ -1178,7 +1067,10 @@ class FastCropApp(QMainWindow):
         aspect ratios, snaps to 16x16 blocks if Lossless is active, and returns
         a perfectly symmetrical screen QRect.
         """
-        if not self.current_pil_image or not self.image_display_container.pixmap():
+        if (
+            not self.image_session.has_active_image
+            or not self.image_display_container.pixmap()
+        ):
             return screen_rect
 
         pixmap = self.image_display_container.pixmap()
@@ -1192,7 +1084,7 @@ class FastCropApp(QMainWindow):
         offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
 
         # 2. Convert Screen Coordinates directly to True Image Pixel Space
-        src_w, src_h = self.current_pil_image.size
+        src_w, src_h = self.image_session.width, self.image_session.height
         scale_x, scale_y = src_w / pix_w, src_h / pix_h
 
         img_x = (screen_rect.x() - offset_x) * scale_x
@@ -1255,8 +1147,8 @@ class FastCropApp(QMainWindow):
         ensuring strict aspect ratio alignment to prevent visual mismatches.
         """
         if (
-            self.current_index == -1
-            or not self.current_pil_image
+            not self.image_session.has_active_image
+            or not self.image_session.pil_image
             or self.crop_box_selector.isHidden()
         ):
             return
@@ -1270,7 +1162,7 @@ class FastCropApp(QMainWindow):
         pix_w, pix_h = pixmap.width(), pixmap.height()
 
         # 2. Map back to true source image pixel dimensions
-        src_w, src_h = self.current_pil_image.size
+        src_w, src_h = self.image_session.width, self.image_session.height
         scale_x = src_w / pix_w
         scale_y = src_h / pix_h
 
@@ -1336,7 +1228,7 @@ class FastCropApp(QMainWindow):
             not PILLOW_AVAILABLE
             or not self.cfg_show_preview.isChecked()
             or self.crop_box_selector.isHidden()
-            or self.current_index == -1
+            or not self.image_session.has_active_image
         ):
             if hasattr(self, "zoom_hud"):
                 self.zoom_hud.master_pixmap = None
@@ -1360,7 +1252,7 @@ class FastCropApp(QMainWindow):
             adj_w = min(box_rect.width(), pix_w - adj_x)
             adj_h = min(box_rect.height(), pix_h - adj_y)
 
-            src_w, src_h = self.current_pil_image.size
+            src_w, src_h = self.image_session.width, self.image_session.height
             scale_x = src_w / pix_w
             scale_y = src_h / pix_h
 
@@ -1380,7 +1272,7 @@ class FastCropApp(QMainWindow):
 
                 # 🚀 THE FIX: Pass your live, active master texture handle directly down!
                 self.zoom_hud.refresh_scaled_preview_live(
-                    self.master_pixmap, pil_coords
+                    self.image_session.master_pixmap, pil_coords
                 )
                 return
 
@@ -1409,8 +1301,8 @@ class FastCropApp(QMainWindow):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
         if (
             self._updating_spinboxes
-            or self.current_index == -1
-            or not self.current_pil_image
+            or not self.image_session.has_active_image
+            or not self.image_session.pil_image
         ):
             return
 
@@ -1420,7 +1312,7 @@ class FastCropApp(QMainWindow):
             self._updating_spinboxes = True
             calculated_height = int(round(value / ratio))
             # Safely cap it to your image's physical maximum pixel bounds
-            calculated_height = min(calculated_height, self.current_pil_image.size[1])
+            calculated_height = min(calculated_height, self.image_session.height)
             self.spin_height.setValue(calculated_height)
             self._updating_spinboxes = False
 
@@ -1431,8 +1323,8 @@ class FastCropApp(QMainWindow):
         """Triggers when height spinbox is adjusted manually via arrows or keystrokes."""
         if (
             self._updating_spinboxes
-            or self.current_index == -1
-            or not self.current_pil_image
+            or not self.image_session.has_active_image
+            or not self.image_session.pil_image
         ):
             return
 
@@ -1442,7 +1334,7 @@ class FastCropApp(QMainWindow):
             self._updating_spinboxes = True
             calculated_width = int(round(value * ratio))
             # Safely cap it to your image's physical maximum pixel bounds
-            calculated_width = min(calculated_width, self.current_pil_image.size[0])
+            calculated_width = min(calculated_width, self.image_session.width)
             self.spin_width.setValue(calculated_width)
             self._updating_spinboxes = False
 
@@ -1450,13 +1342,13 @@ class FastCropApp(QMainWindow):
         self.apply_spinbox_dimensions_to_canvas()
 
     def apply_spinbox_dimensions_to_canvas(self):
-        if self.current_index == -1 or not self.current_pil_image:
+        if not self.image_session.has_active_image or not self.image_session.pil_image:
             return
         pixmap = self.image_display_container.pixmap()
         if not pixmap:
             return
 
-        src_w, src_h = self.current_pil_image.size
+        src_w, src_h = self.image_session.width, self.image_session.height
         tw, th = (
             min(self.spin_width.value(), src_w),
             min(self.spin_height.value(), src_h),
@@ -1508,37 +1400,26 @@ class FastCropApp(QMainWindow):
     ):
         """Helper method to handle the shared UI update logic and index mapping."""
         if not valid_files:
-            self.image_files = []
-            self.current_index = -1
-
+            self.image_session.close_session()
             if error_msg:
-                # 🚀 FIX: Route the error message safely through your central orchestrator!
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
             else:
                 self.status_manager.set_empty_workspace_state()
             return
 
-        self.image_folder = folder_path
-        self.image_files = valid_files
+        # 1. 🚀 Hand the list to the session. It returns True if the texture cache bakes successfully!
+        session_ready = self.image_session.load_folder(
+            folder_path, valid_files, target_file
+        )
 
-        folder_name = Path(folder_path).name
-        self.lbl_folder_name.setText(f"📁 {folder_name}")
+        # 2. 🚀 THE CHECK: Only update your UI components if the session loaded error-free
+        if session_ready:
+            folder_name = self.image_session.folder_path.name
+            self.lbl_folder_name.setText(f"📁 {folder_name}")
 
-        # Match string target_file against the .name property of Path elements
-        if target_file:
-            matched_index = next(
-                (i for i, p in enumerate(self.image_files) if p.name == target_file),
-                None,
-            )
-            self.current_index = matched_index if matched_index is not None else 0
-        else:
-            self.current_index = 0
-
-        # Refresh interface views
-        self.load_image_to_viewport()
-
-        # 🚀 FIX: Update the memory-safe runtime configuration model directly
-        self.settings.last_used_folder = str(folder_path)
+            # Refresh views using our newly integrated session data
+            self.load_image_to_viewport()
+            self.settings.last_used_folder = str(folder_path)
 
     def select_directory(self):
         fallback_path = self.settings_manager.get_fallback_path_str()

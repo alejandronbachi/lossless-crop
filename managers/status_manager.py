@@ -80,7 +80,7 @@ class StatusManager(QObject):
 
     def update_status_and_telemetry(self):
         """Synchronize the status bar and floating HUD text labels based on configuration."""
-        if self.main_app.current_index == -1 or not self.main_app.image_files:
+        if not self.main_app.image_session.has_active_image:
             self.set_empty_workspace_state()
             return
 
@@ -88,19 +88,17 @@ class StatusManager(QObject):
         self.lbl_splash_hud.hide()
 
         # 1. Compile file status tracking elements using live checkbox widget metrics
-        current_path = self.main_app.image_files[self.main_app.current_index]
-
-        filename_string = ""
-        if self.main_app.cfg_show_filename.isChecked():
-            filename_string = f"[{self.main_app.current_index + 1}/{len(self.main_app.image_files)}] {current_path.name}"
+        current_path = self.main_app.image_session.current_path
+        idx_str = self.main_app.image_session.index_string
+        filename_string = f"{idx_str} {current_path.name}"
 
         metrics_string = ""
         if (
             self.main_app.cfg_show_imgsize.isChecked()
             and hasattr(self.main_app, "current_pil_image")
-            and self.main_app.current_pil_image
+            and self.main_app.image_session.pil_image
         ):
-            src_w, src_h = self.main_app.current_pil_image.size
+            src_w, src_h = self.main_app.image_session.width, self.image_session.height
             metrics_string = f"IMG: {src_w}x{src_h}"
 
         # 2. Check the live checkbox state instead of static settings!
@@ -177,7 +175,10 @@ class StatusManager(QObject):
 
     def restore_overlays_on_mouse_release(self):
         """Restores shortcut and telemetry visibility smoothly once clicks release."""
-        if self.main_app.settings.show_shortcuts and self.main_app.current_index != -1:
+        if (
+            self.main_app.cfg_show_shortcuts.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
             self.lbl_commands_overlay.show()
             self.lbl_commands_overlay.raise_()
         self.invalidate_ui_state()
@@ -187,7 +188,7 @@ class StatusManager(QObject):
         # 1. Shortcuts Checkbox
         if (
             self.main_app.cfg_show_shortcuts.isChecked()
-            and self.main_app.current_index != -1
+            and self.main_app.image_session.has_active_image
         ):
             self.lbl_commands_overlay.show()
             self.lbl_commands_overlay.raise_()

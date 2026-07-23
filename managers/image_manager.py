@@ -1,5 +1,6 @@
 import os
 import platform
+import subprocess
 from pathlib import Path
 
 from PIL import Image
@@ -53,8 +54,86 @@ class ImageProcessor:
         except Exception:
             return False
 
-    def execute_crop(self, source_path, output_path, rect, use_lossless):
-        pass
+    @staticmethod
+    def log_engine_activation(
+        engine_name: str, src: Path, dest: str, size: tuple, crop_box: tuple
+    ):
+        """Prints a clean, structured typographic layout map of active operations."""
+        w, h = size
+        c_w, c_h, c_x, c_y = crop_box
+        print(f"\n[ENGINE ACTIVATION] ---> {engine_name}")
+        print(f" 📂 Source File   : {src}")
+        print(f" 💾 Target Output : {dest}")
+        print(f" 📐 File Dimensions: {w}x{h}")
+        print(f" 🧮 Crop Geometry : X={c_x}, Y={c_y}, W={c_w}, H={c_h}")
 
-    def rotate_image(self, pil_image, angle):
-        return pil_image.rotate(angle, expand=True)
+    def execute_lossless_jpegtran_crop(
+        self, src: Path, dest: str, crop_box: tuple
+    ) -> bool:
+        """🚀 ENGINE A: Executes raw binary block manipulations inside VRAM via jpegtran."""
+        c_w, c_h, c_x, c_y = crop_box
+        crop_argument = f"{c_w}x{c_h}+{c_x}+{c_y}"
+
+        command = [
+            self.binary_path,
+            "-crop",
+            crop_argument,
+            "-outfile",
+            dest,
+            str(src),
+        ]
+        try:
+            subprocess.run(
+                command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            print(
+                "[SUCCESS] Lossless binary block transformation completed with 0% quality loss."
+            )
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(
+                f"❌ [EMERGENCY FALLBACK] jpegtran failed, shifting to Pillow re-compression: {e}"
+            )
+            return self.execute_lossy_pillow_crop(
+                src, dest, (c_x, c_y, c_x + c_w, c_y + c_h)
+            )
+
+    @staticmethod
+    def execute_lossy_pillow_crop(src: Path, dest: str, bounding_box: tuple) -> bool:
+        """🎨 ENGINE B: Standard fallback or pixel-perfect CPU image re-compression."""
+        left, top, right, bottom = bounding_box
+        try:
+            # We open an isolated reader instance to dodge file locks and data degradation
+            with Image.open(src) as img:
+                cropped_image = img.crop((left, top, right, bottom))
+                cropped_image.save(dest)
+            print("[SUCCESS] Image pixel re-compression slice saved successfully.")
+            return True
+        except Exception as e:
+            print(f"❌ [CROP FAILURE] Pillow re-compression pipeline failed: {e}")
+            return False
+
+    @staticmethod
+    def rotate_session_view(session) -> int:
+        """
+        Rotates the active visual viewport texture without degrading the original source data.
+        Returns the updated cumulative rotation angle integer.
+        """
+        if not session or not session.has_active_image:
+            return 0
+
+        # 1. Update the session's cumulative rotation angle property tracker
+        session.current_rotation_angle = (session.current_rotation_angle - 90) % 360
+
+        # 2. Compute a hardware-accelerated texture transform
+        from PyQt6.QtGui import QTransform
+
+        transform = QTransform().rotate(-90)
+
+        # 3. Apply the rotation directly to the GPU VRAM cache layer
+        session.master_pixmap = session.master_pixmap.transformed(transform)
+
+        # 4. Flip the session dimensions so resolution readouts track correctly
+        session.width, session.height = session.height, session.width
+
+        return session.current_rotation_angle
