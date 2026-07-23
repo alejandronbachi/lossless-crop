@@ -11,7 +11,7 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QIcon, QKeyEvent
+from PyQt6.QtGui import QIcon, QKeyEvent, QPixmap, QResizeEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -182,12 +182,24 @@ class FastCropApp(QMainWindow):
 
     def refresh_display_canvas(self):
         """Handles fast memory-side hardware viewport scaling from session data."""
-        # 🚀 CHANGE ONLY: Target the single-source-of-truth session texture block natively
+
+        #  THE WATERMARK LOGO  If no active image session exists, paint the brand logo centerpiece!
         if (
             not self.image_session.master_pixmap
             or self.image_session.master_pixmap.isNull()
         ):
-            self.image_display_container.clear()
+            icon_path = app_constants.APP_ROOT_DIR / ui_constants.ICON_FILENAME
+            if icon_path.exists():
+                logo_pixmap = QPixmap(str(icon_path))
+                scaled_logo = logo_pixmap.scaled(
+                    512,
+                    512,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self.image_display_container.setPixmap(scaled_logo)
+            else:
+                self.image_display_container.clear()
             return
 
         container_size = self.image_display_container.size()
@@ -604,53 +616,34 @@ class FastCropApp(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
-        self.status_manager.reposition_commands_overlay()
+        # 🚀 THE COMPLETE LAYOUT FIX: Delegate ALL absolute overlay positioning
+        # to the status manager, which natively tracks the fresh container sizes!
+        if hasattr(self, "status_manager"):
+            self.status_manager.reposition_all_overlays()
 
-        #  CENTER THE FLOATING SPLASH HUD CARD IN ABSOLUTE WORKSPACE ROOM
-        if hasattr(self, "lbl_splash_hud") and not self.lbl_splash_hud.isHidden():
-            self.lbl_splash_hud.adjustSize()
-
-            # Compute perfect centering math targets across the workspace geometry footprint
-            cx = (self.central_widget.width() - self.lbl_splash_hud.width()) // 2
-            cy = (self.central_widget.height() - self.lbl_splash_hud.height()) // 2
-
-            # Snap it seamlessly into place over the center empty canvas
-            self.lbl_splash_hud.move(cx, max(50, cy))
-
-        # FLOATING OVERLAY SNAP ALIGNER #
-        if hasattr(self, "lbl_telemetry_hud") and not self.lbl_telemetry_hud.isHidden():
-            self.lbl_telemetry_hud.adjustSize()
-            # Position it 15 pixels up from the very base margin line of the main window workspace
-            padding = 15
-            x = padding
-            y = self.central_widget.height() - self.lbl_telemetry_hud.height() - padding
-            self.lbl_telemetry_hud.move(x, y)
-
-        # Keep floating panels properly anchored on right edge on resize
-        if hasattr(self, "drawer"):
+        # Keep sliding panels properly anchored on right edge on resize
+        if hasattr(self, "drawer") and hasattr(self, "central_widget"):
             window_width = self.central_widget.width()
             top_offset_padding = 45
             available_height = self.central_widget.height() - top_offset_padding
-            if self.drawer_is_open:
+            if getattr(self, "drawer_is_open", False):
                 self.drawer.setGeometry(
-                    window_width - self.drawer_width,
+                    window_width - getattr(self, "drawer_width", 250),
                     top_offset_padding,
-                    self.drawer_width,
+                    getattr(self, "drawer_width", 250),
                     available_height,
                 )
             else:
                 self.drawer.setGeometry(
                     window_width,
                     top_offset_padding,
-                    self.drawer_width,
+                    getattr(self, "drawer_width", 250),
                     available_height,
                 )
 
-        if hasattr(self, "lbl_notification") and self.lbl_notification.isVisible():
-            self.status_manager.reposition_center_notification()
-
-        # 2. Restart the timer on every pixel drag (prevents premature execution)
-        self.resize_throttle_timer.start(50)  # 50 milliseconds delay
+        # Restart the timer on every pixel drag (prevents premature execution)
+        if hasattr(self, "resize_throttle_timer"):
+            self.resize_throttle_timer.start(50)  # 50 milliseconds delay
 
     def execute_deferred_resize_recalc(self):
         self.refresh_display_canvas()
@@ -1401,12 +1394,19 @@ class FastCropApp(QMainWindow):
         """Helper method to handle the shared UI update logic and index mapping."""
         if not valid_files:
             self.image_session.close_session()
+            alert_text = (
+                error_msg if error_msg else "No valid images found in target folder."
+            )
+            self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
             else:
                 self.status_manager.set_empty_workspace_state()
-            return
 
+            if hasattr(self, "resizeEvent"):
+                # Pass a mock event matching your current physical window size metrics
+                self.resizeEvent(QResizeEvent(self.size(), self.size()))
+            return
         # 1. 🚀 Hand the list to the session. It returns True if the texture cache bakes successfully!
         session_ready = self.image_session.load_folder(
             folder_path, valid_files, target_file
