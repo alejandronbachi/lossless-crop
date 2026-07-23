@@ -1394,14 +1394,13 @@ class FastCropApp(QMainWindow):
         """Helper method to handle the shared UI update logic and index mapping."""
         if not valid_files:
             self.image_session.close_session()
+            self.status_manager.set_empty_workspace_state()
             alert_text = (
                 error_msg if error_msg else "No valid images found in target folder."
             )
             self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
-            else:
-                self.status_manager.set_empty_workspace_state()
 
             if hasattr(self, "resizeEvent"):
                 # Pass a mock event matching your current physical window size metrics
