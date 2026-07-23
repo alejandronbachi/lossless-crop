@@ -589,7 +589,7 @@ class FastCropApp(QMainWindow):
                 self.last_crop_geometry = None
 
         else:
-            # TODO why
+            # Prevent the File-Locking & Directory Scan Race Condition
             # If we saved a copy inside /cropped, re-open our original file
             self.current_pil_image = Image.open(current_filepath)
 
