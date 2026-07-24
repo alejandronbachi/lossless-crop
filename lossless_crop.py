@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 
 from config import app_constants, ui_constants
 from managers.crop_execution_manager import CropExecutionController
-from managers.crop_geometry_engine import CropGeometryEngine
+from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
@@ -437,7 +437,7 @@ class FastCropApp(QMainWindow):
         # 4. COMPUTE GEOMETRIC TARGET CROPS VIA THE SHARED GEOMETRY ENGINE
         if use_lossless:
             source_rect = CropGeometryEngine.screen_rect_to_source_rect(
-                clamped_rect, viewport, lossless=True, ratio_label=ratio_label
+                box_rect, viewport, lossless=True, ratio_label=ratio_label
             )
             crop_left, crop_top = max(0, source_rect.x()), max(0, source_rect.y())
             crop_width, crop_height = source_rect.width(), source_rect.height()
