@@ -23,8 +23,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-import config.app_constants as app_constants
-import config.ui_constants as ui_constants
+from config import app_constants, ui_constants
+from managers.crop_execution_manager import CropExecutionController
+from managers.crop_geometry_engine import CropGeometryEngine
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
@@ -55,6 +56,7 @@ class FastCropApp(QMainWindow):
         self.settings = AppSettings()
         self.file_manager = FileManager(self.settings_manager)
         self.image_manager = ImageProcessor()
+        self.crop_executor = CropExecutionController(self.image_manager)
         #  Create a single-shot timer for layout throttling
         self.resize_throttle_timer = QTimer(self)
         self.resize_throttle_timer.setSingleShot(True)
@@ -331,25 +333,17 @@ class FastCropApp(QMainWindow):
         if ratio_type == "Freeform":
             return  # Freeform allows any shape, so don't alter the current frame
 
-        # Determine the target mathematical ratio scale
-        aspect_ratio = 1.0
-        if ratio_type == "16:9 Widescreen":
-            aspect_ratio = 16.0 / 9.0
-        elif ratio_type == "4:3 Standard":
-            aspect_ratio = 4.0 / 3.0
-
         # Use the current width as the master base and calculate the new height
         current_geom = self.crop_box_selector.geometry()
         new_width = current_geom.width()
-        # CHECK BOTH ENGINE AND EXTENSION
 
         use_lossless = self.determine_if_lossless_active()
 
         if use_lossless:
-            new_width = round(new_width / 16) * 16
-            new_height = round((new_width / aspect_ratio) / 16) * 16
-        else:
-            new_height = max(1, round(new_width / aspect_ratio))
+            new_width = CropGeometryEngine.snap_to_grid(new_width)
+        new_height = CropGeometryEngine.apply_aspect_lock_to_width(
+            new_width, ratio_type, use_lossless
+        )
 
         # Build the updated boundary layout
         new_rect = QRect(current_geom.x(), current_geom.y(), new_width, new_height)
@@ -380,12 +374,33 @@ class FastCropApp(QMainWindow):
 
         return self.image_session.is_true_jpeg
 
+    def _build_viewport_geometry(self, pixmap: QPixmap) -> ViewportGeometry:
+        """Snapshots the current label/pixmap/source dimensions into a
+        ViewportGeometry for CropGeometryEngine. Call this fresh in every
+        handler — pixmap size and label size can both change between calls
+        (window resize, image navigation), so the snapshot must not be cached.
+        """
+        return ViewportGeometry(
+            label_width=self.image_display_container.width(),
+            label_height=self.image_display_container.height(),
+            pixmap_width=pixmap.width(),
+            pixmap_height=pixmap.height(),
+            source_width=self.image_session.width,
+            source_height=self.image_session.height,
+        )
+
     # -----------------------------------------------------------------
     # CROPING ENGINES CALLS
     # -----------------------------------------------------------------
     def process_and_execute_crop(self) -> bool:
-        """Coordinates view metrics and routes cropping tasks directly to the ImageProcessor service layer."""
+        """Coordinates view metrics and dispatches the crop to CropExecutionController,
+        which runs the actual jpegtran/Pillow work off the UI thread. Returns True if a
+        crop job was *submitted* (not necessarily finished — see on_crop_finished)."""
         if not self.image_session.has_active_image or self.crop_box_selector.isHidden():
+            return False
+
+        if self.crop_executor.has_pending_jobs():
+            # A previous crop is still writing to disk; don't race a second submission.
             return False
 
         pixmap = self.image_display_container.pixmap()
@@ -397,31 +412,20 @@ class FastCropApp(QMainWindow):
         use_lossless = self.determine_if_lossless_active()
         box_rect = self.crop_box_selector.geometry()
         file_ext = current_filepath.suffix.lower()
+        ratio_label = self.combo_ratio.currentText()
 
-        # 2. Translate view layout dimensions to screen proportions
-        lbl_w, lbl_h = (
-            self.image_display_container.width(),
-            self.image_display_container.height(),
+        # 2. Build the viewport snapshot and constrain the selection to the pixmap bounds
+        viewport = self._build_viewport_geometry(pixmap)
+        clamped_rect = CropGeometryEngine.clamp_screen_rect_to_pixmap(
+            box_rect, viewport
         )
-        pix_w, pix_h = pixmap.width(), pixmap.height()
-        offset_x = (lbl_w - pix_w) // 2
-        offset_y = (lbl_h - pix_h) // 2
 
-        # 3. Constrain selection geometries safely inside boundaries
-        adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
-        adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
-        adj_w = min(box_rect.width(), pix_w - adj_x)
-        adj_h = min(box_rect.height(), pix_h - adj_y)
-
-        if adj_w <= 0 or adj_h <= 0:
+        if clamped_rect.width() <= 0 or clamped_rect.height() <= 0:
             return False
 
-        # 4. Map back onto underlying high-resolution source pixels
         src_w, src_h = self.image_session.width, self.image_session.height
-        scale_x = src_w / pix_w
-        scale_y = src_h / pix_h
 
-        # 5. AUTOMATED SAVE PATH ROUTING ENGINE
+        # 3. AUTOMATED SAVE PATH ROUTING ENGINE
         if self.chk_overwrite.isChecked():
             output_filepath = str(current_filepath)
         else:
@@ -430,23 +434,24 @@ class FastCropApp(QMainWindow):
             )
             output_filepath = str(unique_path)
 
-        # 6. COMPUTE GEOMETRIC TARGET CROPS ACCORDING TO ENGINE STATES
+        # 4. COMPUTE GEOMETRIC TARGET CROPS VIA THE SHARED GEOMETRY ENGINE
         if use_lossless:
-            crop_left = max(0, round((adj_x * scale_x) / 16) * 16)
-            crop_top = max(0, round((adj_y * scale_y) / 16) * 16)
-            crop_width = max(16, round((adj_w * scale_x) / 16) * 16)
-            crop_height = max(16, round((adj_h * scale_y) / 16) * 16)
+            source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+                clamped_rect, viewport, lossless=True, ratio_label=ratio_label
+            )
+            crop_left, crop_top = max(0, source_rect.x()), max(0, source_rect.y())
+            crop_width, crop_height = source_rect.width(), source_rect.height()
             crop_right = crop_left + crop_width
             crop_bottom = crop_top + crop_height
         else:
-            crop_left = max(0, round(adj_x * scale_x))
-            crop_top = max(0, round(adj_y * scale_y))
+            crop_left = max(0, round(clamped_rect.x() * viewport.scale_x))
+            crop_top = max(0, round(clamped_rect.y() * viewport.scale_y))
             crop_width = self.spin_width.value()
             crop_height = self.spin_height.value()
             crop_right = min(src_w, crop_left + crop_width)
             crop_bottom = min(src_h, crop_top + crop_height)
 
-        # 7. CHANNELS DISPATCHER ROUTING
+        # 5. CHANNELS DISPATCHER ROUTING
         crop_dimensions_tuple = (crop_width, crop_height, crop_left, crop_top)
 
         if use_lossless:
@@ -457,9 +462,7 @@ class FastCropApp(QMainWindow):
                 (src_w, src_h),
                 crop_dimensions_tuple,
             )
-            crop_success = self.image_manager.execute_lossless_jpegtran_crop(
-                current_filepath, output_filepath, crop_dimensions_tuple
-            )
+            crop_args = crop_dimensions_tuple
         else:
             self.image_manager.log_engine_activation(
                 "PIXEL-PERFECT MODE (Pillow)",
@@ -468,66 +471,83 @@ class FastCropApp(QMainWindow):
                 (src_w, src_h),
                 crop_dimensions_tuple,
             )
-            crop_success = self.image_manager.execute_lossy_pillow_crop(
-                current_filepath,
-                output_filepath,
-                (crop_left, crop_top, crop_right, crop_bottom),
+            crop_args = (crop_left, crop_top, crop_right, crop_bottom)
+
+        # 6. FIRE THE CROP OFF THE UI THREAD; UI sync happens in on_crop_finished
+        def _on_finished(success: bool, finished_output_path: str, error_message: str):
+            self.on_crop_finished(
+                success=success,
+                use_lossless=use_lossless,
+                file_ext=file_ext,
+                error_message=error_message,
             )
 
-        # 8. WORKSPACE SYNC REFRESH PASS
-        if crop_success:
-            if self.chk_overwrite.isChecked():
-                # Re-hydrate the active index memory cache instantly since its file was rewritten on disk
-                self.image_session.hydrate_current_image()
-                self.load_image_to_viewport()
+        self.crop_executor.submit_crop(
+            lossless=use_lossless,
+            source_path=current_filepath,
+            output_path=output_filepath,
+            crop_args=crop_args,
+            on_finished=_on_finished,
+        )
+        return True
 
-            # 3. CRITICAL RESYNC LAYER PRESERVATION & NAV BUG CLEANUP
-            if self.chk_preserve.isChecked() and self.last_crop_geometry:
-                if use_lossless:
-                    # Re-snap to 16x16 grid to prevent leaking raw off-grid coordinates
-                    snap_x = round(self.last_crop_geometry.x() / 16) * 16
-                    snap_y = round(self.last_crop_geometry.y() / 16) * 16
-                    snap_w = round(self.last_crop_geometry.width() / 16) * 16
-                    snap_h = round(self.last_crop_geometry.height() / 16) * 16
+    def on_crop_finished(
+        self, success: bool, use_lossless: bool, file_ext: str, error_message: str
+    ) -> None:
+        """Runs on the GUI thread (Qt marshals queued-connection signals back
+        onto the thread that owns the receiver) once CropWorker completes.
+        This is the workspace-sync pass that used to live directly after
+        `if crop_success:` inside process_and_execute_crop.
+        """
+        if not success:
+            if error_message:
+                print(f"Critical Error: Crop failed: {error_message}")
+            self.status_manager.show_center_notification("Crop Failed")
+            return
 
-                    if self.combo_ratio.currentText() != "Freeform":
-                        aspect_ratio = (
-                            16.0 / 9.0
-                            if "16:9" in self.combo_ratio.currentText()
-                            else (
-                                4.0 / 3.0
-                                if "4:3" in self.combo_ratio.currentText()
-                                else 1.0
-                            )
-                        )
-                        snap_h = round((snap_w / aspect_ratio) / 16) * 16
+        if self.chk_overwrite.isChecked():
+            # Re-hydrate the active index memory cache instantly since its file was rewritten on disk
+            self.image_session.hydrate_current_image()
+            self.load_image_to_viewport()
 
-                    self.last_crop_geometry = QRect(snap_x, snap_y, snap_w, snap_h)
-
-                self.crop_box_selector.setGeometry(self.last_crop_geometry)
-                self.crop_box_selector.show()
-                self.crop_box_selector.raise_()
-            else:
-                # Explicitly hide and purge old image selection boundaries during navigation
-                self.crop_box_selector.hide()
-                self.last_crop_geometry = None
-
-            #  4. DYNAMIC SYSTEM NOTIFICATIONS PIXELS DISPATCHER
+        # CRITICAL RESYNC LAYER PRESERVATION & NAV BUG CLEANUP
+        if self.chk_preserve.isChecked() and self.last_crop_geometry:
             if use_lossless:
+                ratio_label = self.combo_ratio.currentText()
+                snap_x = round(self.last_crop_geometry.x() / 16) * 16
+                snap_y = round(self.last_crop_geometry.y() / 16) * 16
+                snap_w = round(self.last_crop_geometry.width() / 16) * 16
+                snap_h = round(self.last_crop_geometry.height() / 16) * 16
+
+                if ratio_label != "Freeform":
+                    aspect_ratio = (
+                        CropGeometryEngine.resolve_aspect_ratio(ratio_label) or 1.0
+                    )
+                    snap_h = round((snap_w / aspect_ratio) / 16) * 16
+
+                self.last_crop_geometry = QRect(snap_x, snap_y, snap_w, snap_h)
+
+            self.crop_box_selector.setGeometry(self.last_crop_geometry)
+            self.crop_box_selector.show()
+            self.crop_box_selector.raise_()
+        else:
+            # Explicitly hide and purge old image selection boundaries during navigation
+            self.crop_box_selector.hide()
+            self.last_crop_geometry = None
+
+        # DYNAMIC SYSTEM NOTIFICATIONS PIXELS DISPATCHER
+        if use_lossless:
+            self.status_manager.show_center_notification("Lossless Crop")
+        else:
+            # Check if the output file is a naturally lossless format like PNG
+            if file_ext in (".png", ".bmp"):
                 self.status_manager.show_center_notification("Lossless Crop")
             else:
-                # Check if the output file is a naturally lossless format like PNG
-                if file_ext in (".png", ".bmp"):
-                    self.status_manager.show_center_notification("Lossless Crop")
-                else:
-                    self.status_manager.show_center_notification("Lossy Crop")
+                self.status_manager.show_center_notification("Lossy Crop")
 
-            # Update layout readout boxes and the lazy engine tick
-            self.update_resolution_metrics_display()
-            self.status_manager.invalidate_ui_state()
-            return True
-
-        return False
+        # Update layout readout boxes and the lazy engine tick
+        self.update_resolution_metrics_display()
+        self.status_manager.invalidate_ui_state()
 
     def rotate_current_image(self):
         """Delegates layout transformations directly to the core ImageProcessor engine."""
@@ -708,6 +728,10 @@ class FastCropApp(QMainWindow):
 
     def closeEvent(self, event):
         """Standard PyQt window intercept routine executing right before closing down."""
+        # 0. Don't let a jpegtran subprocess or Pillow write get killed mid-flight
+        if hasattr(self, "crop_executor"):
+            self.crop_executor.wait_for_all()
+
         try:
             # 1. Capture current states, write to model, and commit via SettingsManager
             self.save_application_state()
@@ -930,6 +954,7 @@ class FastCropApp(QMainWindow):
         )
         pix_w, pix_h = pixmap.width(), pixmap.height()
         offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
+        viewport = self._build_viewport_geometry(pixmap)
 
         # 2. Contain cursor positions securely inside the active image boundary
         x1, y1 = self.drag_start_origin.x(), self.drag_start_origin.y()
@@ -941,14 +966,8 @@ class FastCropApp(QMainWindow):
 
         # 3. Dynamic Aspect Ratio Handling
         ratio_type = self.combo_ratio.currentText()
-        if ratio_type != "Freeform":
-            aspect = (
-                16.0 / 9.0
-                if "16:9" in ratio_type
-                else 4.0 / 3.0
-                if "4:3" in ratio_type
-                else 1.0
-            )
+        aspect = CropGeometryEngine.resolve_aspect_ratio(ratio_type)
+        if aspect is not None:
             sign_w = 1 if raw_w >= 0 else -1
             sign_h = 1 if raw_h >= 0 else -1
             raw_h = sign_h * abs(int(raw_w / aspect))
@@ -1006,40 +1025,17 @@ class FastCropApp(QMainWindow):
                 self.ghost_selector.hide()
 
         # 6. Source-Pixel Mapping for Spinbox Synchronization
-        src_w, src_h = self.image_session.width, self.image_session.height
-        scale_x = src_w / pix_w
-        scale_y = src_h / pix_h
-
-        if use_lossless:
-            # Map width/height based on the 16-pixel snapped matrix footprint
-            img_raw_w = snapped_rect.width() * scale_x
-            img_raw_h = snapped_rect.height() * scale_y
-            final_w = max(16, round(img_raw_w / 16) * 16)
-            final_h = max(16, round(img_raw_h / 16) * 16)
-
-            if ratio_type != "Freeform":
-                aspect = (
-                    16.0 / 9.0
-                    if "16:9" in ratio_type
-                    else 4.0 / 3.0
-                    if "4:3" in ratio_type
-                    else 1.0
-                )
-                final_h = max(16, round((final_w / aspect) / 16) * 16)
-        else:
-            # Standard Pixel-Perfect Mode: Map 1:1 with continuous integer pixels
-            final_w = max(1, round(fluid_rect.width() * scale_x))
-            final_h = max(1, round(fluid_rect.height() * scale_y))
-            if ratio_type != "Freeform":
-                aspect = (
-                    16.0 / 9.0
-                    if "16:9" in ratio_type
-                    else 4.0 / 3.0
-                    if "4:3" in ratio_type
-                    else 1.0
-                )
-                # Multiply/divide directly on final_w to eliminate floating-point rounding errors
-                final_h = max(1, round(final_w / aspect))
+        # snapped_rect is already grid-snapped (lossless) or the raw fluid_rect
+        # (pixel-perfect); screen_rect_to_source_rect re-derives width/height
+        # from it using the exact same rules update_resolution_metrics_display
+        # and calculate_snapped_rect use, so all three stay in sync.
+        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+            snapped_rect if use_lossless else fluid_rect,
+            viewport,
+            lossless=use_lossless,
+            ratio_label=ratio_type,
+        )
+        final_w, final_h = source_rect.width(), source_rect.height()
 
         # 7. Force Spinbox Value Synchronizations Safely
         # Temporarily block signals so spinbox events don't trigger canvas recalculations mid-drag
@@ -1058,82 +1054,24 @@ class FastCropApp(QMainWindow):
     def calculate_snapped_rect(self, screen_rect):
         """Translates a screen QRect to True Image Space, forces pure mathematical
         aspect ratios, snaps to 16x16 blocks if Lossless is active, and returns
-        a perfectly symmetrical screen QRect.
+        a perfectly symmetrical screen QRect. Delegates the actual math to
+        CropGeometryEngine so this stays in lockstep with every other
+        coordinate-transform call site in the app.
         """
-        if (
-            not self.image_session.has_active_image
-            or not self.image_display_container.pixmap()
-        ):
+        pixmap = self.image_display_container.pixmap()
+        if not self.image_session.has_active_image or not pixmap:
             return screen_rect
 
-        pixmap = self.image_display_container.pixmap()
-
-        # 1. Viewport metrics and centering offsets
-        lbl_w, lbl_h = (
-            self.image_display_container.width(),
-            self.image_display_container.height(),
-        )
-        pix_w, pix_h = pixmap.width(), pixmap.height()
-        offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
-
-        # 2. Convert Screen Coordinates directly to True Image Pixel Space
-        src_w, src_h = self.image_session.width, self.image_session.height
-        scale_x, scale_y = src_w / pix_w, src_h / pix_h
-
-        img_x = (screen_rect.x() - offset_x) * scale_x
-        img_y = (screen_rect.y() - offset_y) * scale_y
-        img_w = screen_rect.width() * scale_x
-        img_h = screen_rect.height() * scale_y
-
-        # 3. Read the Selected Engine and Aspect Ratio rules
-        ratio_type = self.combo_ratio.currentText()
-        aspect = (
-            16.0 / 9.0
-            if "16:9" in ratio_type
-            else 4.0 / 3.0
-            if "4:3" in ratio_type
-            else 1.0
-        )
-
+        viewport = self._build_viewport_geometry(pixmap)
+        ratio_label = self.combo_ratio.currentText()
         use_lossless = self.determine_if_lossless_active()
 
-        # 4. Enforce Math Transformations Directly in True Image Space
-        if use_lossless:
-            # Step A: Snap the width onto the 16px MCU block boundary first
-            img_w = max(16, round(img_w / 16) * 16)
-
-            # Step B: Calculate height strictly from that width to maintain aspect ratio
-            if ratio_type != "Freeform":
-                img_h = max(16, round((img_w / aspect) / 16) * 16)
-            else:
-                img_h = max(16, round(img_h / 16) * 16)
-
-            # Step C: Align the top-left origin coordinates to the 16px grid
-            img_x = round(img_x / 16) * 16
-            img_y = round(img_y / 16) * 16
-        else:
-            # Pixel-Perfect Mode: Round directly to whole image pixels
-            img_w = max(1, round(img_w))
-            if ratio_type != "Freeform":
-                img_h = max(1, round(img_w / aspect))
-            else:
-                img_h = max(1, round(img_h))
-
-            img_x = round(img_x)
-            img_y = round(img_y)
-
-        # 5. Project back to Screen Layout Pixels with Strict Aspect Constraints
-        screen_x = int(img_x * (pix_w / src_w)) + offset_x
-        screen_y = int(img_y * (pix_h / src_h)) + offset_y
-        screen_w = int(img_w * (pix_w / src_w))
-
-        # CRITICAL FIX: Drive the screen height directly from the screen width calculation
-        if ratio_type != "Freeform":
-            screen_h = max(1, round(screen_w / aspect))
-        else:
-            screen_h = int(img_h * (pix_h / src_h))
-
-        return QRect(screen_x, screen_y, screen_w, screen_h)
+        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+            screen_rect, viewport, lossless=use_lossless, ratio_label=ratio_label
+        )
+        return CropGeometryEngine.source_rect_to_screen_rect(
+            source_rect, viewport, ratio_label=ratio_label
+        )
 
     def update_resolution_metrics_display(self):
         """Updates the spinboxes and status bar metrics based on the current selection box,
@@ -1150,52 +1088,19 @@ class FastCropApp(QMainWindow):
         if not pixmap:
             return
 
-        # 1. Get current selection box screen geometry
-        geom = self.crop_box_selector.geometry()
-        pix_w, pix_h = pixmap.width(), pixmap.height()
-
-        # 2. Map back to true source image pixel dimensions
-        src_w, src_h = self.image_session.width, self.image_session.height
-        scale_x = src_w / pix_w
-        scale_y = src_h / pix_h
-
-        img_w = geom.width() * scale_x
-        img_h = geom.height() * scale_y
-
-        # 3. CRITICAL ASPECT RATIO UI CORRECTION
-        ratio_type = self.combo_ratio.currentText()
+        viewport = self._build_viewport_geometry(pixmap)
+        ratio_label = self.combo_ratio.currentText()
         use_lossless = self.determine_if_lossless_active()
 
-        if use_lossless:
-            # Force lossless increments to line up with 16px MCU blocks
-            final_w = max(16, round(img_w / 16) * 16)
-            if ratio_type != "Freeform":
-                aspect = (
-                    16.0 / 9.0
-                    if "16:9" in ratio_type
-                    else 4.0 / 3.0
-                    if "4:3" in ratio_type
-                    else 1.0
-                )
-                final_h = max(16, round((final_w / aspect) / 16) * 16)
-            else:
-                final_h = max(16, round(img_h / 16) * 16)
-        else:
-            # Standard pixel-perfect mode whole integer rounding
-            final_w = max(1, round(img_w))
-            if ratio_type != "Freeform":
-                aspect = (
-                    16.0 / 9.0
-                    if "16:9" in ratio_type
-                    else 4.0 / 3.0
-                    if "4:3" in ratio_type
-                    else 1.0
-                )
-                final_h = max(1, round(final_w / aspect))
-            else:
-                final_h = max(1, round(img_h))
+        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+            self.crop_box_selector.geometry(),
+            viewport,
+            lossless=use_lossless,
+            ratio_label=ratio_label,
+        )
+        final_w, final_h = source_rect.width(), source_rect.height()
 
-        # 4. Safely push the matching dimensions to the spinboxes without triggering loops
+        # Safely push the matching dimensions to the spinboxes without triggering loops
         if not self._updating_spinboxes:
             self._updating_spinboxes = True
             self.spin_width.setValue(final_w)
@@ -1232,27 +1137,22 @@ class FastCropApp(QMainWindow):
         pixmap = self.image_display_container.pixmap()
 
         if pixmap and box_rect.width() > 5 and box_rect.height() > 5:
-            lbl_w, lbl_h = (
-                self.image_display_container.width(),
-                self.image_display_container.height(),
-            )
-            pix_w, pix_h = pixmap.width(), pixmap.height()
-            offset_x = (lbl_w - pix_w) // 2
-            offset_y = (lbl_h - pix_h) // 2
-
-            adj_x = max(0, min(box_rect.x() - offset_x, pix_w))
-            adj_y = max(0, min(box_rect.y() - offset_y, pix_h))
-            adj_w = min(box_rect.width(), pix_w - adj_x)
-            adj_h = min(box_rect.height(), pix_h - adj_y)
-
             src_w, src_h = self.image_session.width, self.image_session.height
-            scale_x = src_w / pix_w
-            scale_y = src_h / pix_h
+            viewport = self._build_viewport_geometry(pixmap)
+            clamped_rect = CropGeometryEngine.clamp_screen_rect_to_pixmap(
+                box_rect, viewport
+            )
 
-            crop_left = int(adj_x * scale_x)
-            crop_top = int(adj_y * scale_y)
-            crop_right = int((adj_x + adj_w) * scale_x)
-            crop_bottom = int((adj_y + adj_h) * scale_y)
+            # Intentionally raw (no grid snap / aspect lock): the zoom HUD previews
+            # exactly what's under the rubber band right now, not the eventual snapped crop.
+            crop_left = int(clamped_rect.x() * viewport.scale_x)
+            crop_top = int(clamped_rect.y() * viewport.scale_y)
+            crop_right = int(
+                (clamped_rect.x() + clamped_rect.width()) * viewport.scale_x
+            )
+            crop_bottom = int(
+                (clamped_rect.y() + clamped_rect.height()) * viewport.scale_y
+            )
 
             if (crop_right > crop_left) and (crop_bottom > crop_top):
                 # Clamp coordinates safely
@@ -1281,14 +1181,7 @@ class FastCropApp(QMainWindow):
 
     def get_current_forced_ratio(self):
         """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
-        ratio_type = self.combo_ratio.currentText()
-        if ratio_type == "1:1 Square":
-            return 1.0
-        if ratio_type == "16:9 Widescreen":
-            return 16.0 / 9.0
-        if ratio_type == "4:3 Standard":
-            return 4.0 / 3.0
-        return None  # Freeform
+        return CropGeometryEngine.resolve_aspect_ratio(self.combo_ratio.currentText())
 
     def on_spin_width_changed(self, value):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
@@ -1349,7 +1242,10 @@ class FastCropApp(QMainWindow):
 
         # Lossless snapping
         if self.determine_if_lossless_active():
-            tw, th = max(16, round(tw / 16) * 16), max(16, round(th / 16) * 16)
+            tw, th = (
+                CropGeometryEngine.snap_to_grid(tw),
+                CropGeometryEngine.snap_to_grid(th),
+            )
             if not self._updating_spinboxes:
                 self._updating_spinboxes = True
                 self.spin_width.setValue(tw), self.spin_height.setValue(th)
