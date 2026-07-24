@@ -278,29 +278,35 @@ class FastCropApp(QMainWindow):
             target_x = self.box_start_pos.x() + total_mouse_delta.x()
             target_y = self.box_start_pos.y() + total_mouse_delta.y()
 
-            # Apply 16x16 grid snap ONLY to the visible layout coordinates
-            if use_lossless:
-                render_x = round(target_x / 16) * 16
-                render_y = round(target_y / 16) * 16
-            else:
-                render_x = target_x
-                render_y = target_y
-
             # Keep the box inside the display window boundaries safely
-            render_x = max(
+            target_x = max(
                 0,
                 min(
-                    render_x,
+                    target_x,
                     self.image_display_container.width() - current_geometry.width(),
                 ),
             )
-            render_y = max(
+            target_y = max(
                 0,
                 min(
-                    render_y,
+                    target_y,
                     self.image_display_container.height() - current_geometry.height(),
                 ),
             )
+
+            # Construct the un-snapped fluid box state
+            fluid_moved_rect = QRect(
+                target_x, target_y, current_geometry.width(), current_geometry.height()
+            )
+
+            if use_lossless:
+                # Map via your centralized engine tracker instead of raw round(val / 16) * 16
+                snapped_moved_rect = self.calculate_snapped_rect(fluid_moved_rect)
+                render_x = snapped_moved_rect.x()
+                render_y = snapped_moved_rect.y()
+            else:
+                render_x = target_x
+                render_y = target_y
 
             # Move the widget layout on the screen
             self.crop_box_selector.move(render_x, render_y)
@@ -1056,11 +1062,9 @@ class FastCropApp(QMainWindow):
         ratio_label = self.combo_ratio.currentText()
         use_lossless = self.determine_if_lossless_active()
 
-        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+        # Route conversion math natively through the unified calculation controller
+        return CropGeometryEngine.snap_screen_rect_to_grid(
             screen_rect, viewport, lossless=use_lossless, ratio_label=ratio_label
-        )
-        return CropGeometryEngine.source_rect_to_screen_rect(
-            source_rect, viewport, ratio_label=ratio_label
         )
 
     def update_resolution_metrics_display(self):
@@ -1135,14 +1139,17 @@ class FastCropApp(QMainWindow):
 
             # Intentionally raw (no grid snap / aspect lock): the zoom HUD previews
             # exactly what's under the rubber band right now, not the eventual snapped crop.
-            crop_left = int(clamped_rect.x() * viewport.scale_x)
-            crop_top = int(clamped_rect.y() * viewport.scale_y)
-            crop_right = int(
-                (clamped_rect.x() + clamped_rect.width()) * viewport.scale_x
+            source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+                box_rect,
+                viewport,
+                lossless=False,
+                ratio_label=self.combo_ratio.currentText(),
             )
-            crop_bottom = int(
-                (clamped_rect.y() + clamped_rect.height()) * viewport.scale_y
-            )
+
+            crop_left = source_rect.x()
+            crop_top = source_rect.y()
+            crop_right = crop_left + source_rect.width()
+            crop_bottom = crop_top + source_rect.height()
 
             if (crop_right > crop_left) and (crop_bottom > crop_top):
                 # Clamp coordinates safely

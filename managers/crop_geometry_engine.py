@@ -153,3 +153,25 @@ class CropGeometryEngine:
         if lossless:
             return cls.snap_to_grid(width / aspect)
         return max(1, round(width / aspect))
+
+    @classmethod
+    def snap_screen_rect_to_grid(
+        cls,
+        screen_rect: QRect,
+        viewport: ViewportGeometry,
+        lossless: bool,
+        ratio_label: str,
+    ) -> QRect:
+        """Pure inverse matrix mapping to snap screen bounding fields!"""
+        # Convert screen coordinate selection frame into true image pixel coordinates
+        source_rect = cls.screen_rect_to_source_rect(
+            screen_rect, viewport, lossless, ratio_label
+        )
+
+        # Backward-map image source pixels back onto precise on-screen UI pixels
+        snapped_x = (source_rect.x() / viewport.scale_x) + viewport.offset_x
+        snapped_y = (source_rect.y() / viewport.scale_y) + viewport.offset_y
+        snapped_w = source_rect.width() / viewport.scale_x
+        snapped_h = source_rect.height() / viewport.scale_y
+
+        return QRect(int(snapped_x), int(snapped_y), int(snapped_w), int(snapped_h))
