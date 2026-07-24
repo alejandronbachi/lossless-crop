@@ -513,23 +513,13 @@ class FastCropApp(QMainWindow):
         # CRITICAL RESYNC LAYER PRESERVATION & NAV BUG CLEANUP
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
             if use_lossless:
-                ratio_label = self.combo_ratio.currentText()
-                snap_x = round(self.last_crop_geometry.x() / 16) * 16
-                snap_y = round(self.last_crop_geometry.y() / 16) * 16
-                snap_w = round(self.last_crop_geometry.width() / 16) * 16
-                snap_h = round(self.last_crop_geometry.height() / 16) * 16
-
-                if ratio_label != "Freeform":
-                    aspect_ratio = (
-                        CropGeometryEngine.resolve_aspect_ratio(ratio_label) or 1.0
-                    )
-                    snap_h = round((snap_w / aspect_ratio) / 16) * 16
-
-                self.last_crop_geometry = QRect(snap_x, snap_y, snap_w, snap_h)
-
-            self.crop_box_selector.setGeometry(self.last_crop_geometry)
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
+                # FIX: Use your single source of truth engine instead of manual screen pixel rounding loops
+                self.last_crop_geometry = self.calculate_snapped_rect(
+                    self.last_crop_geometry
+                )
+                self.crop_box_selector.setGeometry(self.last_crop_geometry)
+                self.crop_box_selector.show()
+                self.crop_box_selector.raise_()
         else:
             # Explicitly hide and purge old image selection boundaries during navigation
             self.crop_box_selector.hide()
