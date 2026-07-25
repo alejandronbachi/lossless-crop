@@ -95,10 +95,13 @@ class StatusManager(QObject):
         metrics_string = ""
         if (
             self.main_app.cfg_show_imgsize.isChecked()
-            and hasattr(self.main_app, "current_pil_image")
+            and self.main_app.image_session.has_active_image
             and self.main_app.image_session.pil_image
         ):
-            src_w, src_h = self.main_app.image_session.width, self.image_session.height
+            src_w, src_h = (
+                self.main_app.image_session.width,
+                self.main_app.image_session.height,
+            )
             metrics_string = f"IMG: {src_w}x{src_h}"
 
         # 2. Check the live checkbox state instead of static settings!
@@ -116,9 +119,9 @@ class StatusManager(QObject):
             is_user_actively_editing = getattr(
                 self.main_app, "is_moving_box", False
             ) or (
-                hasattr(self.main_app, "drag_start_origin")
-                and not self.main_app.drag_start_origin.isNull()
-                and not getattr(self.main_app, "is_moving_box", False)
+                hasattr(self.main_app.selection_manager, "drag_start_origin")
+                and not self.main_app.selection_manager.drag_start_origin.isNull()
+                and not getattr(self.main_app.selection_manager, "is_moving_box", False)
             )
 
             hud_lines = []

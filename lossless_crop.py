@@ -177,10 +177,6 @@ class FastCropApp(QMainWindow):
         self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
-        ## TODO could be removed i think
-        if hasattr(self, "update_zoom_hud_payload"):
-            self.update_zoom_hud_payload()
-
     def refresh_display_canvas(self):
         """Handles fast memory-side hardware viewport scaling from session data."""
 
