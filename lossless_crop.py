@@ -4,10 +4,8 @@ from pathlib import Path
 
 from PyQt6.QtCore import (
     QEasingCurve,
-    QPoint,
     QPropertyAnimation,
     QRect,
-    QSize,
     Qt,
     QTimer,
 )
@@ -29,6 +27,7 @@ from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
+from managers.selection_manager import SelectionManager
 from managers.settings_manager import SettingsManager
 from managers.status_manager import StatusManager
 from models.app_settings import AppSettings
@@ -76,10 +75,6 @@ class FastCropApp(QMainWindow):
 
         # Image Pipeline Management Variables
         self.image_session = ImageSession()
-
-        # Bounding Box Memory Settings
-        self.last_crop_geometry = None
-        self.is_moving_box = False
 
         # Initialize User Interface
         self.init_ui()
@@ -137,7 +132,18 @@ class FastCropApp(QMainWindow):
         self.crop_box_selector = QRubberBand(
             QRubberBand.Shape.Rectangle, self.image_display_container
         )
-        self.drag_start_origin = QPoint()
+
+        self.selection_manager = SelectionManager(
+            canvas=self.image_display_container,
+            selector=self.crop_box_selector,
+            ghost_parent=self.central_widget,  # matches old ghost_selector's parent
+            image_session=self.image_session,
+            ratio_combo=self.combo_ratio,
+            snap_combo=self.combo_snap,
+            viewport_factory=self._build_viewport_geometry,
+            lossless_check=self.determine_if_lossless_active,
+            on_selection_changed=lambda: self.status_manager.invalidate_ui_state(),
+        )
 
     def load_image_to_viewport(self):
         # 🚀 CHANGE ONLY: Evaluate session status instead of loose variables
@@ -157,20 +163,12 @@ class FastCropApp(QMainWindow):
         # -----------------------------------------------------------------
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
         # -----------------------------------------------------------------
-        if self.chk_preserve.isChecked() and self.last_crop_geometry:
-            if self.determine_if_lossless_active():
-                self.last_crop_geometry = self.calculate_snapped_rect(
-                    self.last_crop_geometry
-                )
-
-            self.crop_box_selector.setGeometry(self.last_crop_geometry)
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
+        if self.chk_preserve.isChecked() and self.selection_manager.last_crop_geometry:
+            self.selection_manager.restore_preserved_geometry(
+                self.selection_manager.last_crop_geometry
+            )
         else:
-            self.crop_box_selector.hide()
-            self.last_crop_geometry = None
-            if hasattr(self, "ghost_selector") and self.ghost_selector:
-                self.ghost_selector.hide()
+            self.selection_manager.clear_selection()
 
         # Update status manager system layout overlays
         self.status_manager.reposition_commands_overlay()
@@ -179,6 +177,7 @@ class FastCropApp(QMainWindow):
         self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
+        ## TODO could be removed i think
         if hasattr(self, "update_zoom_hud_payload"):
             self.update_zoom_hud_payload()
 
@@ -220,11 +219,9 @@ class FastCropApp(QMainWindow):
     # MOUSE INTERACTION & ASPECT BOX OVERLAYS
     # -----------------------------------------------------------------
     def on_mouse_press(self, event):
-
         if self.drawer_is_open:
-            # If the user clicks on the image layout while the menu is open, smoothly retract it
             self.toggle_settings_drawer()
-            return  # Block the click from drawing a box on this specific tap
+            return
 
         if (
             not self.image_display_container.pixmap()
@@ -232,86 +229,41 @@ class FastCropApp(QMainWindow):
         ):
             return
 
-        # Hide the commands panel instantly so it doesn't obstruct cropping fields
         self.status_manager.hide_overlays_on_mouse_press()
 
         if event.button() == Qt.MouseButton.LeftButton:
-            # Left Click: Draw a new crop box
-            self.drag_start_origin = event.position().toPoint()
-            self.crop_box_selector.setGeometry(QRect(self.drag_start_origin, QSize()))
-            self.crop_box_selector.show()
-            self.is_moving_box = False
-
+            self.selection_manager.begin_draw(event.position().toPoint())
         elif event.button() == Qt.MouseButton.RightButton:
-            # Right Click: Move the existing crop box if the cursor is inside it
-            click_point = event.position().toPoint()
-            if (
-                not self.crop_box_selector.isHidden()
-                and self.crop_box_selector.geometry().contains(click_point)
-            ):
-                self.is_moving_box = True
-                self.drag_start_origin = (
-                    click_point  # Track starting point of movement drag
-                )
-                self.box_start_pos = self.crop_box_selector.geometry().topLeft()
-            else:
-                self.is_moving_box = False
+            self.selection_manager.begin_move(event.position().toPoint())
+
         self.update_zoom_hud_payload()
 
     def on_mouse_move(self, event):
-        if self.drag_start_origin.isNull():
+        if self.selection_manager.drag_start_origin.isNull():
             return
-
         current_point = event.position().toPoint()
-        # -----------------------------------------------------------------
-        # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box smoothly)
-        # -----------------------------------------------------------------
-        if self.is_moving_box:
-            # Calculate the total distance the mouse has moved since the first right-click
-            total_mouse_delta = current_point - self.drag_start_origin
-            current_geometry = self.crop_box_selector.geometry()
-
-            # Add that total distance to the box's initial starting coordinates
-            target_x = self.box_start_pos.x() + total_mouse_delta.x()
-            target_y = self.box_start_pos.y() + total_mouse_delta.y()
-
-            # Keep the box inside the display window boundaries safely
-            target_x = max(
-                0,
-                min(
-                    target_x,
-                    self.image_display_container.width() - current_geometry.width(),
-                ),
-            )
-            target_y = max(
-                0,
-                min(
-                    target_y,
-                    self.image_display_container.height() - current_geometry.height(),
-                ),
-            )
-
-            #  CLEAN REFACTOR: Move the box smoothly to target coords for BOTH modes
-            self.crop_box_selector.move(target_x, target_y)
-            self.last_crop_geometry = self.crop_box_selector.geometry()
-
-            # Let the unified snapper handle grid rounding if lossless, or lazy state updates if lossy!
-            self.snap_selector_widget()
-        # -----------------------------------------------------------------
-        # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing the box)
-        # -----------------------------------------------------------------
+        if self.selection_manager.is_moving_box:
+            self.selection_manager.update_move(current_point)
         else:
-            self.handle_left_click_drawing(current_point)
+            source_rect = self.selection_manager.update_draw(current_point)
+            if source_rect is not None:
+                self.spin_width.blockSignals(True)
+                self.spin_height.blockSignals(True)
+                self.spin_width.setValue(source_rect.width())
+                self.spin_height.setValue(source_rect.height())
+                self.spin_width.blockSignals(False)
+                self.spin_height.blockSignals(False)
 
     def on_mouse_release(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and not self.is_moving_box:
-            self.handle_left_click_release()
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and not self.selection_manager.is_moving_box
+        ):
+            self.selection_manager.finalize_draw()
         elif event.button() == Qt.MouseButton.RightButton:
-            self.is_moving_box = False
-            self.drag_start_origin = QPoint()
+            self.selection_manager.end_move()
 
         self.status_manager.restore_overlays_on_mouse_release()
-        # Keep recalculating your numeric scale spinbox fields as normal
         self.update_resolution_metrics_display()
 
     def on_ratio_changed(self):
@@ -454,11 +406,6 @@ class FastCropApp(QMainWindow):
     def on_crop_finished(
         self, success: bool, use_lossless: bool, file_ext: str, error_message: str
     ) -> None:
-        """Runs on the GUI thread (Qt marshals queued-connection signals back
-        onto the thread that owns the receiver) once CropWorker completes.
-        This is the workspace-sync pass that used to live directly after
-        `if crop_success:` inside process_and_execute_crop.
-        """
         if not success:
             if error_message:
                 print(f"Critical Error: Crop failed: {error_message}")
@@ -466,53 +413,40 @@ class FastCropApp(QMainWindow):
             return
 
         if self.chk_overwrite.isChecked():
-            # Re-hydrate the active index memory cache instantly since its file was rewritten on disk
             self.image_session.hydrate_current_image()
             self.load_image_to_viewport()
 
-        if self.chk_preserve.isChecked() and self.last_crop_geometry:
-            self.snap_selector_widget()
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
+        if self.chk_preserve.isChecked() and self.selection_manager.last_crop_geometry:
+            self.selection_manager.restore_preserved_geometry(
+                self.selection_manager.last_crop_geometry
+            )
         else:
-            # Explicitly hide and purge old image selection boundaries during navigation
-            self.crop_box_selector.hide()
-            self.last_crop_geometry = None
+            self.selection_manager.clear_selection()
 
-        # DYNAMIC SYSTEM NOTIFICATIONS PIXELS DISPATCHER
         if use_lossless:
             self.status_manager.show_center_notification("Lossless Crop")
         else:
-            # Check if the output file is a naturally lossless format like PNG
             if file_ext in (".png", ".bmp"):
                 self.status_manager.show_center_notification("Lossless Crop")
             else:
                 self.status_manager.show_center_notification("Lossy Crop")
 
-        # Update layout readout boxes and the lazy engine tick
         self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
     def rotate_current_image(self):
-        """Delegates layout transformations directly to the core ImageProcessor engine."""
         if not self.image_session.has_active_image:
             return
 
-        #  THE PROCESSOR UPGRADE: Hand off the session context to your processor utility!
         self.image_manager.rotate_session_view(self.image_session)
-
-        # Immediately push the updated texture changes out to your UI views
         self.refresh_display_canvas()
 
-        # Re-align the stationary selection frame box geometry
-        if not self.crop_box_selector.isHidden() and self.last_crop_geometry:
-            snapped_rect = self.calculate_snapped_rect(self.last_crop_geometry)
-            self.last_crop_geometry = snapped_rect
-            self.crop_box_selector.setGeometry(self.last_crop_geometry)
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
+        if (
+            not self.crop_box_selector.isHidden()
+            and self.selection_manager.last_crop_geometry
+        ):
+            self.selection_manager.snap_selection()
 
-        # Synchronize status bars, spinboxes, and the zoom preview engine
         self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
@@ -829,189 +763,6 @@ class FastCropApp(QMainWindow):
             error_msg="",  # Not needed since splash handles the empty state above
         )
 
-    def handle_left_click_release(self):
-        """Finalizes left-click box drawing by processing grid alignment transformations."""
-        if self.drag_start_origin.isNull() or not self.last_crop_geometry:
-            return
-
-        snap_mode = self.combo_snap.currentText()
-
-        print(
-            f"[DEBUG RELEASE] Mode: {snap_mode} | Executing Final Snap Settlement Routine."
-        )
-
-        if snap_mode in ("Post-release snap", "Real-time snap"):
-            # Visually snap the blue selection box right over the 16px grid coordinates
-            self.snap_selector_widget()
-            print(
-                f"[DEBUG RELEASE] Box Visually Snapped to: {self.last_crop_geometry.width()}x{self.last_crop_geometry.height()}"
-            )
-
-        elif snap_mode == "Ghosting":
-            # Wipe away the secondary dashed visualization layer safely
-            if hasattr(self, "ghost_selector") and self.ghost_selector:
-                self.ghost_selector.hide()
-            # Position the main selector box precisely over the ghost frame coordinates
-            fluid_rect = self.crop_box_selector.geometry()
-            snapped_rect = self.calculate_snapped_rect(fluid_rect)
-            self.crop_box_selector.setGeometry(snapped_rect)
-            self.last_crop_geometry = snapped_rect
-
-        # Clean out temporary coordinate tracking flags
-        self.drag_start_origin = QPoint()
-
-        # Unblock, update resolution readouts, and lock configuration structures
-        self.status_manager.invalidate_ui_state()
-
-    def handle_left_click_drawing(self, current_screen_pos):
-        """Drives left-click drawing. Snaps strictly to a 16x16 grid ONLY in Lossless mode.
-        Forces spinbox updates in real-time across ALL feedback modes.
-        """
-        if self.drag_start_origin.isNull() or not self.image_session.has_active_image:
-            return
-
-        pixmap = self.image_display_container.pixmap()
-        if not pixmap:
-            return
-
-        # 1. Viewport geometry and centering padding offsets
-        lbl_w, lbl_h = (
-            self.image_display_container.width(),
-            self.image_display_container.height(),
-        )
-        pix_w, pix_h = pixmap.width(), pixmap.height()
-        offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
-        viewport = self._build_viewport_geometry(pixmap)
-
-        # 2. Contain cursor positions securely inside the active image boundary
-        x1, y1 = self.drag_start_origin.x(), self.drag_start_origin.y()
-        x2 = max(offset_x, min(current_screen_pos.x(), offset_x + pix_w))
-        y2 = max(offset_y, min(current_screen_pos.y(), offset_y + pix_h))
-
-        raw_w = x2 - x1
-        raw_h = y2 - y1
-
-        # 3. Dynamic Aspect Ratio Handling
-        ratio_type = self.combo_ratio.currentText()
-        aspect = CropGeometryEngine.resolve_aspect_ratio(ratio_type)
-        if aspect is not None:
-            sign_w = 1 if raw_w >= 0 else -1
-            sign_h = 1 if raw_h >= 0 else -1
-            raw_h = sign_h * abs(int(raw_w / aspect))
-
-            # Limit calculations to prevent drawing outside the canvas
-            if y1 + raw_h < offset_y:
-                raw_h = offset_y - y1
-                raw_w = sign_w * abs(int(raw_h * aspect))
-            elif y1 + raw_h > offset_y + pix_h:
-                raw_h = (offset_y + pix_h) - y1
-                raw_w = sign_w * abs(int(raw_h * aspect))
-
-        fluid_rect = QRect(x1, y1, raw_w, raw_h).normalized()
-        snap_mode = self.combo_snap.currentText()
-
-        use_lossless = self.determine_if_lossless_active()
-
-        # Calculate what the grid mapped rectangle represents
-        if use_lossless:
-            snapped_rect = self.calculate_snapped_rect(fluid_rect)
-        else:
-            snapped_rect = (
-                fluid_rect  # Pixel-perfect mode: No layout snapping adjustments
-            )
-
-        # 5. Layer Visibility Routines
-        if snap_mode == "Real-time snap":
-            if hasattr(self, "ghost_selector") and self.ghost_selector:
-                self.ghost_selector.hide()
-            # Draw the box immediately via the unified snap rules
-            if use_lossless:
-                self.crop_box_selector.setGeometry(snapped_rect)
-                self.last_crop_geometry = snapped_rect
-            else:
-                self.crop_box_selector.setGeometry(fluid_rect)
-                self.last_crop_geometry = fluid_rect
-
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
-
-        elif snap_mode == "Post-release snap":
-            if hasattr(self, "ghost_selector") and self.ghost_selector:
-                self.ghost_selector.hide()
-            self.crop_box_selector.setGeometry(fluid_rect)
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
-            self.last_crop_geometry = fluid_rect
-
-        elif snap_mode == "Ghosting":
-            if not hasattr(self, "ghost_selector") or not self.ghost_selector:
-                self.ghost_selector = QRubberBand(
-                    QRubberBand.Shape.Rectangle, self.central_widget
-                )
-                self.ghost_selector.setStyleSheet(
-                    "background-color: rgba(255, 165, 0, 30); border: 1px dashed orange;"
-                )
-
-            self.crop_box_selector.setGeometry(fluid_rect)
-            self.crop_box_selector.show()
-            self.crop_box_selector.raise_()
-            self.last_crop_geometry = fluid_rect
-
-            # Show the ghost block grid overlay ONLY if we are operating in Lossless mode
-            if use_lossless:
-                self.ghost_selector.setGeometry(snapped_rect)
-                self.ghost_selector.show()
-                self.ghost_selector.raise_()
-            else:
-                self.ghost_selector.hide()
-
-        # 6. Source-Pixel Mapping for Spinbox Synchronization
-        # snapped_rect is already grid-snapped (lossless) or the raw fluid_rect
-        # (pixel-perfect); screen_rect_to_source_rect re-derives width/height
-        # from it using the exact same rules update_resolution_metrics_display
-        # and calculate_snapped_rect use, so all three stay in sync.
-        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
-            snapped_rect if use_lossless else fluid_rect,
-            viewport,
-            lossless=use_lossless,
-            ratio_label=ratio_type,
-        )
-        final_w, final_h = source_rect.width(), source_rect.height()
-
-        # 7. Force Spinbox Value Synchronizations Safely
-        # Temporarily block signals so spinbox events don't trigger canvas recalculations mid-drag
-        self.spin_width.blockSignals(True)
-        self.spin_height.blockSignals(True)
-
-        self.spin_width.setValue(final_w)
-        self.spin_height.setValue(final_h)
-
-        self.spin_width.blockSignals(False)
-        self.spin_height.blockSignals(False)
-
-        # Force status HUD calculations to refresh smoothly
-        self.status_manager.invalidate_ui_state()
-
-    def calculate_snapped_rect(self, screen_rect):
-        """Translates a screen QRect to True Image Space, forces pure mathematical
-        aspect ratios, snaps to 16x16 blocks if Lossless is active, and returns
-        a perfectly symmetrical screen QRect. Delegates the actual math to
-        CropGeometryEngine so this stays in lockstep with every other
-        coordinate-transform call site in the app.
-        """
-        pixmap = self.image_display_container.pixmap()
-        if not self.image_session.has_active_image or not pixmap:
-            return screen_rect
-
-        viewport = self._build_viewport_geometry(pixmap)
-        ratio_label = self.combo_ratio.currentText()
-        use_lossless = self.determine_if_lossless_active()
-
-        # Route conversion math natively through the unified calculation controller
-        return CropGeometryEngine.snap_screen_rect_to_grid(
-            screen_rect, viewport, lossless=use_lossless, ratio_label=ratio_label
-        )
-
     def update_resolution_metrics_display(self):
         """Updates the spinboxes and status bar metrics based on the current selection box,
         ensuring strict aspect ratio alignment to prevent visual mismatches.
@@ -1027,23 +778,15 @@ class FastCropApp(QMainWindow):
         if not pixmap:
             return
 
-        viewport = self._build_viewport_geometry(pixmap)
-        ratio_label = self.combo_ratio.currentText()
-        use_lossless = self.determine_if_lossless_active()
-
-        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
-            self.crop_box_selector.geometry(),
-            viewport,
-            lossless=use_lossless,
-            ratio_label=ratio_label,
-        )
-        final_w, final_h = source_rect.width(), source_rect.height()
+        source_rect = self.selection_manager.current_source_rect()
+        if source_rect is None:
+            return
 
         # Safely push the matching dimensions to the spinboxes without triggering loops
         if not self._updating_spinboxes:
             self._updating_spinboxes = True
-            self.spin_width.setValue(final_w)
-            self.spin_height.setValue(final_h)
+            self.spin_width.setValue(source_rect.width())
+            self.spin_height.setValue(source_rect.height())
             self._updating_spinboxes = False
 
     def toggle_zoom_hud_window_visibility(self):
@@ -1170,56 +913,19 @@ class FastCropApp(QMainWindow):
         self.apply_spinbox_dimensions_to_canvas()
 
     def apply_spinbox_dimensions_to_canvas(self):
-        if not self.image_session.has_active_image or not self.image_session.pil_image:
-            return
-        pixmap = self.image_display_container.pixmap()
-        if not pixmap:
-            return
-
-        src_w, src_h = self.image_session.width, self.image_session.height
-        tw, th = (
-            min(self.spin_width.value(), src_w),
-            min(self.spin_height.value(), src_h),
+        tw, th, applied = self.selection_manager.apply_target_dimensions(
+            self.spin_width.value(), self.spin_height.value()
         )
+        if not self._updating_spinboxes and (tw, th) != (
+            self.spin_width.value(),
+            self.spin_height.value(),
+        ):
+            self._updating_spinboxes = True
+            self.spin_width.setValue(tw)
+            self.spin_height.setValue(th)
+            self._updating_spinboxes = False
 
-        # Lossless snapping
-        if self.determine_if_lossless_active():
-            tw, th = (
-                CropGeometryEngine.snap_to_grid(tw),
-                CropGeometryEngine.snap_to_grid(th),
-            )
-            if not self._updating_spinboxes:
-                self._updating_spinboxes = True
-                self.spin_width.setValue(tw), self.spin_height.setValue(th)
-                self._updating_spinboxes = False
-
-        if tw <= 10 or th <= 10:
-            self.crop_box_selector.hide()
-            return
-
-        # Geometry calculations
-        lw, lh = (
-            self.image_display_container.width(),
-            self.image_display_container.height(),
-        )
-        pw, ph = pixmap.width(), pixmap.height()
-        ox, oy = (lw - pw) // 2, (lh - ph) // 2
-        sx, sy = pw / src_w, ph / src_h
-        bw, bh = round(tw * sx), round(th * sy)
-
-        if not self.crop_box_selector.isHidden():
-            geom = self.crop_box_selector.geometry()
-            bw, bh = min(bw, pw - (geom.x() - ox)), min(bh, ph - (geom.y() - oy))
-        else:
-            bx, by = ox + (pw - bw) // 2, oy + (ph - bh) // 2
-            self.crop_box_selector.setGeometry(bx, by, bw, bh)
-            self.crop_box_selector.show()
-            self.last_crop_geometry = QRect(bx, by, bw, bh)
-
-        self.crop_box_selector.setGeometry(
-            self.crop_box_selector.x(), self.crop_box_selector.y(), bw, bh
-        )
-        if hasattr(self, "zoom_hud"):
+        if applied and hasattr(self, "zoom_hud"):
             self.update_zoom_hud_payload()
 
     def update_ui_after_loadin_folder(
@@ -1337,19 +1043,7 @@ class FastCropApp(QMainWindow):
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
 
     def snap_selector_widget(self):
-        """Snap selection box and signals the status manager"""
-        if self.crop_box_selector.isHidden():
-            return
-
-        if self.determine_if_lossless_active():
-            fluid_rect = self.crop_box_selector.geometry()
-            snapped_rect = self.calculate_snapped_rect(fluid_rect)
-
-            self.crop_box_selector.setGeometry(snapped_rect)
-            self.last_crop_geometry = snapped_rect
-
-        #  Let heartbeat system coordinate all label, spinbox, and HUD updates!
-        self.status_manager.invalidate_ui_state()
+        self.selection_manager.snap_selection()
 
     def on_engine_changed(self):
         self.snap_selector_widget()
