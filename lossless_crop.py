@@ -312,26 +312,10 @@ class FastCropApp(QMainWindow):
             # A previous crop is still writing to disk; don't race a second submission.
             return False
 
-        pixmap = self.image_display_container.pixmap()
-        if not pixmap:
-            return False
-
         # 1. Look up data states straight from your unified managers and models
         current_filepath = self.image_session.current_path
         use_lossless = self.determine_if_lossless_active()
-        box_rect = self.crop_box_selector.geometry()
         file_ext = current_filepath.suffix.lower()
-
-        # 2. Build the viewport snapshot and constrain the selection to the pixmap bounds
-        viewport = self._build_viewport_geometry(pixmap)
-        clamped_rect = CropGeometryEngine.clamp_screen_rect_to_pixmap(
-            box_rect, viewport
-        )
-
-        if clamped_rect.width() <= 0 or clamped_rect.height() <= 0:
-            return False
-
-        src_w, src_h = self.image_session.width, self.image_session.height
 
         # 3. AUTOMATED SAVE PATH ROUTING ENGINE
         if self.chk_overwrite.isChecked():
@@ -360,7 +344,10 @@ class FastCropApp(QMainWindow):
             source_path=current_filepath,
             output_path=output_filepath,
             source_rect=source_rect,  # Pass unified QRect
-            image_dimensions=(src_w, src_h),  # Pass base source size
+            image_dimensions=(
+                self.image_session.width,
+                self.image_session.height,
+            ),  # Pass base source size
             on_finished=_on_finished,
         )
         return True
