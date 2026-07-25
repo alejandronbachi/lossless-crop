@@ -263,9 +263,6 @@ class FastCropApp(QMainWindow):
             return
 
         current_point = event.position().toPoint()
-
-        use_lossless = self.determine_if_lossless_active()
-
         # -----------------------------------------------------------------
         # BRANCH A: RIGHT-CLICK DRAG LOGIC (Moving the box smoothly)
         # -----------------------------------------------------------------
@@ -294,24 +291,12 @@ class FastCropApp(QMainWindow):
                 ),
             )
 
-            # Construct the un-snapped fluid box state
-            fluid_moved_rect = QRect(
-                target_x, target_y, current_geometry.width(), current_geometry.height()
-            )
-
-            if use_lossless:
-                # Map via your centralized engine tracker instead of raw round(val / 16) * 16
-                snapped_moved_rect = self.calculate_snapped_rect(fluid_moved_rect)
-                render_x = snapped_moved_rect.x()
-                render_y = snapped_moved_rect.y()
-            else:
-                render_x = target_x
-                render_y = target_y
-
-            # Move the widget layout on the screen
-            self.crop_box_selector.move(render_x, render_y)
+            #  CLEAN REFACTOR: Move the box smoothly to target coords for BOTH modes
+            self.crop_box_selector.move(target_x, target_y)
             self.last_crop_geometry = self.crop_box_selector.geometry()
-            self.status_manager.invalidate_ui_state()
+
+            # Let the unified snapper handle grid rounding if lossless, or lazy state updates if lossy!
+            self.snap_selector_widget()
         # -----------------------------------------------------------------
         # BRANCH B: LEFT-CLICK DRAW LOGIC (Drawing the box)
         # -----------------------------------------------------------------
@@ -330,38 +315,7 @@ class FastCropApp(QMainWindow):
         self.update_resolution_metrics_display()
 
     def on_ratio_changed(self):
-        """Instantly morphs the active selection box when the aspect ratio dropdown changes."""
-        # Exit early if the selection box is hidden or practically empty
-        if self.crop_box_selector.isHidden() or self.crop_box_selector.width() <= 5:
-            return
-
-        ratio_type = self.combo_ratio.currentText()
-        if ratio_type == "Freeform":
-            return  # Freeform allows any shape, so don't alter the current frame
-
-        # Use the current width as the master base and calculate the new height
-        current_geom = self.crop_box_selector.geometry()
-        new_width = current_geom.width()
-
-        use_lossless = self.determine_if_lossless_active()
-
-        if use_lossless:
-            new_width = CropGeometryEngine.snap_to_grid(new_width)
-        new_height = CropGeometryEngine.apply_aspect_lock_to_width(
-            new_width, ratio_type, use_lossless
-        )
-
-        # Build the updated boundary layout
-        new_rect = QRect(current_geom.x(), current_geom.y(), new_width, new_height)
-
-        # Apply the new geometry dimensions to the canvas overlay
-        self.crop_box_selector.setGeometry(new_rect)
-        self.last_crop_geometry = new_rect
-        self.crop_box_selector.raise_()
-        if hasattr(self, "spin_width") and not self.crop_box_selector.isHidden():
-            # Calling this function forces the engine to recalculate the source pixels
-            # and push the brand new numbers straight into your toolbar input cells instantly
-            self.update_resolution_metrics_display()
+        self.snap_selector_widget()
 
     def determine_if_lossless_active(self):
         """A single source of truth to check if Lossless operation is currently legal.
@@ -516,16 +470,10 @@ class FastCropApp(QMainWindow):
             self.image_session.hydrate_current_image()
             self.load_image_to_viewport()
 
-        # CRITICAL RESYNC LAYER PRESERVATION & NAV BUG CLEANUP
         if self.chk_preserve.isChecked() and self.last_crop_geometry:
-            if use_lossless:
-                # FIX: Use your single source of truth engine instead of manual screen pixel rounding loops
-                self.last_crop_geometry = self.calculate_snapped_rect(
-                    self.last_crop_geometry
-                )
-                self.crop_box_selector.setGeometry(self.last_crop_geometry)
-                self.crop_box_selector.show()
-                self.crop_box_selector.raise_()
+            self.snap_selector_widget()
+            self.crop_box_selector.show()
+            self.crop_box_selector.raise_()
         else:
             # Explicitly hide and purge old image selection boundaries during navigation
             self.crop_box_selector.hide()
@@ -886,25 +834,17 @@ class FastCropApp(QMainWindow):
         if self.drag_start_origin.isNull() or not self.last_crop_geometry:
             return
 
-        fluid_rect = self.crop_box_selector.geometry()
-        use_lossless = self.determine_if_lossless_active()
-        # If pixel-perfect mode is active, force "No snap feedback" behavior
-        if not use_lossless:
-            snap_mode = "No snap feedback"
-        else:
-            snap_mode = self.combo_snap.currentText()
+        snap_mode = self.combo_snap.currentText()
 
         print(
             f"[DEBUG RELEASE] Mode: {snap_mode} | Executing Final Snap Settlement Routine."
         )
 
-        if snap_mode == "Post-release snap":
+        if snap_mode in ("Post-release snap", "Real-time snap"):
             # Visually snap the blue selection box right over the 16px grid coordinates
-            snapped_rect = self.calculate_snapped_rect(fluid_rect)
-            self.crop_box_selector.setGeometry(snapped_rect)
-            self.last_crop_geometry = snapped_rect
+            self.snap_selector_widget()
             print(
-                f"[DEBUG RELEASE] Box Visually Snapped to: {snapped_rect.width()}x{snapped_rect.height()}"
+                f"[DEBUG RELEASE] Box Visually Snapped to: {self.last_crop_geometry.width()}x{self.last_crop_geometry.height()}"
             )
 
         elif snap_mode == "Ghosting":
@@ -912,25 +852,16 @@ class FastCropApp(QMainWindow):
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
             # Position the main selector box precisely over the ghost frame coordinates
+            fluid_rect = self.crop_box_selector.geometry()
             snapped_rect = self.calculate_snapped_rect(fluid_rect)
             self.crop_box_selector.setGeometry(snapped_rect)
             self.last_crop_geometry = snapped_rect
-
-        elif snap_mode == "No snap feedback":
-            # Intentionally leave the blue box looking perfectly smooth on-screen,
-            # but lock down background geometry coordinates to match the snapped metrics
-            self.last_crop_geometry = fluid_rect
-            print(
-                "[DEBUG RELEASE] Kept Fluid Visual Selection Frame. Math layer locked to grid."
-            )
 
         # Clean out temporary coordinate tracking flags
         self.drag_start_origin = QPoint()
 
         # Unblock, update resolution readouts, and lock configuration structures
-        self.update_resolution_metrics_display()
-        if hasattr(self, "zoom_hud"):
-            self.update_zoom_hud_payload()
+        self.status_manager.invalidate_ui_state()
 
     def handle_left_click_drawing(self, current_screen_pos):
         """Drives left-click drawing. Snaps strictly to a 16x16 grid ONLY in Lossless mode.
@@ -990,7 +921,21 @@ class FastCropApp(QMainWindow):
             )
 
         # 5. Layer Visibility Routines
-        if snap_mode in ("No snap feedback", "Post-release snap"):
+        if snap_mode == "Real-time snap":
+            if hasattr(self, "ghost_selector") and self.ghost_selector:
+                self.ghost_selector.hide()
+            # Draw the box immediately via the unified snap rules
+            if use_lossless:
+                self.crop_box_selector.setGeometry(snapped_rect)
+                self.last_crop_geometry = snapped_rect
+            else:
+                self.crop_box_selector.setGeometry(fluid_rect)
+                self.last_crop_geometry = fluid_rect
+
+            self.crop_box_selector.show()
+            self.crop_box_selector.raise_()
+
+        elif snap_mode == "Post-release snap":
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
             self.crop_box_selector.setGeometry(fluid_rect)
@@ -1390,6 +1335,24 @@ class FastCropApp(QMainWindow):
         self.image_display_container.mousePressEvent = self.on_mouse_press
         self.image_display_container.mouseMoveEvent = self.on_mouse_move
         self.image_display_container.mouseReleaseEvent = self.on_mouse_release
+
+    def snap_selector_widget(self):
+        """Snap selection box and signals the status manager"""
+        if self.crop_box_selector.isHidden():
+            return
+
+        if self.determine_if_lossless_active():
+            fluid_rect = self.crop_box_selector.geometry()
+            snapped_rect = self.calculate_snapped_rect(fluid_rect)
+
+            self.crop_box_selector.setGeometry(snapped_rect)
+            self.last_crop_geometry = snapped_rect
+
+        #  Let heartbeat system coordinate all label, spinbox, and HUD updates!
+        self.status_manager.invalidate_ui_state()
+
+    def on_engine_changed(self):
+        self.snap_selector_widget()
 
 
 if __name__ == "__main__":
