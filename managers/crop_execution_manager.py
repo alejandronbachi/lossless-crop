@@ -18,30 +18,36 @@ class CropWorker(QRunnable):
     Pillow crop — on a QThreadPool worker thread instead of the GUI thread.
     """
 
+    # 💥🔥 🚨 UPDATED WORKER INIT TO TAKE RAW DATA PASSES 🚨 🔥💥
     def __init__(
-        self, image_manager, lossless: bool, source_path, output_path, crop_args
+        self,
+        image_manager,
+        lossless: bool,
+        source_path,
+        output_path,
+        source_rect,
+        image_dimensions,
     ):
         super().__init__()
         self.image_manager = image_manager
         self.lossless = lossless
         self.source_path = source_path
         self.output_path = output_path
-        self.crop_args = crop_args
+        self.source_rect = source_rect
+        self.image_dimensions = image_dimensions
         self.signals = CropWorkerSignals()
 
     @pyqtSlot()
     def run(self) -> None:
         try:
-            if self.lossless:
-                # crop_args: (crop_width, crop_height, crop_left, crop_top)
-                success = self.image_manager.execute_lossless_jpegtran_crop(
-                    self.source_path, self.output_path, self.crop_args
-                )
-            else:
-                # crop_args: (left, top, right, bottom)
-                success = self.image_manager.execute_lossy_pillow_crop(
-                    self.source_path, self.output_path, self.crop_args
-                )
+            # 💥🔥 🚨 BACKGROUND THREAD NOW DELEGATES DIRECTLY TO THE PROCESSOR ROUTER 🚨 🔥💥
+            success = self.image_manager.process_and_route_crop(
+                lossless=self.lossless,
+                source_path=self.source_path,
+                output_path=self.output_path,
+                source_rect=self.source_rect,
+                image_dimensions=self.image_dimensions,
+            )
             self.signals.finished.emit(bool(success), str(self.output_path), "")
         except (
             Exception
@@ -83,12 +89,25 @@ class CropExecutionController(QObject):
         )
 
     def submit_crop(
-        self, lossless: bool, source_path, output_path, crop_args, on_finished
+        self,
+        lossless: bool,
+        source_path,
+        output_path,
+        source_rect,
+        image_dimensions,
+        on_finished,
     ) -> None:
         """on_finished: callable(success: bool, output_filepath: str, error_message: str),
         guaranteed to run on the GUI thread."""
+
+        # Worker now wraps the raw data structures directly without processing them here
         worker = CropWorker(
-            self.image_manager, lossless, source_path, output_path, crop_args
+            self.image_manager,
+            lossless,
+            source_path,
+            output_path,
+            source_rect,
+            image_dimensions,
         )
         self._active_workers.append(worker)
 

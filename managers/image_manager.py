@@ -137,3 +137,50 @@ class ImageProcessor:
         session.width, session.height = session.height, session.width
 
         return session.current_rotation_angle
+
+        # IMAGE PROCESSOR ROUTER METHOD
+
+    def process_and_route_crop(
+        self, lossless: bool, source_path, output_path, source_rect, image_dimensions
+    ) -> bool:
+        """Centralized routing hub that converts coordinates, logs actions,
+        and delegates to the correct low-level execution method.
+        """
+        src_w, src_h = image_dimensions
+
+        # 1. Safely break down unified coordinates
+        crop_left = max(0, source_rect.x())
+        crop_top = max(0, source_rect.y())
+        crop_width = source_rect.width()
+        crop_height = source_rect.height()
+
+        crop_right = min(src_w, crop_left + crop_width)
+        crop_bottom = min(src_h, crop_top + crop_height)
+
+        crop_dimensions_tuple = (crop_width, crop_height, crop_left, crop_top)
+
+        # 2. Handle logging and engine delegation
+        if lossless:
+            self.log_engine_activation(
+                "LOSSLESS MODE (jpegtran)",
+                source_path,
+                output_path,
+                (src_w, src_h),
+                crop_dimensions_tuple,
+            )
+            # Format arguments for jpegtran: (width, height, left, top)
+            crop_args = crop_dimensions_tuple
+            return self.execute_lossless_jpegtran_crop(
+                source_path, output_path, crop_args
+            )
+        else:
+            self.log_engine_activation(
+                "PIXEL-PERFECT MODE (Pillow)",
+                source_path,
+                output_path,
+                (src_w, src_h),
+                crop_dimensions_tuple,
+            )
+            # Format arguments for Pillow: (left, top, right, bottom)
+            crop_args = (crop_left, crop_top, crop_right, crop_bottom)
+            return self.execute_lossy_pillow_crop(source_path, output_path, crop_args)
