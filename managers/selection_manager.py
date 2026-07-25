@@ -4,7 +4,7 @@
 # All screen<->source pixel math is delegated to CropGeometryEngine so this
 # class stays a state machine, not a second copy of the transform logic.
 # =============================================================================
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
@@ -32,7 +32,7 @@ class SelectionManager:
         snap_combo,
         viewport_factory: Callable[[object], ViewportGeometry],
         lossless_check: Callable[[], bool],
-        on_selection_changed: Optional[Callable[[], None]] = None,
+        on_selection_changed: Callable[[], None] | None = None,
     ):
         self.canvas = canvas
         self.selector = selector
@@ -44,8 +44,8 @@ class SelectionManager:
         self._lossless_check = lossless_check
         self._on_selection_changed = on_selection_changed
 
-        self.ghost_selector: Optional[QRubberBand] = None
-        self.last_crop_geometry: Optional[QRect] = None
+        self.ghost_selector: QRubberBand | None = None
+        self.last_crop_geometry: QRect | None = None
         self.drag_start_origin = QPoint()
         self.is_moving_box = False
         self.box_start_pos = QPoint()
@@ -56,7 +56,7 @@ class SelectionManager:
     def _current_ratio_label(self) -> str:
         return self.ratio_combo.currentText()
 
-    def _current_viewport(self) -> Optional[ViewportGeometry]:
+    def _current_viewport(self) -> ViewportGeometry | None:
         pixmap = self.canvas.pixmap()
         if not pixmap:
             return None
@@ -133,9 +133,7 @@ class SelectionManager:
         target_x = self.box_start_pos.x() + total_delta.x()
         target_y = self.box_start_pos.y() + total_delta.y()
 
-        target_x = max(
-            0, min(target_x, self.canvas.width() - current_geometry.width())
-        )
+        target_x = max(0, min(target_x, self.canvas.width() - current_geometry.width()))
         target_y = max(
             0, min(target_y, self.canvas.height() - current_geometry.height())
         )
@@ -146,7 +144,7 @@ class SelectionManager:
         self.snap_selection()  # no-op in pixel-perfect mode
         self._notify_changed()
 
-    def update_draw(self, current_screen_pos: QPoint) -> Optional[QRect]:
+    def update_draw(self, current_screen_pos: QPoint) -> QRect | None:
         """Left-click drag: grow/shrink the box from drag_start_origin,
         honoring aspect lock and the active snap mode. Returns the current
         selection projected into source-pixel space (so the caller can push
@@ -329,7 +327,7 @@ class SelectionManager:
     # -----------------------------------------------------------------
     # Read-only projection (usable by update_resolution_metrics_display)
     # -----------------------------------------------------------------
-    def current_source_rect(self) -> Optional[QRect]:
+    def current_source_rect(self) -> QRect | None:
         """Projects the live selector geometry into source-pixel space.
         Returns None if there's nothing to project (hidden selector or no
         pixmap)."""
@@ -368,3 +366,34 @@ class SelectionManager:
         self.selector.hide()
         self.last_crop_geometry = None
         self.hide_ghost()
+
+    # -----------------------------------------------------------------
+    # Aspect ratio update on pixel-perfect
+    # -----------------------------------------------------------------
+
+    def apply_ratio_to_selector_widget(self):
+        """Forces the on-screen selection box to recalculate its dimensions
+        to match the new combo aspect ratio under Pixel-Perfect (Pillow) mode.
+        """
+        if self.selector.isHidden() or self._lossless_check():
+            return
+
+        viewport = self._current_viewport()
+        current_source = self.current_source_rect()
+
+        if viewport and current_source:
+            # 2. Re-project the current backend source coordinates back into screen coordinates
+            direct_rect = CropGeometryEngine.source_rect_to_screen_rect(
+                current_source, viewport, self._current_ratio_label()
+            )
+
+            # 3. Clamp and translate to match the physical UI layout boundaries
+            clamped = CropGeometryEngine.clamp_screen_rect_to_pixmap(
+                direct_rect, viewport
+            )
+            final_rect = clamped.translated(viewport.offset_x, viewport.offset_y)
+
+            # 4. Apply geometry to force an instant layout repaint
+            self.selector.setGeometry(final_rect)
+            self.last_crop_geometry = final_rect
+            self._notify_changed()

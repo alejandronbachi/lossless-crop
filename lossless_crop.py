@@ -174,7 +174,6 @@ class FastCropApp(QMainWindow):
         self.status_manager.reposition_commands_overlay()
         self.status_manager.sync_drawer_visibility_rules()
 
-        self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
     def refresh_display_canvas(self):
@@ -264,6 +263,8 @@ class FastCropApp(QMainWindow):
 
     def on_ratio_changed(self):
         self.snap_selector_widget()
+        if hasattr(self, "selection_manager"):
+            self.selection_manager.apply_ratio_to_selector_widget()
 
     def determine_if_lossless_active(self):
         """A single source of truth to check if Lossless operation is currently legal.
@@ -427,7 +428,6 @@ class FastCropApp(QMainWindow):
             else:
                 self.status_manager.show_center_notification("Lossy Crop")
 
-        self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
     def rotate_current_image(self):
@@ -443,7 +443,6 @@ class FastCropApp(QMainWindow):
         ):
             self.selection_manager.snap_selection()
 
-        self.update_resolution_metrics_display()
         self.status_manager.invalidate_ui_state()
 
     # -----------------------------------------------------------------
@@ -817,9 +816,6 @@ class FastCropApp(QMainWindow):
         if pixmap and box_rect.width() > 5 and box_rect.height() > 5:
             src_w, src_h = self.image_session.width, self.image_session.height
             viewport = self._build_viewport_geometry(pixmap)
-            clamped_rect = CropGeometryEngine.clamp_screen_rect_to_pixmap(
-                box_rect, viewport
-            )
 
             # Intentionally raw (no grid snap / aspect lock): the zoom HUD previews
             # exactly what's under the rubber band right now, not the eventual snapped crop.
