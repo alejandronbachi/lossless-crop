@@ -312,27 +312,10 @@ class FastCropApp(QMainWindow):
             # A previous crop is still writing to disk; don't race a second submission.
             return False
 
-        pixmap = self.image_display_container.pixmap()
-        if not pixmap:
-            return False
-
         # 1. Look up data states straight from your unified managers and models
         current_filepath = self.image_session.current_path
         use_lossless = self.determine_if_lossless_active()
-        box_rect = self.crop_box_selector.geometry()
         file_ext = current_filepath.suffix.lower()
-        ratio_label = self.combo_ratio.currentText()
-
-        # 2. Build the viewport snapshot and constrain the selection to the pixmap bounds
-        viewport = self._build_viewport_geometry(pixmap)
-        clamped_rect = CropGeometryEngine.clamp_screen_rect_to_pixmap(
-            box_rect, viewport
-        )
-
-        if clamped_rect.width() <= 0 or clamped_rect.height() <= 0:
-            return False
-
-        src_w, src_h = self.image_session.width, self.image_session.height
 
         # 3. AUTOMATED SAVE PATH ROUTING ENGINE
         if self.chk_overwrite.isChecked():
@@ -343,44 +326,9 @@ class FastCropApp(QMainWindow):
             )
             output_filepath = str(unique_path)
 
-        # 4. COMPUTE GEOMETRIC TARGET CROPS VIA THE SHARED GEOMETRY ENGINE
-        if use_lossless:
-            source_rect = CropGeometryEngine.screen_rect_to_source_rect(
-                box_rect, viewport, lossless=True, ratio_label=ratio_label
-            )
-            crop_left, crop_top = max(0, source_rect.x()), max(0, source_rect.y())
-            crop_width, crop_height = source_rect.width(), source_rect.height()
-            crop_right = crop_left + crop_width
-            crop_bottom = crop_top + crop_height
-        else:
-            crop_left = max(0, round(clamped_rect.x() * viewport.scale_x))
-            crop_top = max(0, round(clamped_rect.y() * viewport.scale_y))
-            crop_width = self.spin_width.value()
-            crop_height = self.spin_height.value()
-            crop_right = min(src_w, crop_left + crop_width)
-            crop_bottom = min(src_h, crop_top + crop_height)
-
-        # 5. CHANNELS DISPATCHER ROUTING
-        crop_dimensions_tuple = (crop_width, crop_height, crop_left, crop_top)
-
-        if use_lossless:
-            self.image_manager.log_engine_activation(
-                "LOSSLESS MODE (jpegtran)",
-                current_filepath,
-                output_filepath,
-                (src_w, src_h),
-                crop_dimensions_tuple,
-            )
-            crop_args = crop_dimensions_tuple
-        else:
-            self.image_manager.log_engine_activation(
-                "PIXEL-PERFECT MODE (Pillow)",
-                current_filepath,
-                output_filepath,
-                (src_w, src_h),
-                crop_dimensions_tuple,
-            )
-            crop_args = (crop_left, crop_top, crop_right, crop_bottom)
+        source_rect = self.selection_manager.current_source_rect()
+        if not source_rect or source_rect.width() <= 0 or source_rect.height() <= 0:
+            return False
 
         # 6. FIRE THE CROP OFF THE UI THREAD; UI sync happens in on_crop_finished
         def _on_finished(success: bool, finished_output_path: str, error_message: str):
@@ -395,7 +343,11 @@ class FastCropApp(QMainWindow):
             lossless=use_lossless,
             source_path=current_filepath,
             output_path=output_filepath,
-            crop_args=crop_args,
+            source_rect=source_rect,  # Pass unified QRect
+            image_dimensions=(
+                self.image_session.width,
+                self.image_session.height,
+            ),  # Pass base source size
             on_finished=_on_finished,
         )
         return True
