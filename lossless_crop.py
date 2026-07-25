@@ -834,19 +834,13 @@ class FastCropApp(QMainWindow):
         if self.drag_start_origin.isNull() or not self.last_crop_geometry:
             return
 
-        fluid_rect = self.crop_box_selector.geometry()
-        use_lossless = self.determine_if_lossless_active()
-        # If pixel-perfect mode is active, force "No snap feedback" behavior
-        if not use_lossless:
-            snap_mode = "No snap feedback"
-        else:
-            snap_mode = self.combo_snap.currentText()
+        snap_mode = self.combo_snap.currentText()
 
         print(
             f"[DEBUG RELEASE] Mode: {snap_mode} | Executing Final Snap Settlement Routine."
         )
 
-        if snap_mode == "Post-release snap":
+        if snap_mode in ("Post-release snap", "Real-time snap"):
             # Visually snap the blue selection box right over the 16px grid coordinates
             self.snap_selector_widget()
             print(
@@ -858,17 +852,10 @@ class FastCropApp(QMainWindow):
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
             # Position the main selector box precisely over the ghost frame coordinates
+            fluid_rect = self.crop_box_selector.geometry()
             snapped_rect = self.calculate_snapped_rect(fluid_rect)
             self.crop_box_selector.setGeometry(snapped_rect)
             self.last_crop_geometry = snapped_rect
-
-        elif snap_mode == "No snap feedback":
-            # Intentionally leave the blue box looking perfectly smooth on-screen,
-            # but lock down background geometry coordinates to match the snapped metrics
-            self.last_crop_geometry = fluid_rect
-            print(
-                "[DEBUG RELEASE] Kept Fluid Visual Selection Frame. Math layer locked to grid."
-            )
 
         # Clean out temporary coordinate tracking flags
         self.drag_start_origin = QPoint()
@@ -934,7 +921,21 @@ class FastCropApp(QMainWindow):
             )
 
         # 5. Layer Visibility Routines
-        if snap_mode in ("No snap feedback", "Post-release snap"):
+        if snap_mode == "Real-time snap":
+            if hasattr(self, "ghost_selector") and self.ghost_selector:
+                self.ghost_selector.hide()
+            # Draw the box immediately via the unified snap rules
+            if use_lossless:
+                self.crop_box_selector.setGeometry(snapped_rect)
+                self.last_crop_geometry = snapped_rect
+            else:
+                self.crop_box_selector.setGeometry(fluid_rect)
+                self.last_crop_geometry = fluid_rect
+
+            self.crop_box_selector.show()
+            self.crop_box_selector.raise_()
+
+        elif snap_mode == "Post-release snap":
             if hasattr(self, "ghost_selector") and self.ghost_selector:
                 self.ghost_selector.hide()
             self.crop_box_selector.setGeometry(fluid_rect)

@@ -86,7 +86,7 @@ class ControlToolbar(QFrame):
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
         self.main_app.combo_snap.addItems(
-            ["No snap feedback", "Post-release snap", "Ghosting"]
+            ["Real-time snap", "Post-release snap", "Ghosting"]
         )
         self.layout.addWidget(self.main_app.combo_snap)
 
