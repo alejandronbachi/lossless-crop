@@ -56,6 +56,9 @@ class ControlToolbar(QFrame):
             self.main_app.combo_engine.addItem("Pixel-Perfect")
         if not self.image_manager.is_lossless_available and pillow_available:
             self.main_app.combo_engine.setCurrentText("Pixel-Perfect")
+        self.main_app.combo_engine.currentIndexChanged.connect(
+            self.main_app.on_engine_changed
+        )
         self.layout.addWidget(self.main_app.combo_engine)
 
         # 3. Aspect Ratio Dropdown
