@@ -143,23 +143,42 @@ class ImageProcessor:
     def process_and_route_crop(
         self, lossless: bool, source_path, output_path, source_rect, image_dimensions
     ) -> bool:
-        """Centralized routing hub that converts coordinates, logs actions,
-        and delegates to the correct low-level execution method.
+        """Centralized routing hub that,converts coordinates, logs actions,
+        and delegates to the correct low-level execution method and
+        safely wraps and cuts coordinates to fit the image boundaries before executing the crop tools.
         """
         src_w, src_h = image_dimensions
 
-        # 1. Safely break down unified coordinates
-        crop_left = max(0, source_rect.x())
-        crop_top = max(0, source_rect.y())
-        crop_width = source_rect.width()
-        crop_height = source_rect.height()
+        #  BOUNDARY CLAMPING AND AUTO-RESIZING
+        # 1. Grab raw coordinates from your unified source_rect
+        raw_left = source_rect.x()
+        raw_top = source_rect.y()
+        raw_width = source_rect.width()
+        raw_height = source_rect.height()
 
-        crop_right = min(src_w, crop_left + crop_width)
-        crop_bottom = min(src_h, crop_top + crop_height)
+        # 2. Compute true bottom-right bounds before altering anything
+        raw_right = raw_left + raw_width
+        raw_bottom = raw_top + raw_height
 
+        # 3. INTERSECT WITH PHYSICAL CANVAS BOUNDARIES (Prevents padding extensions)
+        crop_left = max(0, min(src_w, raw_left))
+        crop_top = max(0, min(src_h, raw_top))
+        crop_right = max(0, min(src_w, raw_right))
+        crop_bottom = max(0, min(src_h, raw_bottom))
+
+        # 4. RECALCULATE DYNAMIC WIDTH AND HEIGHT FROM CLAMPED REGIONS
+        # (This scales down the selection box to prevent left/top drifting extensions)
+        crop_width = crop_right - crop_left
+        crop_height = crop_bottom - crop_top
+
+        # 5. SANITY REJECTION PASS (If selection box was dragged entirely outside the screen)
+        if crop_width <= 0 or crop_height <= 0:
+            return False
+
+        # Build telemetry log block
         crop_dimensions_tuple = (crop_width, crop_height, crop_left, crop_top)
 
-        # 2. Handle logging and engine delegation
+        # Handle logging and engine delegation
         if lossless:
             self.log_engine_activation(
                 "LOSSLESS MODE (jpegtran)",
