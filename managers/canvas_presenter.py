@@ -115,9 +115,10 @@ class CanvasPresenter:
         if not pixmap:
             return
 
-        source_rect = self.selection_manager.current_source_rect()
-        if source_rect is None:
+        crop_model = self.selection_manager.crop_model
+        if not crop_model.has_selection:
             return
+        source_rect = crop_model.source_pixel_rect
 
         # Safely push the matching dimensions to the spinboxes without triggering loops
         self._updating_spinboxes = True
