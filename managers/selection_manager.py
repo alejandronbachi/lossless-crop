@@ -3,6 +3,15 @@
 # mouse- or spinbox-driven selection edit (draw, move, snap, resize).
 # All screen<->source pixel math is delegated to CropGeometryEngine so this
 # class stays a state machine, not a second copy of the transform logic.
+#
+# CHANGE FROM ORIGINAL: this class is no longer the source of truth for the
+# selection. It's still the ONLY thing that touches self.selector /
+# self.ghost_selector directly (that part didn't change), but the committed
+# selection — the thing crop execution, spinbox sync, and image-swap
+# preservation actually care about — now lives in CropModel, in source-pixel
+# space. This class's job becomes: convert mouse/spinbox input into screen
+# geometry (still exactly the same math as before), and push the resulting
+# source-pixel rect into CropModel at every commit point.
 # =============================================================================
 from collections.abc import Callable
 
@@ -10,6 +19,7 @@ from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
 
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
+from models.crop_model import CropModel
 
 
 class SelectionManager:
@@ -28,6 +38,7 @@ class SelectionManager:
         selector: QRubberBand,
         ghost_parent: QWidget,
         image_session,
+        crop_model: CropModel,
         ratio_combo,
         snap_combo,
         viewport_factory: Callable[[object], ViewportGeometry],
@@ -38,6 +49,7 @@ class SelectionManager:
         self.selector = selector
         self._ghost_parent = ghost_parent
         self.image_session = image_session
+        self.crop_model = crop_model
         self.ratio_combo = ratio_combo
         self.snap_combo = snap_combo
         self._viewport_factory = viewport_factory
@@ -88,6 +100,17 @@ class SelectionManager:
         )
 
     def _notify_changed(self):
+        """Every code path that changes the on-screen selector ends here.
+        This is the single commit point into CropModel — nothing else in
+        this class calls crop_model.set_rect()/clear() directly, so there's
+        exactly one place that can get the screen->source projection wrong."""
+        if self.selector.isHidden():
+            self.crop_model.clear()
+        else:
+            source_rect = self.current_source_rect()
+            if source_rect is not None:
+                self.crop_model.set_rect(source_rect)
+
         if self._on_selection_changed:
             self._on_selection_changed()
 
@@ -141,7 +164,7 @@ class SelectionManager:
         self.selector.move(target_x, target_y)
         self.last_crop_geometry = self.selector.geometry()
 
-        self.snap_selection()  # no-op in pixel-perfect mode
+        self.snap_selection()  # no-op in pixel-perfect mode; calls _notify_changed
         self._notify_changed()
 
     def update_draw(self, current_screen_pos: QPoint) -> QRect | None:
@@ -287,6 +310,11 @@ class SelectionManager:
             caller pushes these back into the spinboxes itself.
           - applied is False when there's no active pixmap, or the target
             is too small to draw (selector gets hidden in that case).
+
+        This stays here rather than moving onto CropModel because it needs
+        the pixmap's on-screen scale factors (sx, sy below) — that's
+        screen-space math CropModel deliberately doesn't know about. The
+        *result* still goes through the normal _notify_changed() commit path.
         """
         pixmap = self.canvas.pixmap()
         if not self.image_session.has_active_image or not pixmap:
@@ -302,6 +330,7 @@ class SelectionManager:
 
         if tw <= 10 or th <= 10:
             self.selector.hide()
+            self._notify_changed()
             return tw, th, False
 
         lw, lh = self.canvas.width(), self.canvas.height()
@@ -330,7 +359,10 @@ class SelectionManager:
     def current_source_rect(self) -> QRect | None:
         """Projects the live selector geometry into source-pixel space.
         Returns None if there's nothing to project (hidden selector or no
-        pixmap)."""
+        pixmap). Internal use is now mostly limited to _notify_changed();
+        external callers (crop execution, spinbox sync) should prefer
+        image_session.crop_model.source_pixel_rect, which is the same value
+        already committed and doesn't re-derive from widget geometry."""
         if self.selector.isHidden():
             return None
         viewport = self._current_viewport()
@@ -344,20 +376,50 @@ class SelectionManager:
         )
 
     # -----------------------------------------------------------------
-    # Preserved-selection restore (used by sync_workspace_after_loading_image)
+    # Model -> view sync after an image swap (replaces
+    # restore_preserved_geometry as the thing FastCropApp calls)
     # -----------------------------------------------------------------
-    def restore_preserved_geometry(self, geometry: QRect):
-        """Re-applies a remembered crop_box_geometry from before an image
-        swap, re-snapping it if lossless is active. Sets last_crop_geometry
-        and shows the selector."""
-        if self._lossless_check():
-            geometry = self._snap_rect(geometry)
+    def sync_view_from_model(self) -> None:
+        """Called by FastCropApp right after refresh_display_canvas() on
+        every folder navigation / image swap. ImageSession's Sync Chain has
+        already decided, at the model level, whether the selection survives
+        the swap (crop_model.has_selection True, already clamped to the new
+        image's bounds) or was flushed (has_selection False) — this method's
+        only job is projecting that decision onto the newly-scaled on-screen
+        pixmap.
 
-        self.selector.setGeometry(geometry)
+        Deliberately NOT wired as a live crop_model.selection_changed
+        subscriber: ImageModel.image_changed — and therefore CropModel's
+        clamp/clear — fires synchronously inside hydrate_current_image(),
+        before FastCropApp gets control back to call refresh_display_canvas().
+        A live signal handler would sometimes project against the previous
+        image's still-displayed pixmap size. Calling this explicitly, after
+        the repaint, sidesteps that race.
+        """
+        if not self.crop_model.has_selection:
+            self.clear_selection()
+            return
+
+        viewport = self._current_viewport()
+        if viewport is None:
+            self.clear_selection()
+            return
+
+        screen_rect = CropGeometryEngine.source_rect_to_screen_rect(
+            self.crop_model.source_pixel_rect, viewport, self._current_ratio_label()
+        )
+        if self._lossless_check():
+            screen_rect = self._snap_rect(screen_rect)
+
+        self.selector.setGeometry(screen_rect)
         self.selector.show()
         self.selector.raise_()
-        self.last_crop_geometry = geometry
-        self._notify_changed()
+        self.last_crop_geometry = screen_rect
+        # No _notify_changed() here on purpose: this geometry was DERIVED
+        # from crop_model, so pushing it back would just round-trip it
+        # through screen-space rounding and could drift the model's rect by
+        # a pixel on every single image swap. The model stays authoritative;
+        # this method only paints what it already says.
 
     def clear_selection(self):
         """Hides both the selector and any ghost overlay, and drops the
@@ -366,6 +428,8 @@ class SelectionManager:
         self.selector.hide()
         self.last_crop_geometry = None
         self.hide_ghost()
+        self._notify_changed()  # NEW: previously this fell through silently;
+        # now it's needed so crop_model.clear() actually fires.
 
     # -----------------------------------------------------------------
     # Aspect ratio update on pixel-perfect

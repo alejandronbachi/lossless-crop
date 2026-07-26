@@ -74,7 +74,7 @@ class FastCropApp(QMainWindow):
         )
 
         # Image Pipeline Management Variables
-        self.image_session = ImageSession()
+        self.image_session = ImageSession(self.settings)
 
         # Initialize User Interface
         self.init_ui()
@@ -99,6 +99,14 @@ class FastCropApp(QMainWindow):
         )
         # Add the frame directly to your main layout tree channels
         self.main_layout.addWidget(self.control_toolbar)
+
+        # Keep AppSettings live during the session instead of only at quit —
+        # ImageSession's Sync Chain reads self.settings.conserve_selection the
+        # instant an image swap happens, so it needs the checkbox's current
+        # value, not just whatever was loaded at startup.
+        self.chk_preserve.toggled.connect(
+            lambda checked: setattr(self.settings, "conserve_selection", checked)
+        )
         # -------------------------------------------------------------
         # MIDDLE VISUAL DISPLAY CANVAS PANEL
         # -------------------------------------------------------------
@@ -138,6 +146,7 @@ class FastCropApp(QMainWindow):
             selector=self.crop_box_selector,
             ghost_parent=self.central_widget,  # matches old ghost_selector's parent
             image_session=self.image_session,
+            crop_model=self.image_session.crop_model,
             ratio_combo=self.combo_ratio,
             snap_combo=self.combo_snap,
             viewport_factory=self._build_viewport_geometry,
@@ -163,12 +172,11 @@ class FastCropApp(QMainWindow):
         # -----------------------------------------------------------------
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
         # -----------------------------------------------------------------
-        if self.chk_preserve.isChecked() and self.selection_manager.last_crop_geometry:
-            self.selection_manager.restore_preserved_geometry(
-                self.selection_manager.last_crop_geometry
-            )
-        else:
-            self.selection_manager.clear_selection()
+        # ImageSession's Sync Chain already decided keep-vs-clear (and
+        # clamped to the new image's bounds) the instant the file loaded;
+        # this just paints that decision now that the canvas has a fresh
+        # pixmap to project the selection onto.
+        self.selection_manager.sync_view_from_model()
 
         # Update status manager system layout overlays
         self.status_manager.reposition_commands_overlay()
@@ -326,8 +334,8 @@ class FastCropApp(QMainWindow):
             )
             output_filepath = str(unique_path)
 
-        source_rect = self.selection_manager.current_source_rect()
-        if not source_rect or source_rect.width() <= 0 or source_rect.height() <= 0:
+        source_rect = self.image_session.crop_model.source_pixel_rect
+        if source_rect.width() <= 0 or source_rect.height() <= 0:
             return False
 
         # 6. FIRE THE CROP OFF THE UI THREAD; UI sync happens in on_crop_finished
@@ -362,15 +370,18 @@ class FastCropApp(QMainWindow):
             return
 
         if self.chk_overwrite.isChecked():
+            # hydrate_current_image() reloads the file, which fires
+            # ImageModel.image_changed -> ImageSession's Sync Chain already
+            # runs the keep-vs-clear decision. load_image_to_viewport()
+            # repaints the canvas and then calls sync_view_from_model()
+            # (via sync_workspace_after_loading_image) to paint it.
             self.image_session.hydrate_current_image()
             self.load_image_to_viewport()
-
-        if self.chk_preserve.isChecked() and self.selection_manager.last_crop_geometry:
-            self.selection_manager.restore_preserved_geometry(
-                self.selection_manager.last_crop_geometry
-            )
         else:
-            self.selection_manager.clear_selection()
+            # No image swap happened, so the Sync Chain never ran — apply
+            # the same conserve_selection policy explicitly, then repaint.
+            self.image_session.apply_post_crop_selection_policy()
+            self.selection_manager.sync_view_from_model()
 
         if use_lossless:
             self.status_manager.show_center_notification("Lossless Crop")
@@ -386,7 +397,7 @@ class FastCropApp(QMainWindow):
         if not self.image_session.has_active_image:
             return
 
-        self.image_manager.rotate_session_view(self.image_session)
+        self.image_session.image_model.rotate()
         self.refresh_display_canvas()
 
         if (
@@ -615,6 +626,11 @@ class FastCropApp(QMainWindow):
         """Fetches the state data model from the manager and pushes it to the layout views."""
         # 1. Ask the manager to handle all disk/registry processing
         self.settings = self.settings_manager.load()
+
+        # self.image_session was constructed with the placeholder AppSettings()
+        # from __init__, before this loaded instance existed — repoint it, or
+        # ImageSession's Sync Chain would keep reading defaults forever.
+        self.image_session.crop_settings = self.settings
 
         # 2. Push the completed data container straight into the visual interface
         self.apply_settings_to_ui()
