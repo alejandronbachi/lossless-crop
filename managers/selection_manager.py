@@ -376,50 +376,64 @@ class SelectionManager:
         )
 
     # -----------------------------------------------------------------
-    # Model -> view sync after an image swap (replaces
+    # Model -> view sync after a crop or an image swap (replaces
     # restore_preserved_geometry as the thing FastCropApp calls)
     # -----------------------------------------------------------------
     def sync_view_from_model(self) -> None:
-        """Called by FastCropApp right after refresh_display_canvas() on
-        every folder navigation / image swap. ImageSession's Sync Chain has
-        already decided, at the model level, whether the selection survives
-        the swap (crop_model.has_selection True, already clamped to the new
-        image's bounds) or was flushed (has_selection False) — this method's
-        only job is projecting that decision onto the newly-scaled on-screen
-        pixmap.
+        """Called by FastCropApp right after refresh_display_canvas() — on
+        every folder navigation, every crop (overwrite or not), any time
+        the canvas just repainted. crop_model.has_selection tells us
+        whether the box should still be showing at all (ImageSession's
+        Sync Chain, or apply_post_crop_selection_policy(), already made
+        that keep-vs-clear call) — but this method does NOT move or resize
+        the selector to match crop_model's stored coordinates.
 
-        Deliberately NOT wired as a live crop_model.selection_changed
-        subscriber: ImageModel.image_changed — and therefore CropModel's
-        clamp/clear — fires synchronously inside hydrate_current_image(),
-        before FastCropApp gets control back to call refresh_display_canvas().
-        A live signal handler would sometimes project against the previous
-        image's still-displayed pixmap size. Calling this explicitly, after
-        the repaint, sidesteps that race.
+        That reprojection is exactly what caused a visible drift: it went
+        crop_model.source_pixel_rect -> screen_rect via
+        CropGeometryEngine.source_rect_to_screen_rect(), the reverse of the
+        screen_rect_to_source_rect() call that produced source_pixel_rect
+        in the first place. Those two directions aren't a clean inverse
+        (the forward call takes a lossless flag; the reverse one doesn't),
+        and each direction rounds to integer pixels — so on EVERY crop,
+        not just ones that swap images, the box could shift by a pixel or
+        two. Lossless mode never showed it because every touch of the box
+        already re-snaps to the 8x8 grid, which happens to swallow that
+        error; Pixel-Perfect has no snap, so the drift was the first thing
+        visible.
+
+        The actual invariant, matching the original app, is the screen
+        rect — so this leaves the selector's geometry completely alone and
+        instead refreshes crop_model FROM it, against the current
+        viewport, via the same _notify_changed() path every other
+        interaction uses. That's a one-way, idempotent refresh: if the
+        viewport hasn't changed (a plain crop, no swap), it recomputes the
+        exact same numbers and nothing visibly moves; if the viewport HAS
+        changed (navigation, or an overwrite-crop reload), crop_model ends
+        up correctly describing where the untouched screen box now sits
+        relative to whatever image is currently displayed.
         """
         if not self.crop_model.has_selection:
             self.clear_selection()
             return
 
-        viewport = self._current_viewport()
-        if viewport is None:
+        if self._current_viewport() is None:
             self.clear_selection()
             return
 
-        screen_rect = CropGeometryEngine.source_rect_to_screen_rect(
-            self.crop_model.source_pixel_rect, viewport, self._current_ratio_label()
-        )
-        if self._lossless_check():
-            screen_rect = self._snap_rect(screen_rect)
-
-        self.selector.setGeometry(screen_rect)
         self.selector.show()
         self.selector.raise_()
-        self.last_crop_geometry = screen_rect
-        # No _notify_changed() here on purpose: this geometry was DERIVED
-        # from crop_model, so pushing it back would just round-trip it
-        # through screen-space rounding and could drift the model's rect by
-        # a pixel on every single image swap. The model stays authoritative;
-        # this method only paints what it already says.
+
+        if self._lossless_check():
+            # Re-snap only — never reposition beyond the grid — so a
+            # lossless-mode box stays grid-aligned if the engine toggle
+            # changed while it was preserved. This branch never runs in
+            # Pixel-Perfect mode, which is exactly why that mode is (and
+            # should be) pixel-identical across a preserved selection.
+            snapped = self._snap_rect(self.selector.geometry())
+            self.selector.setGeometry(snapped)
+
+        self.last_crop_geometry = self.selector.geometry()
+        self._notify_changed()  # refreshes crop_model FROM this geometry
 
     def clear_selection(self):
         """Hides both the selector and any ghost overlay, and drops the

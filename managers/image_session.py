@@ -91,12 +91,18 @@ class ImageSession(QObject):
     # THE SYNC CHAIN
     # -------------------------------------------------------------
     def _on_image_changed(self) -> None:
-        """Fires every time ImageModel finishes hydrating a new file. Does
+        """Fires every time ImageModel finishes hydrating a new file — a
+        navigation, a fresh folder load, or an overwrite-crop reload. Does
         NOT fire on rotation (that's rotation_changed, a separate signal) —
-        rotating shouldn't touch the crop selection at all."""
-        if self.crop_settings.conserve_selection:
-            self.crop_model.clamp_to_bounds(self.image_model.width, self.image_model.height)
-        else:
+        rotating shouldn't touch the crop selection at all.
+
+        This only decides whether the selection survives at all.
+        Previously this also tried to fit the old source_pixel_rect into
+        the new image's bounds (clamp_to_bounds) — that's gone; see
+        CropModel's docstring for why, and SelectionManager.sync_view_from_model()
+        for where that refresh correctly happens now, once there's an
+        actual repainted viewport to compute against."""
+        if not self.crop_settings.conserve_selection:
             self.crop_model.clear()
         self.workspace_changed.emit()
 

@@ -41,11 +41,15 @@ class ViewportGeometry:
         return self.source_height / self.pixmap_height if self.pixmap_height else 1.0
 
     @property
-    def screen_to_source_x(self) -> float:
+    def source_to_screen_x(self) -> float:
+        """Multiplier for converting a SOURCE-space delta into a SCREEN-space
+        delta (previously misnamed screen_to_source_x, backwards from what
+        it's actually used for — it's the inverse of scale_x, used exactly
+        once, inside source_rect_to_screen_rect)."""
         return self.pixmap_width / self.source_width if self.source_width else 1.0
 
     @property
-    def screen_to_source_y(self) -> float:
+    def source_to_screen_y(self) -> float:
         return self.pixmap_height / self.source_height if self.source_height else 1.0
 
 
@@ -110,20 +114,28 @@ class CropGeometryEngine:
         rect back onto label/screen coordinates for drawing the rubber band.
         Height is re-derived from the projected width (not independently
         rounded) whenever an aspect ratio is locked.
+
+        Rounds to nearest (round()) rather than truncating (int()) on every
+        field, matching screen_rect_to_source_rect exactly — the previous
+        int()-truncation here, mixed with round() on the forward side, meant
+        a screen->source->screen round trip wasn't idempotent: it could
+        settle a pixel or two off from where it started, every single time
+        this ran. In Lossless mode the grid snap absorbed that; in
+        Pixel-Perfect mode (no snap) it was directly visible as drift.
         """
         aspect = cls.resolve_aspect_ratio(ratio_label)
 
         screen_x = (
-            int(source_rect.x() * viewport.screen_to_source_x) + viewport.offset_x
+            round(source_rect.x() * viewport.source_to_screen_x) + viewport.offset_x
         )
         screen_y = (
-            int(source_rect.y() * viewport.screen_to_source_y) + viewport.offset_y
+            round(source_rect.y() * viewport.source_to_screen_y) + viewport.offset_y
         )
-        screen_w = int(source_rect.width() * viewport.screen_to_source_x)
+        screen_w = max(1, round(source_rect.width() * viewport.source_to_screen_x))
         screen_h = (
             max(1, round(screen_w / aspect))
             if aspect
-            else int(source_rect.height() * viewport.screen_to_source_y)
+            else max(1, round(source_rect.height() * viewport.source_to_screen_y))
         )
         return QRect(screen_x, screen_y, screen_w, screen_h)
 
@@ -162,16 +174,21 @@ class CropGeometryEngine:
         lossless: bool,
         ratio_label: str,
     ) -> QRect:
-        """Pure inverse matrix mapping to snap screen bounding fields!"""
-        # Convert screen coordinate selection frame into true image pixel coordinates
+        """Round-trips a screen rect through source-pixel space and back, so
+        that a JPEG-grid-aligned selection (or an aspect-locked one) is
+        reflected back onto the screen.
+
+        This used to hand-roll the source->screen half of that round trip
+        instead of calling source_rect_to_screen_rect — which meant two
+        separate implementations of the same conversion (a maintenance
+        landmine for a class whose whole job is being the *single* source
+        of truth for this math), one of which used int() truncation instead
+        of round(), and neither of which honored ratio_label for the
+        height. Delegating here fixes both: rounding is now identical to
+        every other conversion in this class, and an aspect-locked
+        selection stays aspect-locked through the snap.
+        """
         source_rect = cls.screen_rect_to_source_rect(
             screen_rect, viewport, lossless, ratio_label
         )
-
-        # Backward-map image source pixels back onto precise on-screen UI pixels
-        snapped_x = (source_rect.x() / viewport.scale_x) + viewport.offset_x
-        snapped_y = (source_rect.y() / viewport.scale_y) + viewport.offset_y
-        snapped_w = source_rect.width() / viewport.scale_x
-        snapped_h = source_rect.height() / viewport.scale_y
-
-        return QRect(int(snapped_x), int(snapped_y), int(snapped_w), int(snapped_h))
+        return cls.source_rect_to_screen_rect(source_rect, viewport, ratio_label)

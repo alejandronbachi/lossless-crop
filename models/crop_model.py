@@ -55,29 +55,25 @@ class CropModel(QObject):
         self._source_pixel_rect = QRect()
         self.selection_cleared.emit()
 
-    def clamp_to_bounds(self, max_width: int, max_height: int) -> None:
-        """The re-clamp step from the Sync Chain: called by ImageSession when
-        CropSettings.keep_selection_on_swap_enabled is True and a new file
-        just loaded with different dimensions than the old one."""
-        if self._source_pixel_rect.isNull():
-            return
-
-        r = self._source_pixel_rect
-        left = max(0, min(max_width, r.x()))
-        top = max(0, min(max_height, r.y()))
-        right = max(0, min(max_width, r.x() + r.width()))
-        bottom = max(0, min(max_height, r.y() + r.height()))
-        clamped = QRect(left, top, right - left, bottom - top)
-
-        if clamped.width() <= 0 or clamped.height() <= 0:
-            self.clear()
-        else:
-            self.set_rect(clamped)
-
-    # NOTE: no apply_target_dimensions() here. Turning a target width/height
-    # into an on-screen QRubberBand geometry needs the pixmap's screen-space
-    # scale factors (see SelectionManager.apply_target_dimensions) — that's
-    # legitimately view/controller math, not something this model should
-    # duplicate. SelectionManager keeps owning that computation and pushes
-    # the *result*, in source-pixel space, into this model via set_rect()
-    # the same way every other interaction does.
+    # NOTE: no clamp_to_bounds() here anymore, and no apply_target_dimensions()
+    # either.
+    #
+    # clamp_to_bounds used to be called by ImageSession whenever an image
+    # swapped, to fit the old source_pixel_rect into the new image's bounds.
+    # It's gone because it was the wrong operation: it clamped stale
+    # coordinates from whatever image was previously on screen directly
+    # against the new image's dimensions, with no notion of where the
+    # on-screen box actually still is. The correct refresh happens in
+    # SelectionManager.sync_view_from_model(): the screen rect is what
+    # actually stays invariant across a "keep selection" swap or a crop, so
+    # source_pixel_rect gets re-derived FROM the live screen geometry against
+    # the current viewport (exactly what current_source_rect() always did),
+    # not reprojected forward from an old, possibly now-meaningless value.
+    #
+    # apply_target_dimensions() doesn't belong here either — turning a target
+    # width/height into an on-screen QRubberBand geometry needs the pixmap's
+    # screen-space scale factors (see SelectionManager.apply_target_dimensions),
+    # which is legitimately view/controller math this model shouldn't
+    # duplicate. SelectionManager owns that computation and pushes the
+    # *result*, in source-pixel space, into this model via set_rect() the
+    # same way every other interaction does.
