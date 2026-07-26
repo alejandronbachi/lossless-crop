@@ -9,16 +9,18 @@ from PyQt6.QtWidgets import (
     QSpinBox,
 )
 
+from config import ui_constants
+
 
 class ControlToolbar(QFrame):
     def __init__(
-        self, parent, image_manager, file_manager, ui_constants, pillow_available
+        self, parent, image_manager, file_manager, ui_constants_obj, pillow_available
     ):
         super().__init__(parent)
         self.main_app = parent
         self.image_manager = image_manager
         self.file_manager = file_manager
-        self.ui_constants = ui_constants
+        self.ui_constants = ui_constants_obj
 
         # Build the horizontal structural engine row
         self.layout = QHBoxLayout(self)
@@ -44,18 +46,16 @@ class ControlToolbar(QFrame):
         # 2. Engine Options Dropdown
         self.main_app.combo_engine = QComboBox()
         self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.combo_engine.setToolTip(
-            "Choose processing engine mode for saving operations."
-        )
+        self.main_app.combo_engine.setToolTip(ui_constants.TOOLTIP_ENGINE)
         self.main_app.combo_engine.setFont(native_font)
         self.main_app.combo_engine.view().setFont(native_font)
 
         if self.image_manager.is_lossless_available:
-            self.main_app.combo_engine.addItem("Lossless")
+            self.main_app.combo_engine.addItem(ui_constants.ENGINE_LOSSLESS)
         if pillow_available:
-            self.main_app.combo_engine.addItem("Pixel-Perfect")
+            self.main_app.combo_engine.addItem(ui_constants.ENGINE_PIXEL_PERFECT)
         if not self.image_manager.is_lossless_available and pillow_available:
-            self.main_app.combo_engine.setCurrentText("Pixel-Perfect")
+            self.main_app.combo_engine.setCurrentText(ui_constants.ENGINE_PIXEL_PERFECT)
         self.main_app.combo_engine.currentIndexChanged.connect(
             self.main_app.on_engine_changed
         )
@@ -64,14 +64,10 @@ class ControlToolbar(QFrame):
         # 3. Aspect Ratio Dropdown
         self.main_app.combo_ratio = QComboBox()
         self.main_app.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.combo_ratio.setToolTip(
-            "Force the cropping rectangle selection box to lock onto specific aspect ratios."
-        )
+        self.main_app.combo_ratio.setToolTip(ui_constants.TOOLTIP_RATIO)
         self.main_app.combo_ratio.setFont(native_font)
         self.main_app.combo_ratio.view().setFont(native_font)
-        self.main_app.combo_ratio.addItems(
-            ["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"]
-        )
+        self.main_app.combo_ratio.addItems(ui_constants.RATIO_ITEMS)
         self.main_app.combo_ratio.currentIndexChanged.connect(
             self.main_app.on_ratio_changed
         )
@@ -80,14 +76,10 @@ class ControlToolbar(QFrame):
         # 4. Snap Feedback Dropdown
         self.main_app.combo_snap = QComboBox()
         self.main_app.combo_snap.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.combo_snap.setToolTip(
-            "Select layout feedback mode for Left-Click mouse drawing."
-        )
+        self.main_app.combo_snap.setToolTip(ui_constants.TOOLTIP_SNAP)
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
-        self.main_app.combo_snap.addItems(
-            ["Real-time snap", "Post-release snap", "Ghosting"]
-        )
+        self.main_app.combo_snap.addItems(ui_constants.SNAP_ITEMS)
         self.layout.addWidget(self.main_app.combo_snap)
 
         # 5. Precision Manual Crop Spinboxes Component Layout
@@ -134,26 +126,24 @@ class ControlToolbar(QFrame):
         self.layout.addWidget(self.main_app.spin_container)
 
         # 6. Toolbar Checkboxes
-        self.main_app.chk_preserve = QCheckBox("Keep selection")
-        self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.chk_preserve.setToolTip(
-            "Conserve current selection box size and position coordinates across images."
+        self.main_app.chk_preserve = QCheckBox(
+            ui_constants.CHECKBOX_KEEP_SELECTION_TEXT
         )
+        self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.chk_preserve.setToolTip(ui_constants.TOOLTIP_PRESERVE)
         self.main_app.chk_preserve.setChecked(True)
         self.layout.addWidget(self.main_app.chk_preserve)
 
-        self.main_app.chk_overwrite = QCheckBox("Overwrite")
+        self.main_app.chk_overwrite = QCheckBox(ui_constants.CHECKBOX_OVERWRITE_TEXT)
         self.main_app.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.chk_overwrite.setToolTip(
-            "Directly overwrite original source image files instead of nesting copies in a subfolder."
-        )
+        self.main_app.chk_overwrite.setToolTip(ui_constants.TOOLTIP_OVERWRITE)
         self.main_app.chk_overwrite.setChecked(False)
         self.layout.addWidget(self.main_app.chk_overwrite)
 
         # 7. Configuration Gear Toggle Button
         self.main_app.btn_settings = QPushButton("⚙️")
         self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.btn_settings.setToolTip("Toggle configuration choices")
+        self.main_app.btn_settings.setToolTip(ui_constants.TOOLTIP_SETTINGS)
         self.main_app.btn_settings.setFixedSize(38, 38)
         self.main_app.btn_settings.setStyleSheet(
             self.file_manager.load_asset(

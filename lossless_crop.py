@@ -94,19 +94,12 @@ class FastCropApp(QMainWindow):
             parent=self,
             image_manager=self.image_manager,
             file_manager=self.file_manager,
-            ui_constants=ui_constants,
+            ui_constants_obj=ui_constants,
             pillow_available=PILLOW_AVAILABLE,
         )
         # Add the frame directly to your main layout tree channels
         self.main_layout.addWidget(self.control_toolbar)
 
-        # Keep AppSettings live during the session instead of only at quit —
-        # ImageSession's Sync Chain reads self.settings.conserve_selection the
-        # instant an image swap happens, so it needs the checkbox's current
-        # value, not just whatever was loaded at startup.
-        self.chk_preserve.toggled.connect(
-            lambda checked: setattr(self.settings, "conserve_selection", checked)
-        )
         # -------------------------------------------------------------
         # MIDDLE VISUAL DISPLAY CANVAS PANEL
         # -------------------------------------------------------------
@@ -153,6 +146,9 @@ class FastCropApp(QMainWindow):
             lossless_check=self.determine_if_lossless_active,
             on_selection_changed=lambda: self.status_manager.invalidate_ui_state(),
         )
+
+        # Register UI controls with SettingsBinder for automatic 2-way sync
+        self.settings_manager.bind_ui(self)
 
     def load_image_to_viewport(self):
         # 🚀 CHANGE ONLY: Evaluate session status instead of loose variables
@@ -591,36 +587,19 @@ class FastCropApp(QMainWindow):
 
         #  Only update history if the user actually has a valid folder open
         if self.image_session.folder_path and self.image_session.folder_path.exists():
-            self.settings.last_used_folder = str(self.image_session.folder_path)
+            self.settings_manager.save_last_used_folder(self.image_session.folder_path)
 
-        self.settings.remember_settings = self.cfg_remember_settings.isChecked()
-        self.settings.main_window_geometry_blob = self.saveGeometry()
+        # Capture window and HUD geometry
+        self.settings_manager.capture_window_geometry(
+            main_window=self,
+            hud_window=getattr(self, "zoom_hud", None),
+        )
 
-        if hasattr(self, "zoom_hud"):
-            self.settings.hud_win_x = self.zoom_hud.x()
-            self.settings.hud_win_y = self.zoom_hud.y()
-            self.settings.hud_win_w = self.zoom_hud.width()
-            self.settings.hud_win_h = self.zoom_hud.height()
-            self.settings.show_preview_hud = self.cfg_show_preview.isChecked()
+        # Sync any un-committed state from bound UI components to AppSettings
+        self.settings_manager.binder.update_model_from_ui()
 
-        # 2. Update toggle flags if 'Remember settings' is checked
-        if self.settings.remember_settings:
-            self.settings.persist_main_win = self.cfg_persist_main_win.isChecked()
-            self.settings.persist_hud_win = self.cfg_persist_hud_win.isChecked()
-            self.settings.auto_open_folder = self.cfg_auto_folder.isChecked()
-            self.settings.show_shortcuts = self.cfg_show_shortcuts.isChecked()
-            self.settings.show_toasts = self.cfg_show_toasts.isChecked()
-            self.settings.show_infobar = self.cfg_show_infobar.isChecked()
-            self.settings.show_filename = self.cfg_show_filename.isChecked()
-            self.settings.show_imgsize = self.cfg_show_imgsize.isChecked()
-            self.settings.conserve_selection = self.chk_preserve.isChecked()
-            self.settings.overwrite_files = self.chk_overwrite.isChecked()
-            self.settings.ratio_preference = self.combo_ratio.currentText()
-            self.settings.engine_preference = self.combo_engine.currentText()
-            self.settings.show_preview_hud = self.cfg_show_preview.isChecked()
-
-        # 3. Offload the file IO entirely to the manager
-        self.settings_manager.save(self.settings)
+        # Offload the file/registry IO entirely to the manager
+        self.settings_manager.save()
 
     def load_application_state(self):
         """Fetches the state data model from the manager and pushes it to the layout views."""
@@ -638,66 +617,31 @@ class FastCropApp(QMainWindow):
         QTimer.singleShot(0, self.status_manager.update_status_and_telemetry)
 
     def apply_settings_to_ui(self):
-        """Applies the internal data model properties directly to UI components."""
+        """Applies the internal data model properties directly to UI components via binder."""
 
-        # 1. Configure master settings control rule
-        self.cfg_remember_settings.setChecked(self.settings.remember_settings)
+        # 1. Push model values to bound UI controls via binder
+        self.settings_manager.binder.apply_to_ui()
 
         # If the user toggled off "remember settings", bypass visual layout population
         if not self.settings.remember_settings:
             self.status_manager.set_empty_workspace_state()
             return
 
-        # 2. Restore Component Toggles & Checkboxes
-        self.cfg_persist_main_win.setChecked(self.settings.persist_main_win)
-        self.cfg_persist_hud_win.setChecked(self.settings.persist_hud_win)
-        self.cfg_auto_folder.setChecked(self.settings.auto_open_folder)
-        self.cfg_show_shortcuts.setChecked(self.settings.show_shortcuts)
-        self.cfg_show_toasts.setChecked(self.settings.show_toasts)
-        self.cfg_show_infobar.setChecked(self.settings.show_infobar)
-        self.cfg_show_filename.setChecked(self.settings.show_filename)
-        self.cfg_show_imgsize.setChecked(self.settings.show_imgsize)
-        self.chk_preserve.setChecked(self.settings.conserve_selection)
-        self.chk_overwrite.setChecked(self.settings.overwrite_files)
-        self.cfg_show_preview.setChecked(self.settings.show_preview_hud)
+        # 2. Restore Main Window & HUD Window Geometries
+        self.settings_manager.restore_window_geometry(
+            main_window=self,
+            hud_window=getattr(self, "zoom_hud", None),
+        )
 
-        # 3. Handle Geometry Layout Constraints
-        if self.settings.persist_main_win and self.settings.main_window_geometry_blob:
-            self.restoreGeometry(self.settings.main_window_geometry_blob)
-
-        # CENTRALIZED HUD GEOMETRY: Handle sizing, fallbacks, and user flags in ONE spot
-        if hasattr(self, "zoom_hud"):
-            if self.settings.persist_hud_win:
-                # If they want to remember it, restore their exact coordinates
-                self.zoom_hud.setGeometry(
-                    self.settings.hud_win_x,
-                    self.settings.hud_win_y,
-                    self.settings.hud_win_w,
-                    self.settings.hud_win_h,
-                )
-            else:
-                # If they UNCHECKED "remember", force it to the clean default fallback spot
-                main_geom = self.geometry()
-                self.zoom_hud.setGeometry(
-                    main_geom.right() + 10, main_geom.top() + 50, 250, 250
-                )
-
-        # 4. Handle Zoom HUD Window Trigger
+        # 3. Handle Zoom HUD Window Trigger
         if self.settings.show_preview_hud:
             self.toggle_zoom_hud_window_visibility()
-
-        # 5. Extract Dropdown String ComboBox Selections Safely
-        if self.combo_ratio.findText(self.settings.ratio_preference) != -1:
-            self.combo_ratio.setCurrentText(self.settings.ratio_preference)
-
-        if self.combo_engine.findText(self.settings.engine_preference) != -1:
-            self.combo_engine.setCurrentText(self.settings.engine_preference)
 
         # Refresh structural UI systems
         self.status_manager.sync_drawer_visibility_rules()
         self.update_resolution_metrics_display()
 
-        # 6. Folder Automation & Boot Checks
+        # 4. Folder Automation & Boot Checks
         if self.settings.auto_open_folder and self.settings.last_used_folder:
             self.automate_folder_loading(self.settings.last_used_folder)
         else:

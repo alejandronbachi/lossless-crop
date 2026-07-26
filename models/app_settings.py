@@ -34,3 +34,4 @@ class AppSettings:
     # --- Dropdown ComboBox States ---
     ratio_preference: str = "Free"
     engine_preference: str = "Lossless"
+    snap_preference: str = "Real-time snap"
