@@ -19,3 +19,4 @@ backend/__pycache__/launcher.cpython-313.pyc
 
 # 5. Ignore Local AI output
 **/AI_output
+/plans

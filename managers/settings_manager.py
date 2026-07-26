@@ -184,9 +184,10 @@ class SettingsManager:
         model = AppSettings()
 
         remember_settings_val = model.remember_settings
-        if q_settings.contains("remember_settings"):
+        if q_settings.contains(app_constants.SETTING_REMEMBER_SETTINGS):
             remember_settings_val = self._safe_bool(
-                q_settings.value("remember_settings"), model.remember_settings
+                q_settings.value(app_constants.SETTING_REMEMBER_SETTINGS),
+                model.remember_settings,
             )
 
         for field in dataclasses.fields(AppSettings):

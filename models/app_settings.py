@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from config import ui_constants
+
 
 @dataclass
 class AppSettings:
@@ -32,6 +34,6 @@ class AppSettings:
     overwrite_files: bool = False
 
     # --- Dropdown ComboBox States ---
-    ratio_preference: str = "Free"
-    engine_preference: str = "Lossless"
-    snap_preference: str = "Real-time snap"
+    ratio_preference: str = ui_constants.RATIO_FREEFORM
+    engine_preference: str = ui_constants.ENGINE_LOSSLESS
+    snap_preference: str = ui_constants.SNAP_REAL_TIME

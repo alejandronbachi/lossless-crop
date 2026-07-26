@@ -49,7 +49,7 @@ except ImportError:
 class FastCropApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("LossLess Crop")
+        self.setWindowTitle(ui_constants.WINDOW_TITLE)
         self.resize(900, 700)
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()
@@ -162,7 +162,7 @@ class FastCropApp(QMainWindow):
 
     def sync_workspace_after_loading_image(self):
         # 🚀 CHANGE ONLY: Push the live session VRAM handle directly to the HUD tool!
-        if hasattr(self, "zoom_hud"):
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.zoom_hud.master_pixmap = self.image_session.master_pixmap
 
         # -----------------------------------------------------------------
@@ -280,7 +280,7 @@ class FastCropApp(QMainWindow):
 
         # 1. Quick setting check
         if (
-            self.combo_engine.currentText() != "Lossless"
+            self.combo_engine.currentText() != ui_constants.ENGINE_LOSSLESS
             or not self.image_manager.is_lossless_available
         ):
             return False
@@ -362,7 +362,7 @@ class FastCropApp(QMainWindow):
         if not success:
             if error_message:
                 print(f"Critical Error: Crop failed: {error_message}")
-            self.status_manager.show_center_notification("Crop Failed")
+            self.status_manager.show_center_notification(ui_constants.TEXT_CROP_FAILED)
             return
 
         if self.chk_overwrite.isChecked():
@@ -380,12 +380,18 @@ class FastCropApp(QMainWindow):
             self.selection_manager.sync_view_from_model()
 
         if use_lossless:
-            self.status_manager.show_center_notification("Lossless Crop")
+            self.status_manager.show_center_notification(
+                ui_constants.TEXT_LOSSLESS_CROP
+            )
         else:
-            if file_ext in (".png", ".bmp"):
-                self.status_manager.show_center_notification("Lossless Crop")
+            if file_ext in app_constants.ALWAYS_LOSSLESS_IMAGE_EXTENSIONS:
+                self.status_manager.show_center_notification(
+                    ui_constants.TEXT_LOSSLESS_CROP
+                )
             else:
-                self.status_manager.show_center_notification("Lossy Crop")
+                self.status_manager.show_center_notification(
+                    ui_constants.TEXT_LOSSY_CROP
+                )
 
         self.status_manager.invalidate_ui_state()
 
@@ -499,7 +505,7 @@ class FastCropApp(QMainWindow):
 
     def execute_deferred_resize_recalc(self):
         self.refresh_display_canvas()
-        if hasattr(self, "zoom_hud"):
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.update_zoom_hud_payload()
 
     def toggle_settings_drawer(self):
@@ -571,7 +577,7 @@ class FastCropApp(QMainWindow):
             print(f"Critical Error: Failed to save application state: {e}")
 
         # 2. Safely close your borderless floating zoom HUD component
-        if hasattr(self, "zoom_hud") and self.zoom_hud is not None:
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD) and self.zoom_hud is not None:
             # Using a try/except ensures an issue here won't block the main application from exiting
             try:
                 self.zoom_hud.close()
@@ -592,7 +598,7 @@ class FastCropApp(QMainWindow):
         # Capture window and HUD geometry
         self.settings_manager.capture_window_geometry(
             main_window=self,
-            hud_window=getattr(self, "zoom_hud", None),
+            hud_window=getattr(self, ui_constants.WIDGET_ZOOM_HUD, None),
         )
 
         # Sync any un-committed state from bound UI components to AppSettings
@@ -630,7 +636,7 @@ class FastCropApp(QMainWindow):
         # 2. Restore Main Window & HUD Window Geometries
         self.settings_manager.restore_window_geometry(
             main_window=self,
-            hud_window=getattr(self, "zoom_hud", None),
+            hud_window=getattr(self, ui_constants.WIDGET_ZOOM_HUD, None),
         )
 
         # 3. Handle Zoom HUD Window Trigger
@@ -698,7 +704,7 @@ class FastCropApp(QMainWindow):
 
     def toggle_zoom_hud_window_visibility(self):
         """Strictly displays or hides the floating zoom view based on checkbox rules."""
-        if not hasattr(self, "zoom_hud"):
+        if not hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             return
 
         if self.cfg_show_preview.isChecked():
@@ -717,7 +723,7 @@ class FastCropApp(QMainWindow):
             or self.crop_box_selector.isHidden()
             or not self.image_session.has_active_image
         ):
-            if hasattr(self, "zoom_hud"):
+            if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
                 self.zoom_hud.master_pixmap = None
                 self.zoom_hud.lbl_canvas.clear()
             return
@@ -758,7 +764,7 @@ class FastCropApp(QMainWindow):
                 )
                 return
 
-        if hasattr(self, "zoom_hud"):
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.zoom_hud.lbl_canvas.clear()
 
     def dragEnterEvent(self, event):
@@ -829,7 +835,7 @@ class FastCropApp(QMainWindow):
             self.spin_height.setValue(th)
             self._updating_spinboxes = False
 
-        if applied and hasattr(self, "zoom_hud"):
+        if applied and hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.update_zoom_hud_payload()
 
     def update_ui_after_loadin_folder(
@@ -844,9 +850,7 @@ class FastCropApp(QMainWindow):
             self.image_session.close_session()
             self.crop_box_selector.hide()
             self.status_manager.set_empty_workspace_state()
-            alert_text = (
-                error_msg if error_msg else "No valid images found in target folder."
-            )
+            alert_text = error_msg if error_msg else ui_constants.TEXT_NO_VALID_IMAGES
             self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
@@ -883,7 +887,7 @@ class FastCropApp(QMainWindow):
         self.update_ui_after_loadin_folder(
             folder_path=directory,
             valid_files=valid_files,
-            error_msg="No valid, readable images found in directory.",
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
         )
 
     def dropEvent(self, event):
@@ -903,12 +907,12 @@ class FastCropApp(QMainWindow):
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg="No valid, readable images found in dropped payload.",
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DROP,
         )
 
     def select_individual_image_file(self):
         fallback_path = self.settings_manager.get_fallback_path_str()
-        file_filter = "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
+        file_filter = ui_constants.IMAGE_FILE_FILTER
 
         selected_file_path, _ = QFileDialog.getOpenFileName(
             self, "Target Starting Image File", fallback_path, file_filter
@@ -924,7 +928,7 @@ class FastCropApp(QMainWindow):
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg="No valid, readable images found in target folder directory.",
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
         )
 
     def build_main_canvas(self):

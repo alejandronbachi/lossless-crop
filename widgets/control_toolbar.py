@@ -31,7 +31,7 @@ class ControlToolbar(QFrame):
 
     def _build_ui(self, pillow_available):
         # 1. Directory Loader Button
-        self.main_app.lbl_folder_name = QPushButton("No directory loaded")
+        self.main_app.lbl_folder_name = QPushButton(ui_constants.TEXT_NO_DIRECTORY)
         self.main_app.lbl_folder_name.setStyleSheet(
             "font-weight: bold; color: #aaa; margin-left: 5px; min-width: 140px; text-align: left;"
         )
@@ -101,8 +101,8 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width = QSpinBox()
         self.main_app.spin_width.setRange(10, 10000)
         self.main_app.spin_width.setValue(0)
-        self.main_app.spin_width.setPrefix("W: ")
-        self.main_app.spin_width.setSuffix(" px")
+        self.main_app.spin_width.setPrefix(ui_constants.SPIN_WIDTH_PREFIX)
+        self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
         self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.main_app.spin_width.setStyleSheet(spin_box_stylesheet)
         self.main_app.spin_width.valueChanged.connect(
@@ -114,8 +114,8 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height = QSpinBox()
         self.main_app.spin_height.setRange(10, 10000)
         self.main_app.spin_height.setValue(0)
-        self.main_app.spin_height.setPrefix("H: ")
-        self.main_app.spin_height.setSuffix(" px")
+        self.main_app.spin_height.setPrefix(ui_constants.SPIN_HEIGHT_PREFIX)
+        self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
         self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.main_app.spin_height.setStyleSheet(spin_box_stylesheet)
         self.main_app.spin_height.valueChanged.connect(

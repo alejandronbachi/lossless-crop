@@ -5,10 +5,16 @@ from dataclasses import dataclass
 
 from PyQt6.QtCore import QRect
 
+from config.ui_constants import (
+    RATIO_SQUARE,
+    RATIO_STANDARD,
+    RATIO_WIDESCREEN,
+)
+
 ASPECT_RATIOS = {
-    "1:1 Square": 1.0,
-    "16:9 Widescreen": 16.0 / 9.0,
-    "4:3 Standard": 4.0 / 3.0,
+    RATIO_SQUARE: 1.0,
+    RATIO_WIDESCREEN: 16.0 / 9.0,
+    RATIO_STANDARD: 4.0 / 3.0,
     # "Freeform" intentionally absent -> resolve_aspect_ratio returns None
 }
 

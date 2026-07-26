@@ -1,7 +1,13 @@
 from pathlib import Path
 
 APP_ROOT_DIR = Path(__file__).resolve().parent.parent
+JPEG_EXTENSIONS = {".jpg", ".jpeg"}
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+ALWAYS_LOSSLESS_IMAGE_EXTENSIONS = {".png", ".bmp"}
+
+BINARY_WINDOWS = "jpegtran.exe"
+BINARY_MAC = "jpegtran_mac"
+BINARY_LINUX = "jpegtran_linux"
 
 # --- Settings Attribute Names ---
 SETTING_REMEMBER_SETTINGS = "remember_settings"

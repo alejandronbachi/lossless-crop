@@ -18,6 +18,36 @@ TEMPLATE_COMMANDS = "commands_overlay.html"
 
 ICON_FILENAME = "icon.png"
 
+# --- App Window & Views Titles ---
+WINDOW_TITLE = "LossLess Crop"
+
+# --- View Control / Object Names ---
+WIDGET_ZOOM_HUD = "zoom_hud"
+WIDGET_SETTINGS_DRAWER = "settings_drawer"
+WIDGET_CONTROL_TOOLBAR = "control_toolbar"
+WIDGET_INFO_BAR = "info_bar_widget"
+WIDGET_SPLASH_HUD = "SplashHUD"
+WIDGET_TELEMETRY_HUD = "TelemetryHUD"
+
+# --- Text Messages & Notifications ---
+TEXT_NO_DIRECTORY = "No directory loaded"
+TEXT_READY_STATUS = "Ready. Open a folder to start cropping."
+TEXT_LOSSLESS_CROP = "Lossless Crop"
+TEXT_LOSSY_CROP = "Lossy Crop"
+TEXT_CROP_FAILED = "Crop Failed"
+TEXT_NO_VALID_IMAGES = "No valid images found in target folder."
+TEXT_NO_VALID_IMAGES_DIR = "No valid, readable images found in directory."
+TEXT_NO_VALID_IMAGES_DROP = "No valid, readable images found in dropped payload."
+
+# --- Spinbox Prefixes & Suffixes ---
+SPIN_WIDTH_PREFIX = "W: "
+SPIN_WIDTH_SUFFIX = " px"
+SPIN_HEIGHT_PREFIX = "H: "
+SPIN_HEIGHT_SUFFIX = " px"
+
+# --- File Filters ---
+IMAGE_FILE_FILTER = "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
+
 # --- Settings Drawer & Toolbar UI Texts & Tooltips ---
 LABEL_GENERAL_SECTION = "General"
 LABEL_SHOW_SECTION = "Show / Display"
@@ -48,7 +78,16 @@ TOOLTIP_PRESERVE = (
 TOOLTIP_OVERWRITE = "Directly overwrite original source image files instead of nesting copies in a subfolder."
 TOOLTIP_SETTINGS = "Toggle configuration choices"
 
-RATIO_ITEMS = ["Freeform", "1:1 Square", "16:9 Widescreen", "4:3 Standard"]
-SNAP_ITEMS = ["Real-time snap", "Post-release snap", "Ghosting"]
+RATIO_FREEFORM = "Freeform"
+RATIO_SQUARE = "1:1 Square"
+RATIO_WIDESCREEN = "16:9 Widescreen"
+RATIO_STANDARD = "4:3 Standard"
+RATIO_ITEMS = [RATIO_FREEFORM, RATIO_SQUARE, RATIO_WIDESCREEN, RATIO_STANDARD]
+SNAP_REAL_TIME = "Real-time snap"
+SNAP_POST_RELEASE = "Post-release snap"
+SNAP_GHOSTING = "Ghosting"
+SNAP_ITEMS = [SNAP_REAL_TIME, SNAP_POST_RELEASE, SNAP_GHOSTING]
 ENGINE_LOSSLESS = "Lossless"
 ENGINE_PIXEL_PERFECT = "Pixel-Perfect"
+ENGINE_ACTIVATION_LOSSLESS = "LOSSLESS MODE (jpegtran)"
+ENGINE_ACTIVATION_PIXEL_PERFECT = "PIXEL-PERFECT MODE (Pillow)"

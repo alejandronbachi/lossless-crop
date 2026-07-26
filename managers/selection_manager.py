@@ -18,6 +18,7 @@ from collections.abc import Callable
 from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
 
+from config import ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from models.crop_model import CropModel
 
@@ -213,7 +214,7 @@ class SelectionManager:
 
         snapped_rect = self._snap_rect(fluid_rect) if use_lossless else fluid_rect
 
-        if snap_mode == "Real-time snap":
+        if snap_mode == ui_constants.SNAP_REAL_TIME:
             self.hide_ghost()
             active_rect = snapped_rect if use_lossless else fluid_rect
             self.selector.setGeometry(active_rect)
@@ -221,14 +222,14 @@ class SelectionManager:
             self.selector.show()
             self.selector.raise_()
 
-        elif snap_mode == "Post-release snap":
+        elif snap_mode == ui_constants.SNAP_POST_RELEASE:
             self.hide_ghost()
             self.selector.setGeometry(fluid_rect)
             self.selector.show()
             self.selector.raise_()
             self.last_crop_geometry = fluid_rect
 
-        elif snap_mode == "Ghosting":
+        elif snap_mode == ui_constants.SNAP_GHOSTING:
             ghost = self._ensure_ghost_selector()
             self.selector.setGeometry(fluid_rect)
             self.selector.show()
@@ -264,9 +265,9 @@ class SelectionManager:
 
         snap_mode = self.snap_combo.currentText()
 
-        if snap_mode in ("Post-release snap", "Real-time snap"):
+        if snap_mode in (ui_constants.SNAP_POST_RELEASE, ui_constants.SNAP_REAL_TIME):
             self.snap_selection()
-        elif snap_mode == "Ghosting":
+        elif snap_mode == ui_constants.SNAP_GHOSTING:
             self.hide_ghost()
             snapped_rect = self._snap_rect(self.selector.geometry())
             self.selector.setGeometry(snapped_rect)
