@@ -67,3 +67,7 @@ QSpinBox::down-arrow {
     width: 10px;
     height: 10px;
 }
+QSpinBox:focus {
+    border: 1px solid #007acc;
+    background-color: #202630;
+}

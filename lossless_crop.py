@@ -9,7 +9,7 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QIcon, QKeyEvent, QPixmap, QResizeEvent
+from PyQt6.QtGui import QIcon, QPixmap, QResizeEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -28,6 +28,7 @@ from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
+from managers.keyboard_controller import KeyboardController
 from managers.selection_manager import SelectionManager
 from managers.settings_manager import SettingsManager
 from managers.status_manager import StatusManager
@@ -79,6 +80,7 @@ class FastCropApp(QMainWindow):
 
         # Initialize User Interface
         self.zoom_hud = FloatingZoomPreview(self)
+        self.keyboard_controller = KeyboardController(self)
         self.init_ui()
         self.load_application_state()
 
@@ -373,61 +375,11 @@ class FastCropApp(QMainWindow):
     # -----------------------------------------------------------------
     # GLOBAL APPLICATION HOTKEY INTERCEPT CAPABILITIES
     # -----------------------------------------------------------------
-    def keyPressEvent(self, event: QKeyEvent):
-        key = event.key()
-
-        if key == Qt.Key.Key_Escape:
-            self.close()
-
-        if event.key() == Qt.Key.Key_P:
-            # Toggle the state of the configuration checkbox
-            current_state = self.cfg_show_preview.isChecked()
-            self.cfg_show_preview.setChecked(not current_state)
+    def keyPressEvent(self, event):
+        # 2. Hand off workflow keys (Space, Enter, Arrows) straight to your controller
+        handled = self.keyboard_controller.process_workflow_key(event.key())
+        if handled:
             event.accept()
-            return
-
-        elif key == Qt.Key.Key_Space:
-            # Crop + Advance
-            self.process_and_execute_crop()
-
-            # 🚀 Forward Skip via the session engine!
-            if alert := self.image_session.next():
-                self.status_manager.show_center_notification(alert)
-            else:
-                self.load_image_to_viewport()
-
-        elif key in (Qt.Key.Key_S, Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            # Crop + Stay
-            self.process_and_execute_crop()
-
-        elif key in (Qt.Key.Key_F, Qt.Key.Key_Right):
-            # 🚀 Forward Skip: Delegate entirely to the session engine!
-            if alert := self.image_session.next():
-                self.status_manager.show_center_notification(alert)
-            else:
-                self.load_image_to_viewport()
-
-        elif key in (Qt.Key.Key_B, Qt.Key.Key_Left):
-            # 🚀 Backward Skip: Delegate entirely to the session engine!
-            if alert := self.image_session.previous():
-                self.status_manager.show_center_notification(alert)
-            else:
-                self.load_image_to_viewport()
-
-        elif key == Qt.Key.Key_R:
-            # Rotate Action
-            self.rotate_current_image()
-
-        elif event.key() == Qt.Key.Key_O:
-            self.select_directory()
-            event.accept()
-            return
-
-        elif event.key() == Qt.Key.Key_I:
-            self.select_individual_image_file()
-            event.accept()
-            return
-
         else:
             super().keyPressEvent(event)
 
@@ -779,10 +731,6 @@ class FastCropApp(QMainWindow):
         self.image_display_container = QLabel()
         self.image_display_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_display_container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.image_display_container.setStyleSheet(
-            "background-color: #1a1a1a; border: 1px solid #333;"
-        )
-
         self.image_display_container.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored
         )

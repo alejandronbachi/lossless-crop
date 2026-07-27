@@ -109,3 +109,46 @@ ControlToolbar {
     margin: 0px;
     padding: 0px;
 }
+/* Add to QPushButton section */
+QPushButton:focus {
+    border: 1px solid #007acc;
+    background-color: #252b35;
+    outline: none;
+}
+
+/* Add to QComboBox section */
+QComboBox:focus {
+    border: 1px solid #007acc;
+    background-color: #202630;
+    outline: none;
+}
+
+/* Add to QCheckBox section */
+QCheckBox:focus {
+    color: #ffffff;
+    background-color: #181c24;
+}
+
+/* Add to QCheckBox::indicator section */
+QCheckBox::indicator:unchecked:focus {
+    border: 1px solid #007acc;
+    background-color: #202630;
+}
+
+QCheckBox::indicator:checked:focus {
+    border: 1px solid #007acc;
+    background-color: #4a6fa5;
+}
+
+/* Base resting appearance for your canvas area */
+QLabel {
+    background-color: #1a1a1a;
+    border: 1px solid #333333;
+    border-radius: 4px;
+}
+
+/* Lights up instantly when focus returns to the workspace layout context */
+QLabel:focus {
+    border: 1px solid #007acc;
+}
+
