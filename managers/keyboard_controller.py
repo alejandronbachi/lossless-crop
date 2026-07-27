@@ -136,11 +136,73 @@ class KeyboardController(QObject):
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
 
+            # Capture global workflow letters before the spinbox text cursor eats them
+            if key in (
+                Qt.Key.Key_F,
+                Qt.Key.Key_B,
+                Qt.Key.Key_P,
+                Qt.Key.Key_R,
+                Qt.Key.Key_O,
+                Qt.Key.Key_I,
+            ):
+                if key == Qt.Key.Key_F:
+                    self.trigger_forward_navigation()
+                elif key == Qt.Key.Key_B:
+                    self.trigger_backward_navigation()
+                elif key == Qt.Key.Key_P:
+                    self.toggle_preview_state()
+                elif key == Qt.Key.Key_R:
+                    self.main_window.rotate_current_image()
+                elif key == Qt.Key.Key_O:
+                    self.main_window.select_directory()
+                elif key == Qt.Key.Key_I:
+                    self.main_window.select_individual_image_file()
+                return True  # Intercepted! Do not let the letter type inside the spinbox number box
+
             if key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
                 current_focus = self.main_window.focusWidget()
 
                 # EXCEPTION: Spinboxes keep their default text cursor manipulation
+            if key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+                current_focus = self.main_window.focusWidget()
+                if not current_focus:
+                    return super().eventFilter(watched_obj, event)
+
+                # If focus is inside a spinbox, check if the text cursor is at the edge boundaries
                 if isinstance(current_focus, QSpinBox):
+                    line_edit = current_focus.lineEdit()
+                    cursor_pos = line_edit.cursorPosition()
+                    text_content = line_edit.text()
+
+                    # Extract prefix and suffix lengths dynamically from the widget configuration
+                    prefix_len = len(current_focus.prefix())  # e.g., len("W: ") -> 3
+                    suffix_len = len(current_focus.suffix())  # e.g., len(" px") -> 3
+
+                    # Calculate the exact visual boundary points for the numerical digits
+                    num_start_boundary = prefix_len
+                    num_end_boundary = len(text_content) - suffix_len
+
+                    # If pressing Right at the end of the number string, Tab out!
+                    if key == Qt.Key.Key_Right and cursor_pos == num_end_boundary:
+                        tab_event = QKeyEvent(
+                            QEvent.Type.KeyPress,
+                            Qt.Key.Key_Tab,
+                            Qt.KeyboardModifier.NoModifier,
+                        )
+                        QApplication.postEvent(current_focus, tab_event)
+                        return True
+
+                    # If pressing Left at the beginning of the number string, Shift+Tab out!
+                    elif key == Qt.Key.Key_Left and cursor_pos == num_start_boundary:
+                        shift_tab_event = QKeyEvent(
+                            QEvent.Type.KeyPress,
+                            Qt.Key.Key_Tab,
+                            Qt.KeyboardModifier.ShiftModifier,
+                        )
+                        QApplication.postEvent(current_focus, shift_tab_event)
+                        return True
+
+                    # Otherwise, let them move the cursor normally within the number digits
                     return super().eventFilter(watched_obj, event)
 
                 # TRANSLATION ENGINE: Convert arrows to navigation tabs
