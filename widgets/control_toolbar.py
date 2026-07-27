@@ -32,6 +32,7 @@ class ControlToolbar(QFrame):
     def _build_ui(self, pillow_available):
         # 1. Directory Loader Button
         self.main_app.lbl_folder_name = QPushButton(ui_constants.TEXT_NO_DIRECTORY)
+        self.main_app.lbl_folder_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.lbl_folder_name.setStyleSheet(
             "font-weight: bold; color: #aaa; margin-left: 5px; min-width: 140px; text-align: left;"
         )
@@ -45,7 +46,7 @@ class ControlToolbar(QFrame):
 
         # 2. Engine Options Dropdown
         self.main_app.combo_engine = QComboBox()
-        self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.combo_engine.setToolTip(ui_constants.TOOLTIP_ENGINE)
         self.main_app.combo_engine.setFont(native_font)
         self.main_app.combo_engine.view().setFont(native_font)
@@ -63,7 +64,7 @@ class ControlToolbar(QFrame):
 
         # 3. Aspect Ratio Dropdown
         self.main_app.combo_ratio = QComboBox()
-        self.main_app.combo_ratio.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.combo_ratio.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.combo_ratio.setToolTip(ui_constants.TOOLTIP_RATIO)
         self.main_app.combo_ratio.setFont(native_font)
         self.main_app.combo_ratio.view().setFont(native_font)
@@ -75,7 +76,7 @@ class ControlToolbar(QFrame):
 
         # 4. Snap Feedback Dropdown
         self.main_app.combo_snap = QComboBox()
-        self.main_app.combo_snap.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.combo_snap.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.combo_snap.setToolTip(ui_constants.TOOLTIP_SNAP)
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
@@ -103,7 +104,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width.setValue(0)
         self.main_app.spin_width.setPrefix(ui_constants.SPIN_WIDTH_PREFIX)
         self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
-        self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_width.setStyleSheet(spin_box_stylesheet)
         self.main_app.spin_width.valueChanged.connect(
             self.main_app.on_spin_width_changed
@@ -116,7 +117,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height.setValue(0)
         self.main_app.spin_height.setPrefix(ui_constants.SPIN_HEIGHT_PREFIX)
         self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
-        self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_height.setStyleSheet(spin_box_stylesheet)
         self.main_app.spin_height.valueChanged.connect(
             self.main_app.on_spin_height_changed
@@ -129,20 +130,20 @@ class ControlToolbar(QFrame):
         self.main_app.chk_preserve = QCheckBox(
             ui_constants.CHECKBOX_KEEP_SELECTION_TEXT
         )
-        self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.chk_preserve.setToolTip(ui_constants.TOOLTIP_PRESERVE)
         self.main_app.chk_preserve.setChecked(True)
         self.layout.addWidget(self.main_app.chk_preserve)
 
         self.main_app.chk_overwrite = QCheckBox(ui_constants.CHECKBOX_OVERWRITE_TEXT)
-        self.main_app.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.chk_overwrite.setToolTip(ui_constants.TOOLTIP_OVERWRITE)
         self.main_app.chk_overwrite.setChecked(False)
         self.layout.addWidget(self.main_app.chk_overwrite)
 
         # 7. Configuration Gear Toggle Button
         self.main_app.btn_settings = QPushButton("⚙️")
-        self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.btn_settings.setToolTip(ui_constants.TOOLTIP_SETTINGS)
         self.main_app.btn_settings.setFixedSize(38, 38)
         self.main_app.btn_settings.setStyleSheet(

@@ -9,7 +9,7 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QIcon, QKeyEvent, QPixmap, QResizeEvent
+from PyQt6.QtGui import QIcon, QPixmap, QResizeEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -22,11 +22,13 @@ from PyQt6.QtWidgets import (
 )
 
 from config import app_constants, ui_constants
+from managers.canvas_presenter import CanvasPresenter
 from managers.crop_execution_manager import CropExecutionController
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
+from managers.keyboard_controller import KeyboardController
 from managers.selection_manager import SelectionManager
 from managers.settings_manager import SettingsManager
 from managers.status_manager import StatusManager
@@ -77,8 +79,9 @@ class FastCropApp(QMainWindow):
         self.image_session = ImageSession(self.settings)
 
         # Initialize User Interface
-        self.init_ui()
         self.zoom_hud = FloatingZoomPreview(self)
+        self.keyboard_controller = KeyboardController(self)
+        self.init_ui()
         self.load_application_state()
 
     def init_ui(self):
@@ -150,69 +153,29 @@ class FastCropApp(QMainWindow):
         # Register UI controls with SettingsBinder for automatic 2-way sync
         self.settings_manager.bind_ui(self)
 
-    def load_image_to_viewport(self):
-        # 🚀 CHANGE ONLY: Evaluate session status instead of loose variables
-        if not self.image_session.has_active_image:
-            self.status_manager.set_empty_workspace_state()
-            return
+        self.canvas_presenter = CanvasPresenter(
+            image_session=self.image_session,
+            selection_manager=self.selection_manager,
+            status_manager=self.status_manager,
+            image_display_container=self.image_display_container,
+            zoom_hud=self.zoom_hud,
+            crop_box_selector=self.crop_box_selector,
+            spin_width=self.spin_width,
+            spin_height=self.spin_height,
+            combo_ratio=self.combo_ratio,
+            cfg_show_preview=self.cfg_show_preview,
+            viewport_factory=self._build_viewport_geometry,
+        )
+        self.image_display_container.setFocus()
 
-        # Update display views by drawing directly out of the active session context
-        self.refresh_display_canvas()
-        self.sync_workspace_after_loading_image()
+    def load_image_to_viewport(self):
+        return self.canvas_presenter.load_image_to_viewport()
 
     def sync_workspace_after_loading_image(self):
-        # 🚀 CHANGE ONLY: Push the live session VRAM handle directly to the HUD tool!
-        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
-            self.zoom_hud.master_pixmap = self.image_session.master_pixmap
-
-        # -----------------------------------------------------------------
-        # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
-        # -----------------------------------------------------------------
-        # ImageSession's Sync Chain already decided keep-vs-clear (and
-        # clamped to the new image's bounds) the instant the file loaded;
-        # this just paints that decision now that the canvas has a fresh
-        # pixmap to project the selection onto.
-        self.selection_manager.sync_view_from_model()
-
-        # Update status manager system layout overlays
-        self.status_manager.reposition_commands_overlay()
-        self.status_manager.sync_drawer_visibility_rules()
-
-        self.status_manager.invalidate_ui_state()
+        return self.canvas_presenter.sync_workspace_after_loading_image()
 
     def refresh_display_canvas(self):
-        """Handles fast memory-side hardware viewport scaling from session data."""
-
-        #  THE WATERMARK LOGO  If no active image session exists, paint the brand logo centerpiece!
-        if (
-            not self.image_session.master_pixmap
-            or self.image_session.master_pixmap.isNull()
-        ):
-            icon_path = app_constants.APP_ROOT_DIR / ui_constants.ICON_FILENAME
-            if icon_path.exists():
-                logo_pixmap = QPixmap(str(icon_path))
-                scaled_logo = logo_pixmap.scaled(
-                    512,
-                    512,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                self.image_display_container.setPixmap(scaled_logo)
-            else:
-                self.image_display_container.clear()
-            return
-
-        container_size = self.image_display_container.size()
-        if container_size.width() <= 0 or container_size.height() <= 0:
-            return
-
-        # 🚀 CHANGE ONLY: Read straight out of the active session
-        scaled_pixmap = self.image_session.master_pixmap.scaled(
-            container_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self.image_display_container.setPixmap(scaled_pixmap)
+        return self.canvas_presenter.refresh_display_canvas()
 
     # -----------------------------------------------------------------
     # MOUSE INTERACTION & ASPECT BOX OVERLAYS
@@ -413,61 +376,11 @@ class FastCropApp(QMainWindow):
     # -----------------------------------------------------------------
     # GLOBAL APPLICATION HOTKEY INTERCEPT CAPABILITIES
     # -----------------------------------------------------------------
-    def keyPressEvent(self, event: QKeyEvent):
-        key = event.key()
-
-        if key == Qt.Key.Key_Escape:
-            self.close()
-
-        if event.key() == Qt.Key.Key_P:
-            # Toggle the state of the configuration checkbox
-            current_state = self.cfg_show_preview.isChecked()
-            self.cfg_show_preview.setChecked(not current_state)
+    def keyPressEvent(self, event):
+        # 2. Hand off workflow keys (Space, Enter, Arrows) straight to your controller
+        handled = self.keyboard_controller.process_workflow_key(event.key())
+        if handled:
             event.accept()
-            return
-
-        elif key == Qt.Key.Key_Space:
-            # Crop + Advance
-            self.process_and_execute_crop()
-
-            # 🚀 Forward Skip via the session engine!
-            if alert := self.image_session.next():
-                self.status_manager.show_center_notification(alert)
-            else:
-                self.load_image_to_viewport()
-
-        elif key in (Qt.Key.Key_S, Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            # Crop + Stay
-            self.process_and_execute_crop()
-
-        elif key in (Qt.Key.Key_F, Qt.Key.Key_Right):
-            # 🚀 Forward Skip: Delegate entirely to the session engine!
-            if alert := self.image_session.next():
-                self.status_manager.show_center_notification(alert)
-            else:
-                self.load_image_to_viewport()
-
-        elif key in (Qt.Key.Key_B, Qt.Key.Key_Left):
-            # 🚀 Backward Skip: Delegate entirely to the session engine!
-            if alert := self.image_session.previous():
-                self.status_manager.show_center_notification(alert)
-            else:
-                self.load_image_to_viewport()
-
-        elif key == Qt.Key.Key_R:
-            # Rotate Action
-            self.rotate_current_image()
-
-        elif event.key() == Qt.Key.Key_O:
-            self.select_directory()
-            event.accept()
-            return
-
-        elif event.key() == Qt.Key.Key_I:
-            self.select_individual_image_file()
-            event.accept()
-            return
-
         else:
             super().keyPressEvent(event)
 
@@ -680,27 +593,7 @@ class FastCropApp(QMainWindow):
         """Updates the spinboxes and status bar metrics based on the current selection box,
         ensuring strict aspect ratio alignment to prevent visual mismatches.
         """
-        if (
-            not self.image_session.has_active_image
-            or not self.image_session.pil_image
-            or self.crop_box_selector.isHidden()
-        ):
-            return
-
-        pixmap = self.image_display_container.pixmap()
-        if not pixmap:
-            return
-
-        source_rect = self.selection_manager.current_source_rect()
-        if source_rect is None:
-            return
-
-        # Safely push the matching dimensions to the spinboxes without triggering loops
-        if not self._updating_spinboxes:
-            self._updating_spinboxes = True
-            self.spin_width.setValue(source_rect.width())
-            self.spin_height.setValue(source_rect.height())
-            self._updating_spinboxes = False
+        return self.canvas_presenter.update_resolution_metrics_display()
 
     def toggle_zoom_hud_window_visibility(self):
         """Strictly displays or hides the floating zoom view based on checkbox rules."""
@@ -717,55 +610,7 @@ class FastCropApp(QMainWindow):
 
     def update_zoom_hud_payload(self):
         """Calculates high-res coordinates and triggers instant GPU-side cropping."""
-        if (
-            not PILLOW_AVAILABLE
-            or not self.cfg_show_preview.isChecked()
-            or self.crop_box_selector.isHidden()
-            or not self.image_session.has_active_image
-        ):
-            if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
-                self.zoom_hud.master_pixmap = None
-                self.zoom_hud.lbl_canvas.clear()
-            return
-
-        box_rect = self.crop_box_selector.geometry()
-        pixmap = self.image_display_container.pixmap()
-
-        if pixmap and box_rect.width() > 5 and box_rect.height() > 5:
-            src_w, src_h = self.image_session.width, self.image_session.height
-            viewport = self._build_viewport_geometry(pixmap)
-
-            # Intentionally raw (no grid snap / aspect lock): the zoom HUD previews
-            # exactly what's under the rubber band right now, not the eventual snapped crop.
-            source_rect = CropGeometryEngine.screen_rect_to_source_rect(
-                box_rect,
-                viewport,
-                lossless=False,
-                ratio_label=self.combo_ratio.currentText(),
-            )
-
-            crop_left = source_rect.x()
-            crop_top = source_rect.y()
-            crop_right = crop_left + source_rect.width()
-            crop_bottom = crop_top + source_rect.height()
-
-            if (crop_right > crop_left) and (crop_bottom > crop_top):
-                # Clamp coordinates safely
-                crop_left = max(0, min(crop_left, src_w - 1))
-                crop_top = max(0, min(crop_top, src_h - 1))
-                crop_right = max(crop_left + 1, min(crop_right, src_w))
-                crop_bottom = max(crop_top + 1, min(crop_bottom, src_h))
-
-                pil_coords = (crop_left, crop_top, crop_right, crop_bottom)
-
-                # 🚀 THE FIX: Pass your live, active master texture handle directly down!
-                self.zoom_hud.refresh_scaled_preview_live(
-                    self.image_session.master_pixmap, pil_coords
-                )
-                return
-
-        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
-            self.zoom_hud.lbl_canvas.clear()
+        return self.canvas_presenter.update_zoom_hud_payload()
 
     def dragEnterEvent(self, event):
         """Fires when a user hovers a dragging mouse cargo over the application frame."""
@@ -780,63 +625,14 @@ class FastCropApp(QMainWindow):
 
     def on_spin_width_changed(self, value):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
-        if (
-            self._updating_spinboxes
-            or not self.image_session.has_active_image
-            or not self.image_session.pil_image
-        ):
-            return
-
-        ratio = self.get_current_forced_ratio()
-        if ratio is not None:
-            # Aspect ratio locked! Calculate and push matching height value natively
-            self._updating_spinboxes = True
-            calculated_height = int(round(value / ratio))
-            # Safely cap it to your image's physical maximum pixel bounds
-            calculated_height = min(calculated_height, self.image_session.height)
-            self.spin_height.setValue(calculated_height)
-            self._updating_spinboxes = False
-
-        # Push the finalized dimensions out to redraw on the preview image container
-        self.apply_spinbox_dimensions_to_canvas()
+        return self.canvas_presenter.on_spin_width_changed(value)
 
     def on_spin_height_changed(self, value):
         """Triggers when height spinbox is adjusted manually via arrows or keystrokes."""
-        if (
-            self._updating_spinboxes
-            or not self.image_session.has_active_image
-            or not self.image_session.pil_image
-        ):
-            return
-
-        ratio = self.get_current_forced_ratio()
-        if ratio is not None:
-            # Aspect ratio locked! Calculate and push matching width value natively
-            self._updating_spinboxes = True
-            calculated_width = int(round(value * ratio))
-            # Safely cap it to your image's physical maximum pixel bounds
-            calculated_width = min(calculated_width, self.image_session.width)
-            self.spin_width.setValue(calculated_width)
-            self._updating_spinboxes = False
-
-        # Push the finalized dimensions out to redraw on the preview image container
-        self.apply_spinbox_dimensions_to_canvas()
+        return self.canvas_presenter.on_spin_height_changed(value)
 
     def apply_spinbox_dimensions_to_canvas(self):
-        tw, th, applied = self.selection_manager.apply_target_dimensions(
-            self.spin_width.value(), self.spin_height.value()
-        )
-        if not self._updating_spinboxes and (tw, th) != (
-            self.spin_width.value(),
-            self.spin_height.value(),
-        ):
-            self._updating_spinboxes = True
-            self.spin_width.setValue(tw)
-            self.spin_height.setValue(th)
-            self._updating_spinboxes = False
-
-        if applied and hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
-            self.update_zoom_hud_payload()
+        return self.canvas_presenter.apply_spinbox_dimensions_to_canvas()
 
     def update_ui_after_loadin_folder(
         self,
@@ -936,10 +732,6 @@ class FastCropApp(QMainWindow):
         self.image_display_container = QLabel()
         self.image_display_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_display_container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.image_display_container.setStyleSheet(
-            "background-color: #1a1a1a; border: 1px solid #333;"
-        )
-
         self.image_display_container.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored
         )

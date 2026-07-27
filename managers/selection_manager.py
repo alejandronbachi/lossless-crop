@@ -62,6 +62,8 @@ class SelectionManager:
         self.drag_start_origin = QPoint()
         self.is_moving_box = False
         self.box_start_pos = QPoint()
+        self._committed_screen_size: QSize | None = None
+        self._committed_viewport: ViewportGeometry | None = None
 
     # -----------------------------------------------------------------
     # Internal helpers
@@ -101,16 +103,49 @@ class SelectionManager:
         )
 
     def _notify_changed(self):
-        """Every code path that changes the on-screen selector ends here.
-        This is the single commit point into CropModel — nothing else in
-        this class calls crop_model.set_rect()/clear() directly, so there's
-        exactly one place that can get the screen->source projection wrong."""
         if self.selector.isHidden():
             self.crop_model.clear()
+            self._committed_screen_size = None
+            self._committed_viewport = None
         else:
-            source_rect = self.current_source_rect()
-            if source_rect is not None:
-                self.crop_model.set_rect(source_rect)
+            viewport = self._current_viewport()
+            current_size = self.selector.geometry().size()
+
+            if (
+                self.crop_model.has_selection
+                and viewport is not None
+                and viewport == self._committed_viewport
+                and current_size == self._committed_screen_size
+            ):
+                # Screen box is the exact same size, against the exact same
+                # viewport, as when we last committed a width/height. Nothing
+                # about the box's DIMENSIONS changed -- this is a pure move
+                # (or an inert resync). Re-deriving width/height here would
+                # just re-run the same lossy round() a resize/spinbox-commit
+                # already went through once, discarding precision the model
+                # currently holds for no reason. Only position needs
+                # re-projecting.
+                existing = self.crop_model.source_pixel_rect
+                projected = CropGeometryEngine.screen_rect_to_source_rect(
+                    self.selector.geometry(),
+                    viewport,
+                    lossless=self._lossless_check(),
+                    ratio_label=self._current_ratio_label(),
+                )
+                self.crop_model.set_rect(
+                    QRect(
+                        projected.x(),
+                        projected.y(),
+                        existing.width(),
+                        existing.height(),
+                    )
+                )
+            else:
+                source_rect = self.current_source_rect()
+                if source_rect is not None:
+                    self.crop_model.set_rect(source_rect)
+                    self._committed_screen_size = current_size
+                    self._committed_viewport = viewport
 
         if self._on_selection_changed:
             self._on_selection_changed()
@@ -351,7 +386,31 @@ class SelectionManager:
             self.selector.show()
 
         self.last_crop_geometry = self.selector.geometry()
-        self._notify_changed()
+
+        # Commit tw/th to the model EXACTLY as requested instead of going
+        # through _notify_changed()/current_source_rect(), which re-derives
+        # width/height from the just-quantized on-screen box (bw, bh) and
+        # round-trips it back through scale_x/scale_y. That round trip isn't
+        # idempotent — round(round(tw*sx)/sx) != tw in general — so it was
+        # silently replacing the requested value with an off-by-a-few-pixel
+        # one, even in Pixel-Perfect mode where nothing should be touching
+        # it. We already know tw/th exactly; that's the whole point of a
+        # spinbox commit.
+        viewport = self._current_viewport()
+        if viewport is not None:
+            projected = CropGeometryEngine.screen_rect_to_source_rect(
+                self.selector.geometry(),
+                viewport,
+                lossless=self._lossless_check(),
+                ratio_label=self._current_ratio_label(),
+            )
+            self.crop_model.set_rect(QRect(projected.x(), projected.y(), tw, th))
+            self._committed_screen_size = self.selector.geometry().size()
+            self._committed_viewport = viewport
+
+        if self._on_selection_changed:
+            self._on_selection_changed()
+
         return tw, th, True
 
     # -----------------------------------------------------------------
