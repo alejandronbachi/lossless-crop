@@ -14,6 +14,7 @@
 # source-pixel rect into CropModel at every commit point.
 # =============================================================================
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
@@ -21,6 +22,28 @@ from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
 from config import ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from models.crop_model import CropModel
+
+
+@dataclass(frozen=True)
+class _ScreenCommitContext:
+    """Snapshot of the screen-space state a width/height was last committed
+    to CropModel against: the selector's screen size, and the viewport it
+    was measured under. As long as both stay identical, the box's SIZE
+    hasn't actually changed — only its position might have — so
+    re-deriving width/height from the screen would just re-run the same
+    lossy round() a previous commit already went through, discarding
+    whatever extra precision the model currently holds (e.g. an exact
+    spinbox entry)."""
+
+    screen_size: QSize
+    viewport: ViewportGeometry
+
+    def matches(self, screen_size: QSize, viewport: "ViewportGeometry | None") -> bool:
+        return (
+            viewport is not None
+            and screen_size == self.screen_size
+            and viewport == self.viewport
+        )
 
 
 class SelectionManager:
@@ -62,8 +85,7 @@ class SelectionManager:
         self.drag_start_origin = QPoint()
         self.is_moving_box = False
         self.box_start_pos = QPoint()
-        self._committed_screen_size: QSize | None = None
-        self._committed_viewport: ViewportGeometry | None = None
+        self._commit_context: _ScreenCommitContext | None = None
 
     # -----------------------------------------------------------------
     # Internal helpers
@@ -103,28 +125,23 @@ class SelectionManager:
         )
 
     def _notify_changed(self):
+        """Every code path that changes the on-screen selector ends here.
+        This is the single commit point into CropModel."""
         if self.selector.isHidden():
             self.crop_model.clear()
-            self._committed_screen_size = None
-            self._committed_viewport = None
+            self._commit_context = None
         else:
             viewport = self._current_viewport()
             current_size = self.selector.geometry().size()
 
             if (
                 self.crop_model.has_selection
-                and viewport is not None
-                and viewport == self._committed_viewport
-                and current_size == self._committed_screen_size
+                and self._commit_context is not None
+                and self._commit_context.matches(current_size, viewport)
             ):
-                # Screen box is the exact same size, against the exact same
-                # viewport, as when we last committed a width/height. Nothing
-                # about the box's DIMENSIONS changed -- this is a pure move
-                # (or an inert resync). Re-deriving width/height here would
-                # just re-run the same lossy round() a resize/spinbox-commit
-                # already went through once, discarding precision the model
-                # currently holds for no reason. Only position needs
-                # re-projecting.
+                # Box hasn't been resized since the last commit -- only
+                # moved. Keep the committed width/height exactly, only
+                # re-project position.
                 existing = self.crop_model.source_pixel_rect
                 projected = CropGeometryEngine.screen_rect_to_source_rect(
                     self.selector.geometry(),
@@ -144,8 +161,7 @@ class SelectionManager:
                 source_rect = self.current_source_rect()
                 if source_rect is not None:
                     self.crop_model.set_rect(source_rect)
-                    self._committed_screen_size = current_size
-                    self._committed_viewport = viewport
+                    self._commit_context = _ScreenCommitContext(current_size, viewport)
 
         if self._on_selection_changed:
             self._on_selection_changed()
@@ -387,15 +403,11 @@ class SelectionManager:
 
         self.last_crop_geometry = self.selector.geometry()
 
-        # Commit tw/th to the model EXACTLY as requested instead of going
-        # through _notify_changed()/current_source_rect(), which re-derives
-        # width/height from the just-quantized on-screen box (bw, bh) and
-        # round-trips it back through scale_x/scale_y. That round trip isn't
-        # idempotent — round(round(tw*sx)/sx) != tw in general — so it was
-        # silently replacing the requested value with an off-by-a-few-pixel
-        # one, even in Pixel-Perfect mode where nothing should be touching
-        # it. We already know tw/th exactly; that's the whole point of a
-        # spinbox commit.
+        # Commit tw/th to the model exactly as requested, instead of
+        # letting _notify_changed() re-derive them from this box's
+        # just-quantized screen size — that round trip isn't idempotent,
+        # so it would silently replace the requested value with an
+        # off-by-a-few-pixel one even in Pixel-Perfect mode.
         viewport = self._current_viewport()
         if viewport is not None:
             projected = CropGeometryEngine.screen_rect_to_source_rect(
@@ -405,8 +417,9 @@ class SelectionManager:
                 ratio_label=self._current_ratio_label(),
             )
             self.crop_model.set_rect(QRect(projected.x(), projected.y(), tw, th))
-            self._committed_screen_size = self.selector.geometry().size()
-            self._committed_viewport = viewport
+            self._commit_context = _ScreenCommitContext(
+                self.selector.geometry().size(), viewport
+            )
 
         if self._on_selection_changed:
             self._on_selection_changed()

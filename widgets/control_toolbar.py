@@ -106,7 +106,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
         self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_width.setStyleSheet(spin_box_stylesheet)
-        self.main_app.spin_width.valueChanged.connect(
+        self.main_app.spin_width.editingFinished.connect(
             self.main_app.on_spin_width_changed
         )
         spin_layout.addWidget(self.main_app.spin_width)
@@ -119,7 +119,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
         self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_height.setStyleSheet(spin_box_stylesheet)
-        self.main_app.spin_height.valueChanged.connect(
+        self.main_app.spin_height.editingFinished.connect(
             self.main_app.on_spin_height_changed
         )
         spin_layout.addWidget(self.main_app.spin_height)

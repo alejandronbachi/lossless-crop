@@ -373,17 +373,6 @@ class FastCropApp(QMainWindow):
 
         self.status_manager.invalidate_ui_state()
 
-    # -----------------------------------------------------------------
-    # GLOBAL APPLICATION HOTKEY INTERCEPT CAPABILITIES
-    # -----------------------------------------------------------------
-    def keyPressEvent(self, event):
-        # 2. Hand off workflow keys (Space, Enter, Arrows) straight to your controller
-        handled = self.keyboard_controller.process_workflow_key(event.key())
-        if handled:
-            event.accept()
-        else:
-            super().keyPressEvent(event)
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
@@ -623,11 +612,11 @@ class FastCropApp(QMainWindow):
         """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
         return CropGeometryEngine.resolve_aspect_ratio(self.combo_ratio.currentText())
 
-    def on_spin_width_changed(self, value):
+    def on_spin_width_changed(self, value=None):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
         return self.canvas_presenter.on_spin_width_changed(value)
 
-    def on_spin_height_changed(self, value):
+    def on_spin_height_changed(self, value=None):
         """Triggers when height spinbox is adjusted manually via arrows or keystrokes."""
         return self.canvas_presenter.on_spin_height_changed(value)
 

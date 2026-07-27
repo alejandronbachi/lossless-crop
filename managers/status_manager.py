@@ -57,9 +57,7 @@ class StatusManager(QObject):
 
         #  Run heavy UI calculations exactly once per 16ms render window frame!
         self.main_app.update_resolution_metrics_display()
-
-        if hasattr(self.main_app, "update_zoom_hud_payload"):
-            self.main_app.update_zoom_hud_payload()
+        self.main_app.update_zoom_hud_payload()
 
         self.update_status_and_telemetry()
 
@@ -91,13 +89,17 @@ class StatusManager(QObject):
         # 1. Compile file status tracking elements using live checkbox widget metrics
         current_path = self.main_app.image_session.current_path
         idx_str = self.main_app.image_session.index_string
-        filename_string = f"{idx_str} {current_path.name}"
+        filename_string = ""
+        if (
+            self.main_app.cfg_show_filename.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
+            filename_string = f"{idx_str} {current_path.name}"
 
         metrics_string = ""
         if (
             self.main_app.cfg_show_imgsize.isChecked()
             and self.main_app.image_session.has_active_image
-            and self.main_app.image_session.pil_image
         ):
             src_w, src_h = (
                 self.main_app.image_session.width,
@@ -109,20 +111,28 @@ class StatusManager(QObject):
         if self.main_app.cfg_show_infobar.isChecked():
             # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
             self.lbl_telemetry_hud.hide()
-            self.info_bar.lbl_status.setText(filename_string if filename_string else "")
-            self.info_bar.lbl_metrics.setText(metrics_string)
+            if filename_string != "":
+                self.info_bar.lbl_status.setText(
+                    filename_string if filename_string else ""
+                )
+                self.info_bar.lbl_status.show()
+            else:
+                self.info_bar.lbl_status.hide()
+            if metrics_string != "":
+                self.info_bar.lbl_metrics.setText(metrics_string)
+                self.info_bar.lbl_metrics.show()
+            else:
+                self.info_bar.lbl_metrics.hide()
+
         else:
             # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
             self.info_bar.lbl_status.setText("")
             self.info_bar.lbl_metrics.setText("")
 
             # Check user interaction states dynamically to see if they are actively drawing/dragging
-            is_user_actively_editing = getattr(
-                self.main_app.selection_manager, "is_moving_box", False
-            ) or (
-                hasattr(self.main_app.selection_manager, "drag_start_origin")
-                and not self.main_app.selection_manager.drag_start_origin.isNull()
-                and not getattr(self.main_app.selection_manager, "is_moving_box", False)
+            sm = self.main_app.selection_manager
+            is_user_actively_editing = (
+                sm.is_moving_box or not sm.drag_start_origin.isNull()
             )
 
             hud_lines = []
