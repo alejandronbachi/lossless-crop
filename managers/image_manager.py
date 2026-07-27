@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from config.app_constants import APP_ROOT_DIR
+from config import app_constants, ui_constants
 
 
 class ImageProcessor:
@@ -13,12 +13,12 @@ class ImageProcessor:
 
         current_os = platform.system()
         if current_os == "Windows":
-            binary_file = "jpegtran.exe"
+            binary_file = app_constants.BINARY_WINDOWS
         elif current_os == "Darwin":
-            binary_file = "jpegtran_mac"
+            binary_file = app_constants.BINARY_MAC
         else:
-            binary_file = "jpegtran_linux"
-        self._binary_path = APP_ROOT_DIR / "binaries" / binary_file
+            binary_file = app_constants.BINARY_LINUX
+        self._binary_path = app_constants.APP_ROOT_DIR / "binaries" / binary_file
         self._lossless_available = os.path.exists(self.binary_path)
 
     @property
@@ -44,7 +44,7 @@ class ImageProcessor:
         path = Path(file_path_input)
 
         # 2. Extract extension string using modern case-insensitive suffix calls
-        if path.suffix.lower() not in (".jpg", ".jpeg"):
+        if path.suffix.lower() not in app_constants.JPEG_EXTENSIONS:
             return False
 
         try:
@@ -181,7 +181,7 @@ class ImageProcessor:
         # Handle logging and engine delegation
         if lossless:
             self.log_engine_activation(
-                "LOSSLESS MODE (jpegtran)",
+                ui_constants.ENGINE_ACTIVATION_LOSSLESS,
                 source_path,
                 output_path,
                 (src_w, src_h),
@@ -194,7 +194,7 @@ class ImageProcessor:
             )
         else:
             self.log_engine_activation(
-                "PIXEL-PERFECT MODE (Pillow)",
+                ui_constants.ENGINE_ACTIVATION_PIXEL_PERFECT,
                 source_path,
                 output_path,
                 (src_w, src_h),

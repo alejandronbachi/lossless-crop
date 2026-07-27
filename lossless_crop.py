@@ -49,7 +49,7 @@ except ImportError:
 class FastCropApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("LossLess Crop")
+        self.setWindowTitle(ui_constants.WINDOW_TITLE)
         self.resize(900, 700)
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()
@@ -74,7 +74,7 @@ class FastCropApp(QMainWindow):
         )
 
         # Image Pipeline Management Variables
-        self.image_session = ImageSession()
+        self.image_session = ImageSession(self.settings)
 
         # Initialize User Interface
         self.init_ui()
@@ -94,11 +94,12 @@ class FastCropApp(QMainWindow):
             parent=self,
             image_manager=self.image_manager,
             file_manager=self.file_manager,
-            ui_constants=ui_constants,
+            ui_constants_obj=ui_constants,
             pillow_available=PILLOW_AVAILABLE,
         )
         # Add the frame directly to your main layout tree channels
         self.main_layout.addWidget(self.control_toolbar)
+
         # -------------------------------------------------------------
         # MIDDLE VISUAL DISPLAY CANVAS PANEL
         # -------------------------------------------------------------
@@ -138,12 +139,16 @@ class FastCropApp(QMainWindow):
             selector=self.crop_box_selector,
             ghost_parent=self.central_widget,  # matches old ghost_selector's parent
             image_session=self.image_session,
+            crop_model=self.image_session.crop_model,
             ratio_combo=self.combo_ratio,
             snap_combo=self.combo_snap,
             viewport_factory=self._build_viewport_geometry,
             lossless_check=self.determine_if_lossless_active,
             on_selection_changed=lambda: self.status_manager.invalidate_ui_state(),
         )
+
+        # Register UI controls with SettingsBinder for automatic 2-way sync
+        self.settings_manager.bind_ui(self)
 
     def load_image_to_viewport(self):
         # 🚀 CHANGE ONLY: Evaluate session status instead of loose variables
@@ -157,18 +162,17 @@ class FastCropApp(QMainWindow):
 
     def sync_workspace_after_loading_image(self):
         # 🚀 CHANGE ONLY: Push the live session VRAM handle directly to the HUD tool!
-        if hasattr(self, "zoom_hud"):
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.zoom_hud.master_pixmap = self.image_session.master_pixmap
 
         # -----------------------------------------------------------------
         # RE-SYNC WORKSPACE SELECTION LAYER PRESERVATION (STATIONARY SNAP)
         # -----------------------------------------------------------------
-        if self.chk_preserve.isChecked() and self.selection_manager.last_crop_geometry:
-            self.selection_manager.restore_preserved_geometry(
-                self.selection_manager.last_crop_geometry
-            )
-        else:
-            self.selection_manager.clear_selection()
+        # ImageSession's Sync Chain already decided keep-vs-clear (and
+        # clamped to the new image's bounds) the instant the file loaded;
+        # this just paints that decision now that the canvas has a fresh
+        # pixmap to project the selection onto.
+        self.selection_manager.sync_view_from_model()
 
         # Update status manager system layout overlays
         self.status_manager.reposition_commands_overlay()
@@ -276,7 +280,7 @@ class FastCropApp(QMainWindow):
 
         # 1. Quick setting check
         if (
-            self.combo_engine.currentText() != "Lossless"
+            self.combo_engine.currentText() != ui_constants.ENGINE_LOSSLESS
             or not self.image_manager.is_lossless_available
         ):
             return False
@@ -326,8 +330,8 @@ class FastCropApp(QMainWindow):
             )
             output_filepath = str(unique_path)
 
-        source_rect = self.selection_manager.current_source_rect()
-        if not source_rect or source_rect.width() <= 0 or source_rect.height() <= 0:
+        source_rect = self.image_session.crop_model.source_pixel_rect
+        if source_rect.width() <= 0 or source_rect.height() <= 0:
             return False
 
         # 6. FIRE THE CROP OFF THE UI THREAD; UI sync happens in on_crop_finished
@@ -358,27 +362,36 @@ class FastCropApp(QMainWindow):
         if not success:
             if error_message:
                 print(f"Critical Error: Crop failed: {error_message}")
-            self.status_manager.show_center_notification("Crop Failed")
+            self.status_manager.show_center_notification(ui_constants.TEXT_CROP_FAILED)
             return
 
         if self.chk_overwrite.isChecked():
+            # hydrate_current_image() reloads the file, which fires
+            # ImageModel.image_changed -> ImageSession's Sync Chain already
+            # runs the keep-vs-clear decision. load_image_to_viewport()
+            # repaints the canvas and then calls sync_view_from_model()
+            # (via sync_workspace_after_loading_image) to paint it.
             self.image_session.hydrate_current_image()
             self.load_image_to_viewport()
-
-        if self.chk_preserve.isChecked() and self.selection_manager.last_crop_geometry:
-            self.selection_manager.restore_preserved_geometry(
-                self.selection_manager.last_crop_geometry
-            )
         else:
-            self.selection_manager.clear_selection()
+            # No image swap happened, so the Sync Chain never ran — apply
+            # the same conserve_selection policy explicitly, then repaint.
+            self.image_session.apply_post_crop_selection_policy()
+            self.selection_manager.sync_view_from_model()
 
         if use_lossless:
-            self.status_manager.show_center_notification("Lossless Crop")
+            self.status_manager.show_center_notification(
+                ui_constants.TEXT_LOSSLESS_CROP
+            )
         else:
-            if file_ext in (".png", ".bmp"):
-                self.status_manager.show_center_notification("Lossless Crop")
+            if file_ext in app_constants.ALWAYS_LOSSLESS_IMAGE_EXTENSIONS:
+                self.status_manager.show_center_notification(
+                    ui_constants.TEXT_LOSSLESS_CROP
+                )
             else:
-                self.status_manager.show_center_notification("Lossy Crop")
+                self.status_manager.show_center_notification(
+                    ui_constants.TEXT_LOSSY_CROP
+                )
 
         self.status_manager.invalidate_ui_state()
 
@@ -386,7 +399,7 @@ class FastCropApp(QMainWindow):
         if not self.image_session.has_active_image:
             return
 
-        self.image_manager.rotate_session_view(self.image_session)
+        self.image_session.image_model.rotate()
         self.refresh_display_canvas()
 
         if (
@@ -492,7 +505,7 @@ class FastCropApp(QMainWindow):
 
     def execute_deferred_resize_recalc(self):
         self.refresh_display_canvas()
-        if hasattr(self, "zoom_hud"):
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.update_zoom_hud_payload()
 
     def toggle_settings_drawer(self):
@@ -564,7 +577,7 @@ class FastCropApp(QMainWindow):
             print(f"Critical Error: Failed to save application state: {e}")
 
         # 2. Safely close your borderless floating zoom HUD component
-        if hasattr(self, "zoom_hud") and self.zoom_hud is not None:
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD) and self.zoom_hud is not None:
             # Using a try/except ensures an issue here won't block the main application from exiting
             try:
                 self.zoom_hud.close()
@@ -580,41 +593,29 @@ class FastCropApp(QMainWindow):
 
         #  Only update history if the user actually has a valid folder open
         if self.image_session.folder_path and self.image_session.folder_path.exists():
-            self.settings.last_used_folder = str(self.image_session.folder_path)
+            self.settings_manager.save_last_used_folder(self.image_session.folder_path)
 
-        self.settings.remember_settings = self.cfg_remember_settings.isChecked()
-        self.settings.main_window_geometry_blob = self.saveGeometry()
+        # Capture window and HUD geometry
+        self.settings_manager.capture_window_geometry(
+            main_window=self,
+            hud_window=getattr(self, ui_constants.WIDGET_ZOOM_HUD, None),
+        )
 
-        if hasattr(self, "zoom_hud"):
-            self.settings.hud_win_x = self.zoom_hud.x()
-            self.settings.hud_win_y = self.zoom_hud.y()
-            self.settings.hud_win_w = self.zoom_hud.width()
-            self.settings.hud_win_h = self.zoom_hud.height()
-            self.settings.show_preview_hud = self.cfg_show_preview.isChecked()
+        # Sync any un-committed state from bound UI components to AppSettings
+        self.settings_manager.binder.update_model_from_ui()
 
-        # 2. Update toggle flags if 'Remember settings' is checked
-        if self.settings.remember_settings:
-            self.settings.persist_main_win = self.cfg_persist_main_win.isChecked()
-            self.settings.persist_hud_win = self.cfg_persist_hud_win.isChecked()
-            self.settings.auto_open_folder = self.cfg_auto_folder.isChecked()
-            self.settings.show_shortcuts = self.cfg_show_shortcuts.isChecked()
-            self.settings.show_toasts = self.cfg_show_toasts.isChecked()
-            self.settings.show_infobar = self.cfg_show_infobar.isChecked()
-            self.settings.show_filename = self.cfg_show_filename.isChecked()
-            self.settings.show_imgsize = self.cfg_show_imgsize.isChecked()
-            self.settings.conserve_selection = self.chk_preserve.isChecked()
-            self.settings.overwrite_files = self.chk_overwrite.isChecked()
-            self.settings.ratio_preference = self.combo_ratio.currentText()
-            self.settings.engine_preference = self.combo_engine.currentText()
-            self.settings.show_preview_hud = self.cfg_show_preview.isChecked()
-
-        # 3. Offload the file IO entirely to the manager
-        self.settings_manager.save(self.settings)
+        # Offload the file/registry IO entirely to the manager
+        self.settings_manager.save()
 
     def load_application_state(self):
         """Fetches the state data model from the manager and pushes it to the layout views."""
         # 1. Ask the manager to handle all disk/registry processing
         self.settings = self.settings_manager.load()
+
+        # self.image_session was constructed with the placeholder AppSettings()
+        # from __init__, before this loaded instance existed — repoint it, or
+        # ImageSession's Sync Chain would keep reading defaults forever.
+        self.image_session.crop_settings = self.settings
 
         # 2. Push the completed data container straight into the visual interface
         self.apply_settings_to_ui()
@@ -622,66 +623,31 @@ class FastCropApp(QMainWindow):
         QTimer.singleShot(0, self.status_manager.update_status_and_telemetry)
 
     def apply_settings_to_ui(self):
-        """Applies the internal data model properties directly to UI components."""
+        """Applies the internal data model properties directly to UI components via binder."""
 
-        # 1. Configure master settings control rule
-        self.cfg_remember_settings.setChecked(self.settings.remember_settings)
+        # 1. Push model values to bound UI controls via binder
+        self.settings_manager.binder.apply_to_ui()
 
         # If the user toggled off "remember settings", bypass visual layout population
         if not self.settings.remember_settings:
             self.status_manager.set_empty_workspace_state()
             return
 
-        # 2. Restore Component Toggles & Checkboxes
-        self.cfg_persist_main_win.setChecked(self.settings.persist_main_win)
-        self.cfg_persist_hud_win.setChecked(self.settings.persist_hud_win)
-        self.cfg_auto_folder.setChecked(self.settings.auto_open_folder)
-        self.cfg_show_shortcuts.setChecked(self.settings.show_shortcuts)
-        self.cfg_show_toasts.setChecked(self.settings.show_toasts)
-        self.cfg_show_infobar.setChecked(self.settings.show_infobar)
-        self.cfg_show_filename.setChecked(self.settings.show_filename)
-        self.cfg_show_imgsize.setChecked(self.settings.show_imgsize)
-        self.chk_preserve.setChecked(self.settings.conserve_selection)
-        self.chk_overwrite.setChecked(self.settings.overwrite_files)
-        self.cfg_show_preview.setChecked(self.settings.show_preview_hud)
+        # 2. Restore Main Window & HUD Window Geometries
+        self.settings_manager.restore_window_geometry(
+            main_window=self,
+            hud_window=getattr(self, ui_constants.WIDGET_ZOOM_HUD, None),
+        )
 
-        # 3. Handle Geometry Layout Constraints
-        if self.settings.persist_main_win and self.settings.main_window_geometry_blob:
-            self.restoreGeometry(self.settings.main_window_geometry_blob)
-
-        # CENTRALIZED HUD GEOMETRY: Handle sizing, fallbacks, and user flags in ONE spot
-        if hasattr(self, "zoom_hud"):
-            if self.settings.persist_hud_win:
-                # If they want to remember it, restore their exact coordinates
-                self.zoom_hud.setGeometry(
-                    self.settings.hud_win_x,
-                    self.settings.hud_win_y,
-                    self.settings.hud_win_w,
-                    self.settings.hud_win_h,
-                )
-            else:
-                # If they UNCHECKED "remember", force it to the clean default fallback spot
-                main_geom = self.geometry()
-                self.zoom_hud.setGeometry(
-                    main_geom.right() + 10, main_geom.top() + 50, 250, 250
-                )
-
-        # 4. Handle Zoom HUD Window Trigger
+        # 3. Handle Zoom HUD Window Trigger
         if self.settings.show_preview_hud:
             self.toggle_zoom_hud_window_visibility()
-
-        # 5. Extract Dropdown String ComboBox Selections Safely
-        if self.combo_ratio.findText(self.settings.ratio_preference) != -1:
-            self.combo_ratio.setCurrentText(self.settings.ratio_preference)
-
-        if self.combo_engine.findText(self.settings.engine_preference) != -1:
-            self.combo_engine.setCurrentText(self.settings.engine_preference)
 
         # Refresh structural UI systems
         self.status_manager.sync_drawer_visibility_rules()
         self.update_resolution_metrics_display()
 
-        # 6. Folder Automation & Boot Checks
+        # 4. Folder Automation & Boot Checks
         if self.settings.auto_open_folder and self.settings.last_used_folder:
             self.automate_folder_loading(self.settings.last_used_folder)
         else:
@@ -738,7 +704,7 @@ class FastCropApp(QMainWindow):
 
     def toggle_zoom_hud_window_visibility(self):
         """Strictly displays or hides the floating zoom view based on checkbox rules."""
-        if not hasattr(self, "zoom_hud"):
+        if not hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             return
 
         if self.cfg_show_preview.isChecked():
@@ -757,7 +723,7 @@ class FastCropApp(QMainWindow):
             or self.crop_box_selector.isHidden()
             or not self.image_session.has_active_image
         ):
-            if hasattr(self, "zoom_hud"):
+            if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
                 self.zoom_hud.master_pixmap = None
                 self.zoom_hud.lbl_canvas.clear()
             return
@@ -798,7 +764,7 @@ class FastCropApp(QMainWindow):
                 )
                 return
 
-        if hasattr(self, "zoom_hud"):
+        if hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.zoom_hud.lbl_canvas.clear()
 
     def dragEnterEvent(self, event):
@@ -869,7 +835,7 @@ class FastCropApp(QMainWindow):
             self.spin_height.setValue(th)
             self._updating_spinboxes = False
 
-        if applied and hasattr(self, "zoom_hud"):
+        if applied and hasattr(self, ui_constants.WIDGET_ZOOM_HUD):
             self.update_zoom_hud_payload()
 
     def update_ui_after_loadin_folder(
@@ -884,9 +850,7 @@ class FastCropApp(QMainWindow):
             self.image_session.close_session()
             self.crop_box_selector.hide()
             self.status_manager.set_empty_workspace_state()
-            alert_text = (
-                error_msg if error_msg else "No valid images found in target folder."
-            )
+            alert_text = error_msg if error_msg else ui_constants.TEXT_NO_VALID_IMAGES
             self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
@@ -923,7 +887,7 @@ class FastCropApp(QMainWindow):
         self.update_ui_after_loadin_folder(
             folder_path=directory,
             valid_files=valid_files,
-            error_msg="No valid, readable images found in directory.",
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
         )
 
     def dropEvent(self, event):
@@ -943,12 +907,12 @@ class FastCropApp(QMainWindow):
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg="No valid, readable images found in dropped payload.",
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DROP,
         )
 
     def select_individual_image_file(self):
         fallback_path = self.settings_manager.get_fallback_path_str()
-        file_filter = "Images (*.png *.jpg *.jpeg *.webp *.bmp)"
+        file_filter = ui_constants.IMAGE_FILE_FILTER
 
         selected_file_path, _ = QFileDialog.getOpenFileName(
             self, "Target Starting Image File", fallback_path, file_filter
@@ -964,7 +928,7 @@ class FastCropApp(QMainWindow):
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg="No valid, readable images found in target folder directory.",
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
         )
 
     def build_main_canvas(self):

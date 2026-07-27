@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QCheckBox, QFrame, QLabel, QVBoxLayout, QWidget
 
-from config.ui_constants import FOLDER_STYLES, STYLE_DRAWER
+from config import ui_constants
 
 
 class SettingsDrawer(
@@ -15,7 +15,11 @@ class SettingsDrawer(
         self.setObjectName("SettingsDrawer")
 
         # Style the drawer with semi-transparent obsidian glass aesthetics
-        self.setStyleSheet(file_manager.load_asset(STYLE_DRAWER, FOLDER_STYLES))
+        self.setStyleSheet(
+            file_manager.load_asset(
+                ui_constants.STYLE_DRAWER, ui_constants.FOLDER_STYLES
+            )
+        )
 
         # Build the structural menu layout
         self.layout = QVBoxLayout(self)
@@ -38,7 +42,7 @@ class SettingsDrawer(
 
     def _build_ui(self):
         # --- CATEGORY 1: AUTOMATION & PERSISTENCE OPTIONS ---
-        lbl_auto_section = QLabel("General")
+        lbl_auto_section = QLabel(ui_constants.LABEL_GENERAL_SECTION)
         lbl_auto_section.setStyleSheet(
             "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;"
         )
@@ -46,25 +50,31 @@ class SettingsDrawer(
         self.layout.addWidget(self._create_divider())
 
         # Expose references back onto the main app window so its state checking code doesn't break
-        self.main_app.cfg_remember_settings = QCheckBox("Save settings")
+        self.main_app.cfg_remember_settings = QCheckBox(
+            ui_constants.CHECKBOX_SAVE_SETTINGS_TEXT
+        )
         self.main_app.cfg_remember_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_remember_settings.setChecked(True)
         self.layout.addWidget(self.main_app.cfg_remember_settings)
 
-        self.main_app.cfg_auto_folder = QCheckBox("Auto-open last folder")
+        self.main_app.cfg_auto_folder = QCheckBox(
+            ui_constants.CHECKBOX_AUTO_OPEN_FOLDER_TEXT
+        )
         self.main_app.cfg_auto_folder.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_auto_folder.setChecked(False)
         self.layout.addWidget(self.main_app.cfg_auto_folder)
 
         # --- CATEGORY 2: SHOW / DISPLAY OPTIONS ---
-        lbl_show_section = QLabel("Show / Display")
+        lbl_show_section = QLabel(ui_constants.LABEL_SHOW_SECTION)
         lbl_show_section.setStyleSheet(
             "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 10px; padding-bottom: 2px;"
         )
         self.layout.addWidget(lbl_show_section)
         self.layout.addWidget(self._create_divider())
 
-        self.main_app.cfg_show_shortcuts = QCheckBox("Shortcuts Guide")
+        self.main_app.cfg_show_shortcuts = QCheckBox(
+            ui_constants.CHECKBOX_SHORTCUTS_GUIDE_TEXT
+        )
         self.main_app.cfg_show_shortcuts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_shortcuts.setChecked(True)
         self.main_app.cfg_show_shortcuts.stateChanged.connect(
@@ -72,12 +82,16 @@ class SettingsDrawer(
         )
         self.layout.addWidget(self.main_app.cfg_show_shortcuts)
 
-        self.main_app.cfg_show_toasts = QCheckBox("Notifications")
+        self.main_app.cfg_show_toasts = QCheckBox(
+            ui_constants.CHECKBOX_NOTIFICATIONS_TEXT
+        )
         self.main_app.cfg_show_toasts.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_toasts.setChecked(True)
         self.layout.addWidget(self.main_app.cfg_show_toasts)
 
-        self.main_app.cfg_show_infobar = QCheckBox("Bottom Info Bar")
+        self.main_app.cfg_show_infobar = QCheckBox(
+            ui_constants.CHECKBOX_BOTTOM_INFOBAR_TEXT
+        )
         self.main_app.cfg_show_infobar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_infobar.setChecked(True)
         self.main_app.cfg_show_infobar.stateChanged.connect(
@@ -85,7 +99,9 @@ class SettingsDrawer(
         )
         self.layout.addWidget(self.main_app.cfg_show_infobar)
 
-        self.main_app.cfg_show_filename = QCheckBox("Image Filename")
+        self.main_app.cfg_show_filename = QCheckBox(
+            ui_constants.CHECKBOX_IMAGE_FILENAME_TEXT
+        )
         self.main_app.cfg_show_filename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_filename.setChecked(True)
         # 🚀 FIX: Point callback away from deleted method straight to your centralized StatusManager engine
@@ -94,7 +110,9 @@ class SettingsDrawer(
         )
         self.layout.addWidget(self.main_app.cfg_show_filename)
 
-        self.main_app.cfg_show_imgsize = QCheckBox("Image Resolution")
+        self.main_app.cfg_show_imgsize = QCheckBox(
+            ui_constants.CHECKBOX_IMAGE_RESOLUTION_TEXT
+        )
         self.main_app.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_imgsize.setChecked(True)
         # 🚀 FIX: Point callback to StatusManager here too
@@ -103,9 +121,9 @@ class SettingsDrawer(
         )
         self.layout.addWidget(self.main_app.cfg_show_imgsize)
 
-        self.main_app.cfg_show_preview = QCheckBox("Preview")
+        self.main_app.cfg_show_preview = QCheckBox(ui_constants.CHECKBOX_PREVIEW_TEXT)
         self.main_app.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.cfg_show_preview.setToolTip("Display Zoom Preview HUD")
+        self.main_app.cfg_show_preview.setToolTip(ui_constants.TOOLTIP_PREVIEW)
         self.main_app.cfg_show_preview.setChecked(False)
         # 🚀 FIX: Redirect callback to your unified main window visibility toggle
         self.main_app.cfg_show_preview.stateChanged.connect(
@@ -114,19 +132,23 @@ class SettingsDrawer(
         self.layout.addWidget(self.main_app.cfg_show_preview)
 
         # --- CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE ---
-        lbl_layout_section = QLabel("Layout Memory")
+        lbl_layout_section = QLabel(ui_constants.LABEL_LAYOUT_SECTION)
         lbl_layout_section.setStyleSheet(
             "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;"
         )
         self.layout.addWidget(lbl_layout_section)
         self.layout.addWidget(self._create_divider())
 
-        self.main_app.cfg_persist_main_win = QCheckBox("Main Window")
+        self.main_app.cfg_persist_main_win = QCheckBox(
+            ui_constants.CHECKBOX_MAIN_WINDOW_TEXT
+        )
         self.main_app.cfg_persist_main_win.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_persist_main_win.setChecked(True)
         self.layout.addWidget(self.main_app.cfg_persist_main_win)
 
-        self.main_app.cfg_persist_hud_win = QCheckBox("Preview HUD")
+        self.main_app.cfg_persist_hud_win = QCheckBox(
+            ui_constants.CHECKBOX_PREVIEW_HUD_TEXT
+        )
         self.main_app.cfg_persist_hud_win.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_persist_hud_win.setChecked(True)
         self.layout.addWidget(self.main_app.cfg_persist_hud_win)

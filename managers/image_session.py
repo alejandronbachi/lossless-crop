@@ -1,48 +1,58 @@
+from __future__ import annotations
+
 from pathlib import Path
 
-from PIL import Image
-from PIL.ImageQt import ImageQt
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import QObject, pyqtSignal
 
-from managers.image_manager import ImageProcessor
+from models.crop_model import CropModel
+from models.image_model import ImageModel
 
 
-class ImageSession:
-    def __init__(self):
-        # --- 📁 The Active Directory Workspace State ---
+class ImageSession(QObject):
+    """The Parent Context / Orchestrator from the architecture doc. Owns
+    folder-navigation state plus exactly one ImageModel and one CropModel for
+    'whatever file is active right now'. This is where the Sync Chain lives:
+    it listens for ImageModel.image_changed and, based on
+    crop_settings.conserve_selection, tells CropModel to either re-clamp or
+    flush.
+
+    crop_settings is your existing AppSettings instance (models/app_settings.py)
+    — pass FastCropApp.settings straight in. It's a plain dataclass, not a
+    QObject, and that's fine here: this class only ever reads
+    conserve_selection at the moment a new image loads, it doesn't need to
+    react live to the checkbox changing mid-session. Bind
+    chk_preserve.toggled to write into that same instance (see integration
+    notes) instead of this class reading the checkbox itself.
+    """
+
+    workspace_changed = pyqtSignal()  # folder loaded/closed, or index moved
+
+    def __init__(self, crop_settings, parent=None):
+        super().__init__(parent)
+        self.crop_settings = crop_settings
+
         self.folder_path: Path | None = None
         self.files: list[Path] = []
         self.current_index: int = -1
 
-        # --- 🧠 Master High-Fidelity Memory Caches (Single Source of Truth) ---
-        self.pil_image: Image.Image | None = None
-        self.master_pixmap: QPixmap | None = None
-        self._qimg_ref: ImageQt | None = (
-            None  # Crucial: Blocks C++ Garbage Collection Segfaults
-        )
+        self.image_model = ImageModel(self)
+        self.crop_model = CropModel(self)
 
-        # --- 📊 Metadata Tracking Variables ---
-        self.current_rotation_angle: int = 0
-        self.is_true_jpeg: bool = False
-        self.width: int = 0
-        self.height: int = 0
+        self.image_model.image_changed.connect(self._on_image_changed)
 
     # -------------------------------------------------------------
-    # 🏎️ DIRECTORY WORKSPACE NAVIGATION ENGINE
+    # DIRECTORY WORKSPACE NAVIGATION
     # -------------------------------------------------------------
     def load_folder(
         self, folder_path: str, valid_files: list[Path], target_filename: str = None
     ) -> bool:
-        """Initializes a brand new folder workspace, automatically tracking the file target index."""
         if not valid_files:
             self.close_session()
             return False
 
         self.folder_path = Path(folder_path)
         self.files = valid_files
-        self.current_rotation_angle = 0  # Reset rotation state on fresh folder loads
 
-        # Cleanly isolate target index mapping calculations
         if target_filename:
             matched = next(
                 (i for i, p in enumerate(self.files) if p.name == target_filename), 0
@@ -54,102 +64,112 @@ class ImageSession:
         return self.hydrate_current_image()
 
     def next(self) -> str | None:
-        """Advances index without looping. Returns an alert string if blocked."""
         if not self.files:
             return "No directory active"
-
         if self.current_index < len(self.files) - 1:
             self.current_index += 1
             self.hydrate_current_image()
             return None
-        else:
-            return "Last image of directory"
+        return "Last image of directory"
 
     def previous(self) -> str | None:
-        """Regresses index without looping. Returns an alert string if blocked."""
         if not self.files:
             return "No directory active"
-
         if self.current_index > 0:
             self.current_index -= 1
             self.hydrate_current_image()
             return None
-        else:
-            return "First image of directory"
+        return "First image of directory"
 
-    # -------------------------------------------------------------
-    # ⚡ AUTOMATED HARDWARE CACHE PIPELINE
-    # -------------------------------------------------------------
     def hydrate_current_image(self) -> bool:
-        """
-        Bakes data from CPU space (PIL) straight into GPU VRAM space (QPixmap) once.
-        Forces an immediate memory-load insulation to clear operating system file locks.
-        """
         if self.current_index == -1 or not self.files:
             self.close_session()
             return False
+        return self.image_model.load(self.files[self.current_index])
 
-        try:
-            current_path = self.files[self.current_index]
+    # -------------------------------------------------------------
+    # THE SYNC CHAIN
+    # -------------------------------------------------------------
+    def _on_image_changed(self) -> None:
+        """Fires every time ImageModel finishes hydrating a new file — a
+        navigation, a fresh folder load, or an overwrite-crop reload. Does
+        NOT fire on rotation (that's rotation_changed, a separate signal) —
+        rotating shouldn't touch the crop selection at all.
 
-            # 1. Read file and immediately unlock it from the operating system
-            self.pil_image = Image.open(current_path)
-            self.pil_image.load()  # Crucial: Forces immediate RAM copy so the disk file stays free
+        This only decides whether the selection survives at all.
+        Previously this also tried to fit the old source_pixel_rect into
+        the new image's bounds (clamp_to_bounds) — that's gone; see
+        CropModel's docstring for why, and SelectionManager.sync_view_from_model()
+        for where that refresh correctly happens now, once there's an
+        actual repainted viewport to compute against."""
+        if not self.crop_settings.conserve_selection:
+            self.crop_model.clear()
+        self.workspace_changed.emit()
 
-            # Record original, unrotated raw source tracking metrics
-            self.width, self.height = self.pil_image.size
-
-            # 2. Extract JPEG grid attributes using your existing image processor engine
-
-            self.is_true_jpeg = ImageProcessor.is_true_jpeg(current_path)
-
-            # 3. Convert and cache the unscaled hardware texture into memory securely
-            self._qimg_ref = ImageQt(self.pil_image)
-            self.master_pixmap = QPixmap.fromImage(self._qimg_ref)
-            return True
-
-        except Exception as e:
-            print(
-                f"[SESSION ERROR] Failed to automatically hydrate image memory cache maps: {e}"
-            )
-            return False
-
-    def close_session(self):
-        """Safely purges all tracking references and clear application RAM buffers completely."""
+    def close_session(self) -> None:
         self.folder_path = None
         self.files = []
         self.current_index = -1
-        self.pil_image = None
-        self.master_pixmap = None
-        self._qimg_ref = None
-        self.current_rotation_angle = 0
-        self.is_true_jpeg = False
-        self.width = 0
-        self.height = 0
+        self.image_model.clear()
+        self.crop_model.clear()
+
+    def apply_post_crop_selection_policy(self) -> None:
+        """Call after a crop completes WITHOUT an image swap (overwrite is
+        off, so hydrate_current_image() never ran and the Sync Chain never
+        fired). When a swap DID happen, this is a no-op to call again —
+        harmless, so FastCropApp doesn't need to branch on which case it's
+        in, it can just always call this after a non-overwrite crop."""
+        if not self.crop_settings.conserve_selection:
+            self.crop_model.clear()
 
     # -------------------------------------------------------------
-    # 🔍 LEAN READ-ONLY CONVENIENCE REAL-TIME PROPERTIES
+    # READ-ONLY CONVENIENCE PROPERTIES
     # -------------------------------------------------------------
     @property
     def has_active_image(self) -> bool:
-        """Returns True if the current session contains loaded valid files."""
         return self.current_index != -1 and bool(self.files)
 
     @property
     def current_path(self) -> Path | None:
-        """Returns the complete Path object of the active on-screen file."""
         return self.files[self.current_index] if self.has_active_image else None
 
     @property
     def current_name(self) -> str:
-        """Returns only the filename string (e.g. 'photo.jpg') of the active file."""
         return self.files[self.current_index].name if self.has_active_image else ""
 
     @property
     def index_string(self) -> str:
-        """Returns a formatted index tracker string (e.g. '[1/45]') for direct UI rendering."""
         return (
             f"[{self.current_index + 1}/{len(self.files)}]"
             if self.has_active_image
             else ""
         )
+
+    # -- back-compat passthroughs -------------------------------------------
+    # Lets you migrate call sites gradually: anything reading
+    # image_session.master_pixmap / .width / .height / .is_true_jpeg /
+    # .current_rotation_angle keeps working unchanged. New code should prefer
+    # image_session.image_model.<x> directly and stop going through these.
+    @property
+    def pil_image(self):
+        return self.image_model.pil_image
+
+    @property
+    def master_pixmap(self):
+        return self.image_model.pixmap
+
+    @property
+    def width(self):
+        return self.image_model.width
+
+    @property
+    def height(self):
+        return self.image_model.height
+
+    @property
+    def is_true_jpeg(self):
+        return self.image_model.is_true_jpeg
+
+    @property
+    def current_rotation_angle(self):
+        return self.image_model.rotation_angle

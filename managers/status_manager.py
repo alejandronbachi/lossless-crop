@@ -16,6 +16,7 @@ class StatusManager(QObject):
         self.main_app = main_app
         self.canvas_container = canvas_container
         self.info_bar = info_bar_widget
+        self.ui_constants = ui_constants
 
         # Instantiate floating canvas overlays directly inside the manager
         self.lbl_notification = CenterNotification(
@@ -117,7 +118,7 @@ class StatusManager(QObject):
 
             # Check user interaction states dynamically to see if they are actively drawing/dragging
             is_user_actively_editing = getattr(
-                self.main_app, "is_moving_box", False
+                self.main_app.selection_manager, "is_moving_box", False
             ) or (
                 hasattr(self.main_app.selection_manager, "drag_start_origin")
                 and not self.main_app.selection_manager.drag_start_origin.isNull()
@@ -140,7 +141,7 @@ class StatusManager(QObject):
 
     def set_empty_workspace_state(self):
         """Resets layout labels back to startup splash configurations."""
-        self.info_bar.lbl_status.setText("Ready. Open a folder to start cropping.")
+        self.info_bar.lbl_status.setText(self.ui_constants.TEXT_READY_STATUS)
         self.info_bar.lbl_metrics.setText("")
         self.lbl_telemetry_hud.hide()
         self.lbl_commands_overlay.hide()
