@@ -89,13 +89,17 @@ class StatusManager(QObject):
         # 1. Compile file status tracking elements using live checkbox widget metrics
         current_path = self.main_app.image_session.current_path
         idx_str = self.main_app.image_session.index_string
-        filename_string = f"{idx_str} {current_path.name}"
+        filename_string = ""
+        if (
+            self.main_app.cfg_show_filename.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
+            filename_string = f"{idx_str} {current_path.name}"
 
         metrics_string = ""
         if (
             self.main_app.cfg_show_imgsize.isChecked()
             and self.main_app.image_session.has_active_image
-            and self.main_app.image_session.pil_image
         ):
             src_w, src_h = (
                 self.main_app.image_session.width,
@@ -107,8 +111,19 @@ class StatusManager(QObject):
         if self.main_app.cfg_show_infobar.isChecked():
             # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
             self.lbl_telemetry_hud.hide()
-            self.info_bar.lbl_status.setText(filename_string if filename_string else "")
-            self.info_bar.lbl_metrics.setText(metrics_string)
+            if filename_string != "":
+                self.info_bar.lbl_status.setText(
+                    filename_string if filename_string else ""
+                )
+                self.info_bar.lbl_status.show()
+            else:
+                self.info_bar.lbl_status.hide()
+            if metrics_string != "":
+                self.info_bar.lbl_metrics.setText(metrics_string)
+                self.info_bar.lbl_metrics.show()
+            else:
+                self.info_bar.lbl_metrics.hide()
+
         else:
             # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
             self.info_bar.lbl_status.setText("")
