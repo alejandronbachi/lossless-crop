@@ -166,6 +166,7 @@ class FastCropApp(QMainWindow):
             cfg_show_preview=self.cfg_show_preview,
             viewport_factory=self._build_viewport_geometry,
         )
+        self.image_display_container.setFocus()
 
     def load_image_to_viewport(self):
         return self.canvas_presenter.load_image_to_viewport()
