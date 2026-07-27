@@ -11,8 +11,6 @@ BINARY_LINUX = "jpegtran_linux"
 
 # --- Settings Attribute Names ---
 SETTING_REMEMBER_SETTINGS = "remember_settings"
-SETTING_REMEMBER_WINDOW = "remember_window"
-SETTING_REMEMBER_PREVIEW = "remember_preview"
 SETTING_LAST_USED_FOLDER = "last_used_folder"
 SETTING_MAIN_WINDOW_GEOMETRY_BLOB = "main_window_geometry_blob"
 SETTING_HUD_WIN_X = "hud_win_x"

@@ -128,7 +128,7 @@ class CanvasPresenter:
         finally:
             self._updating_spinboxes = False
 
-    def on_spin_width_changed(self, value):
+    def on_spin_width_changed(self, value=None):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
         if (
             self._updating_spinboxes
@@ -136,6 +136,9 @@ class CanvasPresenter:
             or not self.image_session.pil_image
         ):
             return
+
+        if value is None:
+            value = self.spin_width.value()
 
         ratio = self.get_current_forced_ratio()
         if ratio is not None:
@@ -149,7 +152,7 @@ class CanvasPresenter:
 
         self.apply_spinbox_dimensions_to_canvas()
 
-    def on_spin_height_changed(self, value):
+    def on_spin_height_changed(self, value=None):
         """Triggers when height spinbox is adjusted manually via arrows or keystrokes."""
         if (
             self._updating_spinboxes
@@ -157,6 +160,8 @@ class CanvasPresenter:
             or not self.image_session.pil_image
         ):
             return
+        if value is None:
+            value = self.spin_height.value()
 
         ratio = self.get_current_forced_ratio()
         if ratio is not None:

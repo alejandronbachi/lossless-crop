@@ -57,9 +57,7 @@ class StatusManager(QObject):
 
         #  Run heavy UI calculations exactly once per 16ms render window frame!
         self.main_app.update_resolution_metrics_display()
-
-        if hasattr(self.main_app, "update_zoom_hud_payload"):
-            self.main_app.update_zoom_hud_payload()
+        self.main_app.update_zoom_hud_payload()
 
         self.update_status_and_telemetry()
 
@@ -117,12 +115,9 @@ class StatusManager(QObject):
             self.info_bar.lbl_metrics.setText("")
 
             # Check user interaction states dynamically to see if they are actively drawing/dragging
-            is_user_actively_editing = getattr(
-                self.main_app.selection_manager, "is_moving_box", False
-            ) or (
-                hasattr(self.main_app.selection_manager, "drag_start_origin")
-                and not self.main_app.selection_manager.drag_start_origin.isNull()
-                and not getattr(self.main_app.selection_manager, "is_moving_box", False)
+            sm = self.main_app.selection_manager
+            is_user_actively_editing = (
+                sm.is_moving_box or not sm.drag_start_origin.isNull()
             )
 
             hud_lines = []

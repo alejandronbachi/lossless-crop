@@ -82,8 +82,6 @@ class SettingsManager:
 
     ALWAYS_PERSISTED_FIELDS = {
         app_constants.SETTING_REMEMBER_SETTINGS,
-        app_constants.SETTING_REMEMBER_WINDOW,
-        app_constants.SETTING_REMEMBER_PREVIEW,
         app_constants.SETTING_LAST_USED_FOLDER,
         app_constants.SETTING_MAIN_WINDOW_GEOMETRY_BLOB,
         app_constants.SETTING_HUD_WIN_X,
