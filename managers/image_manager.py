@@ -124,32 +124,7 @@ class ImageProcessor:
             )
             return False
 
-    @staticmethod
-    def rotate_session_view(session) -> int:
-        """
-        Rotates the active visual viewport texture without degrading the original source data.
-        Returns the updated cumulative rotation angle integer.
-        """
-        if not session or not session.has_active_image:
-            return 0
-
-        # 1. Update the session's cumulative rotation angle property tracker
-        session.current_rotation_angle = (session.current_rotation_angle - 90) % 360
-
-        # 2. Compute a hardware-accelerated texture transform
-        from PyQt6.QtGui import QTransform
-
-        transform = QTransform().rotate(-90)
-
-        # 3. Apply the rotation directly to the GPU VRAM cache layer
-        session.master_pixmap = session.master_pixmap.transformed(transform)
-
-        # 4. Flip the session dimensions so resolution readouts track correctly
-        session.width, session.height = session.height, session.width
-
-        return session.current_rotation_angle
-
-        # IMAGE PROCESSOR ROUTER METHOD
+    # IMAGE PROCESSOR ROUTER METHOD
 
     def process_and_route_crop(
         self, lossless: bool, source_path, output_path, source_rect, image_dimensions

@@ -23,14 +23,6 @@ class ImageModel(QObject):
     navigation instead of mutating those five fields on itself. Two knock-on
     fixes come from this split:
 
-    1. Rotation was previously reset only in ImageSession.load_folder(), NOT
-       in hydrate_current_image() — so pressing Next/Previous after rotating
-       left a stale current_rotation_angle sitting on the session while the
-       freshly-loaded pixmap was actually unrotated. .load() below resets it
-       unconditionally, every time, because rotation is per-file state.
-    2. ImageProcessor.rotate_session_view() was a staticmethod reaching into
-       a session object to mutate five of its fields (feature envy) — that
-       logic is now a method on the object it actually mutates.
     """
 
     image_changed = pyqtSignal()  # a new file was hydrated
