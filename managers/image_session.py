@@ -37,7 +37,9 @@ class ImageSession(QObject):
 
         self.image_model = ImageModel(self)
         self.crop_model = CropModel(self)
+        self.blacklist: set[Path] = set()
 
+        self.image_model.file_corrupted.connect(self.blacklist_and_skip)
         self.image_model.image_changed.connect(self._on_image_changed)
 
     # -------------------------------------------------------------
@@ -46,6 +48,7 @@ class ImageSession(QObject):
     def load_folder(
         self, folder_path: str, valid_files: list[Path], target_filename: str = None
     ) -> bool:
+        self.blacklist.clear()
         if not valid_files:
             self.close_session()
             return False
@@ -70,6 +73,12 @@ class ImageSession(QObject):
             self.current_index += 1
             self.hydrate_current_image()
             return None
+        # --- EDGE CASE SHIELD (At the Last File / Single File left) ---
+        # User is trying to press 'Next' but index cannot advance. Check if file was deleted!
+        if not self.files[self.current_index].exists():
+            self.image_model.file_deleted.emit()  # Trigger hard folder reload
+            return "File missing; syncing workspace..."
+
         return "Last image of directory"
 
     def previous(self) -> str | None:
@@ -79,6 +88,13 @@ class ImageSession(QObject):
             self.current_index -= 1
             self.hydrate_current_image()
             return None
+
+        # --- EDGE CASE SHIELD (At the First File / Single File left) ---
+        # User is trying to press 'Prev' but index cannot advance. Check if file was deleted!
+        if not self.files[self.current_index].exists():
+            self.image_model.file_deleted.emit()  # Trigger hard folder reload
+            return "File missing; syncing workspace..."
+
         return "First image of directory"
 
     def hydrate_current_image(self) -> bool:
@@ -121,6 +137,26 @@ class ImageSession(QObject):
         in, it can just always call this after a non-overwrite crop."""
         if not self.crop_settings.conserve_selection:
             self.crop_model.clear()
+
+    def blacklist_and_skip(self, broken_path: Path):
+        """Instantly drops a corrupt file from memory and steps forward."""
+        self.blacklist.add(broken_path)
+
+        if broken_path in self.files:
+            self.files.remove(broken_path)
+
+        # If the folder has run completely dry of uncorrupted files
+        if not self.files:
+            self.close_session()
+            self.workspace_changed.emit()
+            return
+
+        # Ensure index isn't pointing out of bounds after removal
+        if self.current_index >= len(self.files):
+            self.current_index = len(self.files) - 1
+
+        # Step instantly over the bad file to the next one in memory
+        self.hydrate_current_image()
 
     # -------------------------------------------------------------
     # READ-ONLY CONVENIENCE PROPERTIES

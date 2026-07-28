@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from PIL.ImageQt import ImageQt
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QPixmap, QTransform
@@ -30,8 +30,10 @@ class ImageModel(QObject):
        logic is now a method on the object it actually mutates.
     """
 
-    image_changed = pyqtSignal()        # a new file was hydrated
+    image_changed = pyqtSignal()  # a new file was hydrated
     rotation_changed = pyqtSignal(int)  # cumulative angle, for HUD/status text
+    file_deleted = pyqtSignal()  # Signal for missing files
+    file_corrupted = pyqtSignal(Path)  # Signal for bad image files
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -100,6 +102,10 @@ class ImageModel(QObject):
 
             self.image_changed.emit()
             return True
+        except FileNotFoundError:
+            self.file_deleted.emit()
+        except UnidentifiedImageError:
+            self.file_corrupted.emit(path)
         except Exception as e:
             print(f"[ImageModel] Failed to hydrate '{path}': {e}")
             return False
