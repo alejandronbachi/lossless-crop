@@ -186,9 +186,6 @@ class ImageSession(QObject):
     # image_session.master_pixmap / .width / .height / .is_true_jpeg /
     # .current_rotation_angle keeps working unchanged. New code should prefer
     # image_session.image_model.<x> directly and stop going through these.
-    @property
-    def pil_image(self):
-        return self.image_model.pil_image
 
     @property
     def master_pixmap(self):
