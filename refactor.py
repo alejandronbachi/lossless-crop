@@ -1,13 +1,13 @@
 # refactor.py
 
 # =================================================================
-# 1. ADD THIS IMPORT TO THE TOP OF fastcrop.py
+# 1. ADD THIS IMPORT TO THE TOP OF LossLessCropApp.py
 # =================================================================
 
 # =================================================================
-# 2. INITIALIZE IN FastCropApp.__init__ (fastcrop.py)
+# 2. INITIALIZE IN LossLessCropApp.__init__ (LossLessCropApp.py)
 # =================================================================
-# Inside the __init__ method of FastCropApp, add:
+# Inside the __init__ method of LossLessCropApp, add:
 # self.processor = ImageProcessor()
 
 # =================================================================

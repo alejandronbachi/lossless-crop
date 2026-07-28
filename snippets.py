@@ -33,7 +33,7 @@ def save_cropped_image(
 
         # 4. Save the finalized crop payload cleanly
         cropped_image.save(output_path, format=fmt, **save_kwargs)
-        print(f"[EXPORT] Successfully saved {fmt} to {output_path}")
+        logger.info("[EXPORT] Successfully saved %s to %s", fmt, output_path)
 
     except Exception as e:
         print(f"[EXPORT WARNING] Metadata injection failed for {fmt}: {e}")

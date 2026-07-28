@@ -1,7 +1,11 @@
 import ctypes
+import logging
 import sys
 from pathlib import Path
 
+from config.logging_setup import initialize_logging
+
+initialize_logging()
 from PyQt6.QtCore import (
     QEasingCurve,
     QPropertyAnimation,
@@ -48,8 +52,10 @@ try:
 except ImportError:
     PILLOW_AVAILABLE = False
 
+logger = logging.getLogger(__name__)
 
-class FastCropApp(QMainWindow):
+
+class LossLessCropApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(ui_constants.WINDOW_TITLE)
@@ -326,7 +332,7 @@ class FastCropApp(QMainWindow):
     ) -> None:
         if not success:
             if error_message:
-                print(f"Critical Error: Crop failed: {error_message}")
+                logger.error("Critical Error: Crop failed: %s", error_message)
             self.status_manager.show_center_notification(ui_constants.TEXT_CROP_FAILED)
             return
 
@@ -478,7 +484,7 @@ class FastCropApp(QMainWindow):
             # 1. Capture current states, write to model, and commit via SettingsManager
             self.save_application_state()
         except Exception as e:
-            print(f"Critical Error: Failed to save application state: {e}")
+            logger.error("Critical Error: Failed to save application state: %s", e)
 
         # 2. Safely close your borderless floating zoom HUD component
         if hasattr(self, ui_constants.WIDGET_ZOOM_HUD) and self.zoom_hud is not None:
@@ -770,6 +776,6 @@ if __name__ == "__main__":
     except Exception:
         pass
     app = QApplication(sys.argv)
-    window = FastCropApp()
+    window = LossLessCropApp()
     window.show()
     sys.exit(app.exec())

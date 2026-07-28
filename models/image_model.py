@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
@@ -8,6 +9,8 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QPixmap, QTransform
 
 from managers.image_manager import ImageProcessor
+
+logger = logging.getLogger(__name__)
 
 
 class ImageModel(QObject):
@@ -103,7 +106,7 @@ class ImageModel(QObject):
         except UnidentifiedImageError:
             self.file_corrupted.emit(path)
         except Exception as e:
-            print(f"[ImageModel] Failed to hydrate '{path}': {e}")
+            logger.error("[ImageModel] Failed to hydrate '%s': %s", path, e)
             return False
 
     def rotate(self, degrees: int = -90) -> int:
