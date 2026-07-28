@@ -167,6 +167,7 @@ class FastCropApp(QMainWindow):
             viewport_factory=self._build_viewport_geometry,
         )
         self.image_display_container.setFocus()
+        self.image_session.image_model.file_deleted.connect(self.reload_directory)
 
     def load_image_to_viewport(self):
         return self.canvas_presenter.load_image_to_viewport()
@@ -714,6 +715,26 @@ class FastCropApp(QMainWindow):
             valid_files=valid_files,
             target_file=starting_file,
             error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+        )
+
+    def reload_directory(self):
+        """Triggered automatically via ImageModel.file_deleted when file is missing."""
+        active_folder = self.image_session.folder_path
+        if not active_folder or not active_folder.exists():
+            self.image_session.close_session()
+            return
+
+        self.status_manager.show_center_notification("Syncing workspace...")
+
+        # Hard rescan of disk contents
+        folder, _, valid_files = self.file_manager.process_path(str(active_folder))
+
+        # Overwrites state, wiping the temporary blacklist and rendering fresh files
+        self.update_ui_after_loadin_folder(
+            folder_path=folder,
+            valid_files=valid_files,
+            target_file=None,  # Falls back gracefully to index 0
+            error_msg="Synchronized folder changes",
         )
 
     def build_main_canvas(self):
