@@ -159,10 +159,7 @@ class ImageProcessor:
                 cropped_image = img.crop((left, top, right, bottom))
 
                 # 4. Format-Specific Save Blocks (Prevents WebP / PNG parameter crashes)
-                is_jpeg = img_format == "JPEG" or Path(src).suffix.lower() in [
-                    ".jpg",
-                    ".jpeg",
-                ]
+                is_jpeg = ImageProcessor.is_true_jpeg(src)
                 is_webp = img_format == "WEBP" or Path(src).suffix.lower() == ".webp"
 
                 # JPEG-specific 'keep' logic
