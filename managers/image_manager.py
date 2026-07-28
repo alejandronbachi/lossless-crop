@@ -124,16 +124,16 @@ class ImageProcessor:
         """🎨 ENGINE B: Standard fallback or pixel-perfect CPU image re-compression."""
         left, top, right, bottom = bounding_box
         try:
-            # We open an isolated reader instance to dodge file locks and data degradation
             with Image.open(src) as img:
                 save_kwargs = {}
+                img_format = img.format  # Cache format before transformations
 
-                # Preserve ICC Profile
+                # 1. Preserve ICC Profile
                 icc_profile = img.info.get("icc_profile")
                 if icc_profile:
                     save_kwargs["icc_profile"] = icc_profile
 
-                # Preserve and adjust EXIF Metadata
+                # 2. Preserve and adjust EXIF Metadata correctly
                 exif_data = None
                 try:
                     exif_obj = img.getexif()
@@ -141,6 +141,7 @@ class ImageProcessor:
                         # Reset Orientation tag (0x0112) to Normal (1) if physical rotation was applied
                         if rotation_angle % 360 != 0:
                             exif_obj[0x0112] = 1
+                        # Secure compilation into valid raw bytes
                         exif_data = exif_obj.tobytes()
                 except Exception as ex_err:
                     logger.warning("Could not process EXIF tags: %s", ex_err)
@@ -149,49 +150,65 @@ class ImageProcessor:
                 if exif_data:
                     save_kwargs["exif"] = exif_data
 
-                    # Apply physical rotation if necessary
+                # 3. YOUR ORIGINAL SEQUENCE: Rotate first
                 if rotation_angle % 360 != 0:
                     cw_angle = rotation_angle % 360
                     img = img.rotate(cw_angle, expand=True)
 
+                # YOUR ORIGINAL SEQUENCE: Crop second using your existing coordinate math
                 cropped_image = img.crop((left, top, right, bottom))
 
-                # Check if original is JPEG and has quantization tables to support 'keep'
-                is_jpeg_source = (
-                    img.format == "JPEG"
-                    or Path(src).suffix.lower() in app_constants.JPEG_EXTENSIONS
-                )
-                has_qtables = hasattr(img, "quantization") and img.quantization
+                # 4. Format-Specific Save Blocks (Prevents WebP / PNG parameter crashes)
+                is_jpeg = img_format == "JPEG" or Path(src).suffix.lower() in [
+                    ".jpg",
+                    ".jpeg",
+                ]
+                is_webp = img_format == "WEBP" or Path(src).suffix.lower() == ".webp"
 
-                if is_jpeg_source and has_qtables:
-                    try:
-                        cropped_image.save(
-                            dest,
-                            quality="keep",
-                            subsampling="keep",
-                            qtables=img.quantization,
-                            **save_kwargs,
-                        )
-                        logger.info(
-                            "[SUCCESS] Image pixel re-compression slice saved successfully with quality='keep'."
-                        )
-                        return True
-                    except Exception as keep_err:
-                        logger.debug(
-                            "Could not save with quality='keep': %s. Falling back to quality=95.",
-                            keep_err,
-                        )
+                # JPEG-specific 'keep' logic
+                if is_jpeg:
+                    has_qtables = hasattr(img, "quantization") and img.quantization
+                    if has_qtables:
+                        try:
+                            cropped_image.save(
+                                dest,
+                                format="JPEG",
+                                quality="keep",
+                                subsampling="keep",
+                                qtables=img.quantization,
+                                **save_kwargs,
+                            )
+                            logger.info(
+                                "[SUCCESS] JPEG saved successfully with quality='keep'."
+                            )
+                            return True
+                        except Exception as keep_err:
+                            logger.debug(
+                                "JPEG quality='keep' failed: %s. Falling back.",
+                                keep_err,
+                            )
 
-                # Fallback to high quality re-compression
-                cropped_image.save(dest, quality=95, subsampling=0, **save_kwargs)
-            logger.info(
-                "[SUCCESS] Image pixel re-compression slice saved successfully with fallback quality."
-            )
-            return True
-        except Exception as e:
-            logger.error(
-                "❌ [CROP FAILURE] Pillow re-compression pipeline failed: %s", e
-            )
+                    # JPEG Fallback
+                    cropped_image.save(
+                        dest, format="JPEG", quality=95, subsampling=0, **save_kwargs
+                    )
+                    return True
+
+                # WebP-specific logic (Filters out 'keep' and 'qtables' to avoid errors)
+                if is_webp:
+                    cropped_image.save(
+                        dest, format="WEBP", quality=95, method=6, **save_kwargs
+                    )
+                    logger.info("[SUCCESS] WebP saved successfully.")
+                    return True
+
+                # Generic fallback for PNG, BMP, etc.
+                cropped_image.save(dest, format=img_format, **save_kwargs)
+                logger.info("[SUCCESS] Image saved successfully using format fallback.")
+                return True
+
+        except Exception as err:
+            logger.error("Pillow crop execution failed: %s", err)
             return False
 
     # IMAGE PROCESSOR ROUTER METHOD
