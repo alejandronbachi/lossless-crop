@@ -86,21 +86,24 @@ class ImageProcessor:
             str(src),
         ]
         try:
-            subprocess.run(
-                command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
+            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            if result.stdout:
+                logger.debug("jpegtran stdout: %s", result.stdout.strip())
             logger.info(
                 "[SUCCESS] Lossless binary block transformation completed with 0% quality loss."
             )
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        except subprocess.CalledProcessError as e:
+            error_output = e.stderr.strip() if e.stderr else str(e)
             logger.error(
-                "❌ [EMERGENCY FALLBACK] jpegtran failed, shifting to Pillow re-compression: %s",
-                e,
+                "❌ [ERROR] jpegtran failed (exit code %s): %s",
+                e.returncode,
+                error_output,
             )
-            return self.execute_lossy_pillow_crop(
-                src, dest, (c_x, c_y, c_x + c_w, c_y + c_h)
-            )
+            return False
+        except FileNotFoundError as e:
+            logger.error("❌ [ERROR] Binary not found for jpegtran: %sn", e)
+            return False
 
     @staticmethod
     def execute_lossy_pillow_crop(src: Path, dest: str, bounding_box: tuple) -> bool:
