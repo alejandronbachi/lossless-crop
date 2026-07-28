@@ -325,6 +325,7 @@ class LossLessCropApp(QMainWindow):
             ),  # Pass base source size
             on_finished=_on_finished,
             rotation_angle=self.image_session.current_rotation_angle,
+            is_true_jpeg=self.image_session.is_true_jpeg,
         )
         return True
 
