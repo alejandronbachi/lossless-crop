@@ -65,15 +65,15 @@ class CropGeometryEngine:
     takes a ViewportGeometry rather than reading widget state.
     """
 
-    GRID_SIZE = 16
+    JPEG_GRID_SIZE = 16
 
     @staticmethod
     def resolve_aspect_ratio(ratio_label: str) -> float | None:
         return ASPECT_RATIOS.get(ratio_label)
 
     @classmethod
-    def snap_to_grid(cls, value: float, minimum: int = GRID_SIZE) -> int:
-        return max(minimum, round(value / cls.GRID_SIZE) * cls.GRID_SIZE)
+    def snap_to_grid(cls, value: float, minimum: int = JPEG_GRID_SIZE) -> int:
+        return max(minimum, round(value / cls.JPEG_GRID_SIZE) * cls.JPEG_GRID_SIZE)
 
     @classmethod
     def screen_rect_to_source_rect(
@@ -99,8 +99,8 @@ class CropGeometryEngine:
             img_h = (
                 cls.snap_to_grid(img_w / aspect) if aspect else cls.snap_to_grid(img_h)
             )
-            img_x = round(img_x / cls.GRID_SIZE) * cls.GRID_SIZE
-            img_y = round(img_y / cls.GRID_SIZE) * cls.GRID_SIZE
+            img_x = round(img_x / cls.JPEG_GRID_SIZE) * cls.JPEG_GRID_SIZE
+            img_y = round(img_y / cls.JPEG_GRID_SIZE) * cls.JPEG_GRID_SIZE
         else:
             img_w = max(1, round(img_w))
             img_h = max(1, round(img_w / aspect)) if aspect else max(1, round(img_h))
