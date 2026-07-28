@@ -13,7 +13,7 @@ from managers.image_manager import ImageProcessor
 class ImageModel(QObject):
     """The immutable-per-file truth of whatever image is currently in the
     viewport. Replaces the fields that currently live directly on
-    ImageSession: pil_image, master_pixmap, width, height,
+    ImageSession: master_pixmap, width, height,
     current_rotation_angle, is_true_jpeg.
 
     ImageSession now OWNS one instance of this and calls .load(path) on
@@ -38,7 +38,6 @@ class ImageModel(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._path: Path | None = None
-        self._pil_image: Image.Image | None = None
         self._qimg_ref: ImageQt | None = None  # blocks C++ GC segfaults
         self._pixmap: QPixmap | None = None
         self._width = 0
@@ -50,10 +49,6 @@ class ImageModel(QObject):
     @property
     def path(self) -> Path | None:
         return self._path
-
-    @property
-    def pil_image(self) -> Image.Image | None:
-        return self._pil_image
 
     @property
     def pixmap(self) -> QPixmap | None:
@@ -89,16 +84,17 @@ class ImageModel(QObject):
         that signal is what ImageSession's Sync Chain listens for to decide
         whether CropModel re-clamps or flushes."""
         try:
-            pil_image = Image.open(path)
-            pil_image.load()  # force RAM copy so the disk file stays free
+            with Image.open(path) as pil_image:
+                pil_image = Image.open(path)
+                pil_image.load()  # force RAM copy so the disk file stays free
 
-            self._path = path
-            self._pil_image = pil_image
-            self._width, self._height = pil_image.size
-            self._rotation_angle = 0  # per-file: always resets on a fresh load
-            self._is_true_jpeg = ImageProcessor.is_true_jpeg(path)
-            self._qimg_ref = ImageQt(pil_image)
-            self._pixmap = QPixmap.fromImage(self._qimg_ref)
+                self._path = path
+
+                self._width, self._height = pil_image.size
+                self._rotation_angle = 0  # per-file: always resets on a fresh load
+                self._is_true_jpeg = ImageProcessor.is_true_jpeg(path)
+                self._qimg_ref = ImageQt(pil_image)
+                self._pixmap = QPixmap.fromImage(self._qimg_ref)
 
             self.image_changed.emit()
             return True
@@ -126,7 +122,6 @@ class ImageModel(QObject):
 
     def clear(self) -> None:
         self._path = None
-        self._pil_image = None
         self._qimg_ref = None
         self._pixmap = None
         self._width = 0
