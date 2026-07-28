@@ -53,7 +53,7 @@ class ImageProcessor:
         try:
             # 3. Open, read exactly 3 bytes, and close file implicitly in one go
             with path.open("rb") as f:
-                return f.read(3) == b"\xff\xd8\xff"
+                return f.read(2) == b"\xff\xd8"
         except Exception:
             return False
 
@@ -71,7 +71,7 @@ class ImageProcessor:
         logger.info(" 🧮 Crop Geometry : X=%s, Y=%s, W=%s, H=%s", c_x, c_y, c_w, c_h)
 
     def execute_lossless_jpegtran_crop(
-        self, src: Path, dest: str, crop_box: tuple
+        self, src: Path, dest: str, crop_box: tuple, rotation_angle: int = 0
     ) -> bool:
         """🚀 ENGINE A: Executes raw binary block manipulations inside VRAM via jpegtran."""
         c_w, c_h, c_x, c_y = crop_box
@@ -79,18 +79,30 @@ class ImageProcessor:
 
         command = [
             self.binary_path,
+            "-copy",
+            "all",
             "-crop",
             crop_argument,
-            "-outfile",
-            dest,
-            str(src),
         ]
+
+        # Convert your internal CCW rotation angle to a CW angle for jpegtran
+        cw_angle = (-rotation_angle) % 360
+        if cw_angle in (90, 180, 270):
+            command.extend(["-rot", str(cw_angle)])
+
+        command.extend(
+            [
+                "-outfile",
+                dest,
+                str(src),
+            ]
+        )
         try:
             result = subprocess.run(command, check=True, capture_output=True, text=True)
             if result.stdout:
                 logger.debug("jpegtran stdout: %s", result.stdout.strip())
             logger.info(
-                "[SUCCESS] Lossless binary block transformation completed with 0% quality loss."
+                "[SUCCESS] Lossless binary block transformation completed with 0%% quality loss."
             )
             return True
         except subprocess.CalledProcessError as e:
@@ -102,20 +114,78 @@ class ImageProcessor:
             )
             return False
         except FileNotFoundError as e:
-            logger.error("❌ [ERROR] Binary not found for jpegtran: %sn", e)
+            logger.error("❌ [ERROR] Binary not found for jpegtran: %s", e)
             return False
 
     @staticmethod
-    def execute_lossy_pillow_crop(src: Path, dest: str, bounding_box: tuple) -> bool:
+    def execute_lossy_pillow_crop(
+        src: Path, dest: str, bounding_box: tuple, rotation_angle: int = 0
+    ) -> bool:
         """🎨 ENGINE B: Standard fallback or pixel-perfect CPU image re-compression."""
         left, top, right, bottom = bounding_box
         try:
             # We open an isolated reader instance to dodge file locks and data degradation
             with Image.open(src) as img:
+                save_kwargs = {}
+
+                # Preserve ICC Profile
+                icc_profile = img.info.get("icc_profile")
+                if icc_profile:
+                    save_kwargs["icc_profile"] = icc_profile
+
+                # Preserve and adjust EXIF Metadata
+                exif_data = None
+                try:
+                    exif_obj = img.getexif()
+                    if exif_obj:
+                        # Reset Orientation tag (0x0112) to Normal (1) if physical rotation was applied
+                        if rotation_angle % 360 != 0:
+                            exif_obj[0x0112] = 1
+                        exif_data = exif_obj.tobytes()
+                except Exception as ex_err:
+                    logger.warning("Could not process EXIF tags: %s", ex_err)
+                    exif_data = img.info.get("exif")
+
+                if exif_data:
+                    save_kwargs["exif"] = exif_data
+
+                    # Apply physical rotation if necessary
+                if rotation_angle % 360 != 0:
+                    cw_angle = rotation_angle % 360
+                    img = img.rotate(cw_angle, expand=True)
+
                 cropped_image = img.crop((left, top, right, bottom))
-                cropped_image.save(dest)
+
+                # Check if original is JPEG and has quantization tables to support 'keep'
+                is_jpeg_source = (
+                    img.format == "JPEG"
+                    or Path(src).suffix.lower() in app_constants.JPEG_EXTENSIONS
+                )
+                has_qtables = hasattr(img, "quantization") and img.quantization
+
+                if is_jpeg_source and has_qtables:
+                    try:
+                        cropped_image.save(
+                            dest,
+                            quality="keep",
+                            subsampling="keep",
+                            qtables=img.quantization,
+                            **save_kwargs,
+                        )
+                        logger.info(
+                            "[SUCCESS] Image pixel re-compression slice saved successfully with quality='keep'."
+                        )
+                        return True
+                    except Exception as keep_err:
+                        logger.debug(
+                            "Could not save with quality='keep': %s. Falling back to quality=95.",
+                            keep_err,
+                        )
+
+                # Fallback to high quality re-compression
+                cropped_image.save(dest, quality=95, subsampling=0, **save_kwargs)
             logger.info(
-                "[SUCCESS] Image pixel re-compression slice saved successfully."
+                "[SUCCESS] Image pixel re-compression slice saved successfully with fallback quality."
             )
             return True
         except Exception as e:
@@ -127,7 +197,13 @@ class ImageProcessor:
     # IMAGE PROCESSOR ROUTER METHOD
 
     def process_and_route_crop(
-        self, lossless: bool, source_path, output_path, source_rect, image_dimensions
+        self,
+        lossless: bool,
+        source_path,
+        output_path,
+        source_rect,
+        image_dimensions,
+        rotation_angle: int = 0,
     ) -> bool:
         """Centralized routing hub that,converts coordinates, logs actions,
         and delegates to the correct low-level execution method and
@@ -176,7 +252,7 @@ class ImageProcessor:
             # Format arguments for jpegtran: (width, height, left, top)
             crop_args = crop_dimensions_tuple
             return self.execute_lossless_jpegtran_crop(
-                source_path, output_path, crop_args
+                source_path, output_path, crop_args, rotation_angle=rotation_angle
             )
         else:
             self.log_engine_activation(
@@ -188,4 +264,6 @@ class ImageProcessor:
             )
             # Format arguments for Pillow: (left, top, right, bottom)
             crop_args = (crop_left, crop_top, crop_right, crop_bottom)
-            return self.execute_lossy_pillow_crop(source_path, output_path, crop_args)
+            return self.execute_lossy_pillow_crop(
+                source_path, output_path, crop_args, rotation_angle=rotation_angle
+            )

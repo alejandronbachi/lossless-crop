@@ -18,7 +18,7 @@ class CropWorker(QRunnable):
     Pillow crop — on a QThreadPool worker thread instead of the GUI thread.
     """
 
-    # 💥🔥 🚨 UPDATED WORKER INIT TO TAKE RAW DATA PASSES 🚨 🔥💥
+    #  UPDATED WORKER INIT TO TAKE RAW DATA PASSES
     def __init__(
         self,
         image_manager,
@@ -27,6 +27,7 @@ class CropWorker(QRunnable):
         output_path,
         source_rect,
         image_dimensions,
+        rotation_angle: int = 0,
     ):
         super().__init__()
         self.image_manager = image_manager
@@ -35,18 +36,20 @@ class CropWorker(QRunnable):
         self.output_path = output_path
         self.source_rect = source_rect
         self.image_dimensions = image_dimensions
+        self.rotation_angle = rotation_angle
         self.signals = CropWorkerSignals()
 
     @pyqtSlot()
     def run(self) -> None:
         try:
-            # 💥🔥 🚨 BACKGROUND THREAD NOW DELEGATES DIRECTLY TO THE PROCESSOR ROUTER 🚨 🔥💥
+            #  BACKGROUND THREAD NOW DELEGATES DIRECTLY TO THE PROCESSOR ROUTER
             success = self.image_manager.process_and_route_crop(
                 lossless=self.lossless,
                 source_path=self.source_path,
                 output_path=self.output_path,
                 source_rect=self.source_rect,
                 image_dimensions=self.image_dimensions,
+                rotation_angle=self.rotation_angle,
             )
             self.signals.finished.emit(bool(success), str(self.output_path), "")
         except (
@@ -96,6 +99,7 @@ class CropExecutionController(QObject):
         source_rect,
         image_dimensions,
         on_finished,
+        rotation_angle: int = 0,
     ) -> None:
         """on_finished: callable(success: bool, output_filepath: str, error_message: str),
         guaranteed to run on the GUI thread."""
@@ -108,6 +112,7 @@ class CropExecutionController(QObject):
             output_path,
             source_rect,
             image_dimensions,
+            rotation_angle=rotation_angle,
         )
         self._active_workers.append(worker)
 
