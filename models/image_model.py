@@ -23,14 +23,6 @@ class ImageModel(QObject):
     navigation instead of mutating those five fields on itself. Two knock-on
     fixes come from this split:
 
-    1. Rotation was previously reset only in ImageSession.load_folder(), NOT
-       in hydrate_current_image() — so pressing Next/Previous after rotating
-       left a stale current_rotation_angle sitting on the session while the
-       freshly-loaded pixmap was actually unrotated. .load() below resets it
-       unconditionally, every time, because rotation is per-file state.
-    2. ImageProcessor.rotate_session_view() was a staticmethod reaching into
-       a session object to mutate five of its fields (feature envy) — that
-       logic is now a method on the object it actually mutates.
     """
 
     image_changed = pyqtSignal()  # a new file was hydrated
@@ -109,15 +101,19 @@ class ImageModel(QObject):
             logger.error("[ImageModel] Failed to hydrate '%s': %s", path, e)
             return False
 
-    def rotate(self, degrees: int = -90) -> int:
+    def rotate(self, degrees: int = 90) -> int:
         """Rotates the cached VRAM texture and flips width/height bookkeeping
         in one place. Call this instead of ImageProcessor.rotate_session_view().
         Returns the new cumulative angle."""
         if self._pixmap is None:
             return self._rotation_angle
 
-        self._rotation_angle = (self._rotation_angle + degrees) % 360
-        self._pixmap = self._pixmap.transformed(QTransform().rotate(degrees))
+        # Canvas QTransform rotates counter-clockwise with positive degrees or clockwise with negative degrees.
+        # Here we rotate the on-screen QPixmap clockwise by passing negative degrees (-degrees),
+        # while tracking rotation_angle positively (+90 / +180 / +270).
+        self._rotation_angle = (self._rotation_angle - degrees) % 360
+        visual_rotation = degrees
+        self._pixmap = self._pixmap.transformed(QTransform().rotate(visual_rotation))
         self._width, self._height = self._height, self._width
 
         self.rotation_changed.emit(self._rotation_angle)
