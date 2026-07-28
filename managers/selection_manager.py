@@ -49,7 +49,7 @@ class _ScreenCommitContext:
 class SelectionManager:
     """State owner for the crop rubber-band and its optional ghost overlay.
 
-    FastCropApp still constructs and parents the QRubberBand widgets (that's
+    LossLessCropApp still constructs and parents the QRubberBand widgets (that's
     a layout concern), but hands them here and from then on only calls into
     this class to mutate selection geometry. Nothing outside SelectionManager
     should call .setGeometry()/.show()/.hide() on `selector` or
@@ -167,7 +167,7 @@ class SelectionManager:
             self._on_selection_changed()
 
     # -----------------------------------------------------------------
-    # Mouse-press entry points (called from FastCropApp.on_mouse_press)
+    # Mouse-press entry points (called from LossLessCropApp.on_mouse_press)
     # -----------------------------------------------------------------
     def begin_draw(self, start_point: QPoint):
         """Left-click press: start a fresh rubber-band draw."""
@@ -194,7 +194,7 @@ class SelectionManager:
         return True
 
     # -----------------------------------------------------------------
-    # Mouse-move entry points (called from FastCropApp.on_mouse_move)
+    # Mouse-move entry points (called from LossLessCropApp.on_mouse_move)
     # -----------------------------------------------------------------
     def update_move(self, current_point: QPoint):
         """Right-click drag: slide the box, clamped to canvas bounds, then
@@ -306,7 +306,7 @@ class SelectionManager:
         )
 
     # -----------------------------------------------------------------
-    # Mouse-release entry point (called from FastCropApp.on_mouse_release)
+    # Mouse-release entry point (called from LossLessCropApp.on_mouse_release)
     # -----------------------------------------------------------------
     def finalize_draw(self):
         """Left-click release: apply the final snap per the active snap mode
@@ -450,10 +450,10 @@ class SelectionManager:
 
     # -----------------------------------------------------------------
     # Model -> view sync after a crop or an image swap (replaces
-    # restore_preserved_geometry as the thing FastCropApp calls)
+    # restore_preserved_geometry as the thing LossLessCropApp calls)
     # -----------------------------------------------------------------
     def sync_view_from_model(self) -> None:
-        """Called by FastCropApp right after refresh_display_canvas() — on
+        """Called by LossLessCropApp right after refresh_display_canvas() — on
         every folder navigation, every crop (overwrite or not), any time
         the canvas just repainted. crop_model.has_selection tells us
         whether the box should still be showing at all (ImageSession's

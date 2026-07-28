@@ -1,10 +1,13 @@
 # managers/file_manager.py
+import logging
 from pathlib import Path
 
 from PIL import Image
 
 from config.app_constants import APP_ROOT_DIR, SUPPORTED_IMAGE_EXTENSIONS
 from managers.settings_manager import SettingsManager
+
+logger = logging.getLogger(__name__)
 
 
 class FileManager:
@@ -18,7 +21,7 @@ class FileManager:
         try:
             return file_path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            print(f"Warning: Asset missing at: {file_path}")
+            logger.warning("Warning: Asset missing at: %s", file_path)
             return ""
 
     def generate_unique_crop_path(
@@ -70,8 +73,9 @@ class FileManager:
                     img.verify()
                 valid_paths.append(file_path)  # Keep the full Path object!
             except Exception:
-                print(
-                    f"[SECURITY SHIELD] Discarded fake or corrupted image: {file_path.name}"
+                logger.info(
+                    "[SECURITY SHIELD] Discarded fake or corrupted image: %s",
+                    file_path.name,
                 )
 
         return valid_paths

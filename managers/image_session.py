@@ -17,7 +17,7 @@ class ImageSession(QObject):
     flush.
 
     crop_settings is your existing AppSettings instance (models/app_settings.py)
-    — pass FastCropApp.settings straight in. It's a plain dataclass, not a
+    — pass LossLessCropApp.settings straight in. It's a plain dataclass, not a
     QObject, and that's fine here: this class only ever reads
     conserve_selection at the moment a new image loads, it doesn't need to
     react live to the checkbox changing mid-session. Bind
@@ -133,7 +133,7 @@ class ImageSession(QObject):
         """Call after a crop completes WITHOUT an image swap (overwrite is
         off, so hydrate_current_image() never ran and the Sync Chain never
         fired). When a swap DID happen, this is a no-op to call again —
-        harmless, so FastCropApp doesn't need to branch on which case it's
+        harmless, so LossLessCropApp doesn't need to branch on which case it's
         in, it can just always call this after a non-overwrite crop."""
         if not self.crop_settings.conserve_selection:
             self.crop_model.clear()

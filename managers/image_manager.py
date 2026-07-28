@@ -1,3 +1,4 @@
+import logging
 import os
 import platform
 import subprocess
@@ -6,6 +7,8 @@ from pathlib import Path
 from PIL import Image
 
 from config import app_constants, ui_constants
+
+logger = logging.getLogger(__name__)
 
 
 class ImageProcessor:
@@ -61,11 +64,11 @@ class ImageProcessor:
         """Prints a clean, structured typographic layout map of active operations."""
         w, h = size
         c_w, c_h, c_x, c_y = crop_box
-        print(f"\n[ENGINE ACTIVATION] ---> {engine_name}")
-        print(f" 📂 Source File   : {src}")
-        print(f" 💾 Target Output : {dest}")
-        print(f" 📐 File Dimensions: {w}x{h}")
-        print(f" 🧮 Crop Geometry : X={c_x}, Y={c_y}, W={c_w}, H={c_h}")
+        logger.info("\n[ENGINE ACTIVATION] ---> %s", engine_name)
+        logger.info(" 📂 Source File   : %s", src)
+        logger.info(" 💾 Target Output : %s", dest)
+        logger.info(" 📐 File Dimensions: %sx%s", w, h)
+        logger.info(" 🧮 Crop Geometry : X=%s, Y=%s, W=%s, H=%s", c_x, c_y, c_w, c_h)
 
     def execute_lossless_jpegtran_crop(
         self, src: Path, dest: str, crop_box: tuple
@@ -86,13 +89,14 @@ class ImageProcessor:
             subprocess.run(
                 command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
-            print(
+            logger.info(
                 "[SUCCESS] Lossless binary block transformation completed with 0% quality loss."
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            print(
-                f"❌ [EMERGENCY FALLBACK] jpegtran failed, shifting to Pillow re-compression: {e}"
+            logger.error(
+                "❌ [EMERGENCY FALLBACK] jpegtran failed, shifting to Pillow re-compression: %s",
+                e,
             )
             return self.execute_lossy_pillow_crop(
                 src, dest, (c_x, c_y, c_x + c_w, c_y + c_h)
@@ -107,10 +111,14 @@ class ImageProcessor:
             with Image.open(src) as img:
                 cropped_image = img.crop((left, top, right, bottom))
                 cropped_image.save(dest)
-            print("[SUCCESS] Image pixel re-compression slice saved successfully.")
+            logger.info(
+                "[SUCCESS] Image pixel re-compression slice saved successfully."
+            )
             return True
         except Exception as e:
-            print(f"❌ [CROP FAILURE] Pillow re-compression pipeline failed: {e}")
+            logger.error(
+                "❌ [CROP FAILURE] Pillow re-compression pipeline failed: %s", e
+            )
             return False
 
     @staticmethod

@@ -1,5 +1,9 @@
+import logging
+
 from PyQt6.QtCore import QPoint, QRect, Qt
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
+logger = logging.getLogger(__name__)
 
 
 class FloatingZoomPreview(QWidget):
@@ -72,7 +76,7 @@ class FloatingZoomPreview(QWidget):
             self.lbl_canvas.setPixmap(scaled_pixmap)
 
         except Exception as e:
-            print(f"[HUD INTERCEPT] GPU Render pipeline block: {e}")
+            logger.error("[HUD INTERCEPT] GPU Render pipeline block: %s", e)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

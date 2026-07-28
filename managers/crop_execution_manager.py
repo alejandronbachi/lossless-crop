@@ -56,7 +56,7 @@ class CropWorker(QRunnable):
 
 
 class CropExecutionController(QObject):
-    """Owns the QThreadPool and dispatches crop jobs. FastCropApp holds one
+    """Owns the QThreadPool and dispatches crop jobs. LossLessCropApp holds one
     instance (created in __init__) and calls submit_crop(...) instead of
     calling image_manager's crop methods directly from an event handler.
 
