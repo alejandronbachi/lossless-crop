@@ -106,7 +106,6 @@ class CanvasPresenter:
         if (
             self._updating_spinboxes
             or not self.image_session.has_active_image
-            or not self.image_session.pil_image
             or self.crop_box_selector.isHidden()
         ):
             return
@@ -130,11 +129,7 @@ class CanvasPresenter:
 
     def on_spin_width_changed(self, value=None):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
-        if (
-            self._updating_spinboxes
-            or not self.image_session.has_active_image
-            or not self.image_session.pil_image
-        ):
+        if self._updating_spinboxes or not self.image_session.has_active_image:
             return
 
         if value is None:
@@ -154,11 +149,7 @@ class CanvasPresenter:
 
     def on_spin_height_changed(self, value=None):
         """Triggers when height spinbox is adjusted manually via arrows or keystrokes."""
-        if (
-            self._updating_spinboxes
-            or not self.image_session.has_active_image
-            or not self.image_session.pil_image
-        ):
+        if self._updating_spinboxes or not self.image_session.has_active_image:
             return
         if value is None:
             value = self.spin_height.value()
@@ -194,8 +185,7 @@ class CanvasPresenter:
     def update_zoom_hud_payload(self):
         """Calculates high-res coordinates and triggers instant GPU-side cropping."""
         if (
-            not PILLOW_AVAILABLE
-            or not self.cfg_show_preview.isChecked()
+            not self.cfg_show_preview.isChecked()
             or self.crop_box_selector.isHidden()
             or not self.image_session.has_active_image
         ):
