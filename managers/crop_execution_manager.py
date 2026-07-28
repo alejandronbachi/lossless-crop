@@ -28,6 +28,7 @@ class CropWorker(QRunnable):
         source_rect,
         image_dimensions,
         rotation_angle: int = 0,
+        is_true_jpeg: bool = False,
     ):
         super().__init__()
         self.image_manager = image_manager
@@ -37,6 +38,7 @@ class CropWorker(QRunnable):
         self.source_rect = source_rect
         self.image_dimensions = image_dimensions
         self.rotation_angle = rotation_angle
+        self.is_true_jpeg = is_true_jpeg
         self.signals = CropWorkerSignals()
 
     @pyqtSlot()
@@ -50,6 +52,7 @@ class CropWorker(QRunnable):
                 source_rect=self.source_rect,
                 image_dimensions=self.image_dimensions,
                 rotation_angle=self.rotation_angle,
+                is_true_jpeg=self.is_true_jpeg,
             )
             self.signals.finished.emit(bool(success), str(self.output_path), "")
         except (
@@ -100,6 +103,7 @@ class CropExecutionController(QObject):
         image_dimensions,
         on_finished,
         rotation_angle: int = 0,
+        is_true_jpeg: bool = False,
     ) -> None:
         """on_finished: callable(success: bool, output_filepath: str, error_message: str),
         guaranteed to run on the GUI thread."""
@@ -113,6 +117,7 @@ class CropExecutionController(QObject):
             source_rect,
             image_dimensions,
             rotation_angle=rotation_angle,
+            is_true_jpeg=is_true_jpeg,
         )
         self._active_workers.append(worker)
 

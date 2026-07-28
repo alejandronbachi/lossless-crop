@@ -119,7 +119,11 @@ class ImageProcessor:
 
     @staticmethod
     def execute_lossy_pillow_crop(
-        src: Path, dest: str, bounding_box: tuple, rotation_angle: int = 0
+        src: Path,
+        dest: str,
+        bounding_box: tuple,
+        rotation_angle: int = 0,
+        is_true_jpeg: bool = False,
     ) -> bool:
         """🎨 ENGINE B: Standard fallback or pixel-perfect CPU image re-compression."""
         left, top, right, bottom = bounding_box
@@ -159,11 +163,10 @@ class ImageProcessor:
                 cropped_image = img.crop((left, top, right, bottom))
 
                 # 4. Format-Specific Save Blocks (Prevents WebP / PNG parameter crashes)
-                is_jpeg = ImageProcessor.is_true_jpeg(src)
                 is_webp = img_format == "WEBP" or Path(src).suffix.lower() == ".webp"
 
                 # JPEG-specific 'keep' logic
-                if is_jpeg:
+                if is_true_jpeg:
                     has_qtables = hasattr(img, "quantization") and img.quantization
                     if has_qtables:
                         try:
@@ -218,6 +221,7 @@ class ImageProcessor:
         source_rect,
         image_dimensions,
         rotation_angle: int = 0,
+        is_true_jpeg: bool = False,
     ) -> bool:
         """Centralized routing hub that,converts coordinates, logs actions,
         and delegates to the correct low-level execution method and
@@ -279,5 +283,9 @@ class ImageProcessor:
             # Format arguments for Pillow: (left, top, right, bottom)
             crop_args = (crop_left, crop_top, crop_right, crop_bottom)
             return self.execute_lossy_pillow_crop(
-                source_path, output_path, crop_args, rotation_angle=rotation_angle
+                source_path,
+                output_path,
+                crop_args,
+                rotation_angle=rotation_angle,
+                is_true_jpeg=is_true_jpeg,
             )
