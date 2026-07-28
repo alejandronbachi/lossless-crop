@@ -43,6 +43,7 @@ try:
     from PIL import Image
     from PIL.ImageQt import ImageQt
 
+    Image.MAX_IMAGE_PIXELS = None
     PILLOW_AVAILABLE = True
 except ImportError:
     PILLOW_AVAILABLE = False
