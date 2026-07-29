@@ -3,6 +3,7 @@ from PyQt6.QtGui import QPixmap
 
 from config import app_constants, ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine
+from managers.image_session import ImageSession
 
 # Check for Pillow availability
 try:
@@ -21,7 +22,7 @@ class CanvasPresenter:
 
     def __init__(
         self,
-        image_session,
+        image_session: ImageSession,
         selection_manager,
         status_manager,
         image_display_container,
@@ -99,7 +100,14 @@ class CanvasPresenter:
 
     def get_current_forced_ratio(self):
         """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
-        return CropGeometryEngine.resolve_aspect_ratio(self.combo_ratio.currentText())
+        dims = (
+            (self.image_session.width, self.image_session.height)
+            if self.image_session.has_active_image
+            else None
+        )
+        return CropGeometryEngine.resolve_aspect_ratio(
+            self.combo_ratio.currentText(), dims
+        )
 
     def update_resolution_metrics_display(self):
         """Updates the spinboxes and status bar metrics based on the current selection box,

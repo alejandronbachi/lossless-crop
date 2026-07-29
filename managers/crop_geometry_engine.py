@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from PyQt6.QtCore import QRect
 
 from config.ui_constants import (
+    RATIO_SOURCE,
     RATIO_SQUARE,
     RATIO_STANDARD,
     RATIO_WIDESCREEN,
@@ -68,7 +69,14 @@ class CropGeometryEngine:
     JPEG_GRID_SIZE = 16
 
     @staticmethod
-    def resolve_aspect_ratio(ratio_label: str) -> float | None:
+    def resolve_aspect_ratio(
+        ratio_label: str, source_dimensions: tuple[int, int] | None = None
+    ) -> float | None:
+        if ratio_label == RATIO_SOURCE:
+            if not source_dimensions or not source_dimensions[1]:
+                return None
+            w, h = source_dimensions
+            return w / h
         return ASPECT_RATIOS.get(ratio_label)
 
     @classmethod
@@ -92,7 +100,9 @@ class CropGeometryEngine:
         img_w = screen_rect.width() * viewport.scale_x
         img_h = screen_rect.height() * viewport.scale_y
 
-        aspect = cls.resolve_aspect_ratio(ratio_label)
+        aspect = cls.resolve_aspect_ratio(
+            ratio_label, (viewport.source_width, viewport.source_height)
+        )
 
         if lossless:
             img_w = cls.snap_to_grid(img_w)
@@ -129,7 +139,9 @@ class CropGeometryEngine:
         this ran. In Lossless mode the grid snap absorbed that; in
         Pixel-Perfect mode (no snap) it was directly visible as drift.
         """
-        aspect = cls.resolve_aspect_ratio(ratio_label)
+        aspect = cls.resolve_aspect_ratio(
+            ratio_label, (viewport.source_width, viewport.source_height)
+        )
 
         screen_x = (
             round(source_rect.x() * viewport.source_to_screen_x) + viewport.offset_x
@@ -160,12 +172,12 @@ class CropGeometryEngine:
 
     @classmethod
     def apply_aspect_lock_to_width(
-        cls, width: int, ratio_label: str, lossless: bool
+        cls, width: int, ratio_label: str, lossless: bool, source_dimensions=None
     ) -> int | None:
         """Given a target width and the active ratio, returns the matching
         height, or None for Freeform (caller keeps whatever height it had).
         """
-        aspect = cls.resolve_aspect_ratio(ratio_label)
+        aspect = cls.resolve_aspect_ratio(ratio_label, source_dimensions)
         if aspect is None:
             return None
         if lossless:
