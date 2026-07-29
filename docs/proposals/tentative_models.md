@@ -1,14 +1,7 @@
 ```mermaid
 classDiagram
 
-    class CropModel {
-        +int x
-        +int y
-        +int width
-        +int height
-        +float aspect_ratio
-    }
-
+  
     class CropSettings {
         +String engine
         +bool overwrite
