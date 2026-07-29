@@ -246,7 +246,9 @@ class SelectionManager:
         raw_h = y2 - y1
 
         ratio_label = self._current_ratio_label()
-        aspect = CropGeometryEngine.resolve_aspect_ratio(ratio_label)
+        aspect = CropGeometryEngine.resolve_aspect_ratio(
+            ratio_label, (viewport.source_width, viewport.source_height)
+        )
         if aspect is not None:
             sign_w = 1 if raw_w >= 0 else -1
             sign_h = 1 if raw_h >= 0 else -1
@@ -506,6 +508,14 @@ class SelectionManager:
             self.selector.setGeometry(snapped)
 
         self.last_crop_geometry = self.selector.geometry()
+        if self._current_ratio_label() == ui_constants.RATIO_SOURCE:
+            # Source Ratio's meaning is per-image. Lossless mode already
+            # reshaped above via the grid re-snap (which re-derives height from
+            # the live aspect); Pixel-Perfect mode leaves geometry untouched by
+            # design, so force the same reshape apply_ratio_to_selector_widget()
+            # already does for manual ratio-combo changes.
+            self.apply_ratio_to_selector_widget()
+
         self._notify_changed()  # refreshes crop_model FROM this geometry
 
     def clear_selection(self):
@@ -524,7 +534,8 @@ class SelectionManager:
 
     def apply_ratio_to_selector_widget(self):
         """Forces the on-screen selection box to recalculate its dimensions
-        to match the new combo aspect ratio under Pixel-Perfect (Pillow) mode.
+        when: A. combo aspect ratio change under Pixel-Perfect (Pillow) mode.
+              B. Ratio Source is selected and changing image
         """
         if self.selector.isHidden() or self._lossless_check():
             return

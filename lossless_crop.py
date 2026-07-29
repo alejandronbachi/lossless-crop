@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
 from config import app_constants, ui_constants
 from managers.canvas_presenter import CanvasPresenter
 from managers.crop_execution_manager import CropExecutionController
-from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
+from managers.crop_geometry_engine import ViewportGeometry
 from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
@@ -239,8 +239,7 @@ class LossLessCropApp(QMainWindow):
 
     def on_ratio_changed(self):
         self.snap_selector_widget()
-        if hasattr(self, "selection_manager"):
-            self.selection_manager.apply_ratio_to_selector_widget()
+        self.selection_manager.apply_ratio_to_selector_widget()
 
     def determine_if_lossless_active(self):
         """A single source of truth to check if Lossless operation is currently legal.
@@ -618,10 +617,6 @@ class LossLessCropApp(QMainWindow):
         if event.mimeData().hasUrls():
             # Dynamically change the cursor arrow to a premium link/drop icon copy state
             event.acceptProposedAction()
-
-    def get_current_forced_ratio(self):
-        """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
-        return CropGeometryEngine.resolve_aspect_ratio(self.combo_ratio.currentText())
 
     def on_spin_width_changed(self, value=None):
         """Triggers when width spinbox is adjusted manually via arrows or keystrokes."""
