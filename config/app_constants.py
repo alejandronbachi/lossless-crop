@@ -1,7 +1,7 @@
 from pathlib import Path
 
 APP_ROOT_DIR = Path(__file__).resolve().parent.parent
-ASSETS_DIR = "assets"
+
 JPEG_EXTENSIONS = {".jpg", ".jpeg"}
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 ALWAYS_LOSSLESS_IMAGE_EXTENSIONS = {".png", ".bmp"}

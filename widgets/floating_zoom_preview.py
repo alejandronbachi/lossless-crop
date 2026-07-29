@@ -5,7 +5,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from config.app_constants import APP_ROOT_DIR
-from config.ui_constants import ICON_FILENAME
+from config.ui_constants import FOLDER_ASSETS, FOLDER_ICONS, ICON_FILENAME
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,8 @@ class FloatingZoomPreview(QWidget):
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
         )
-        icon_path = APP_ROOT_DIR / ICON_FILENAME
+
+        icon_path = APP_ROOT_DIR / FOLDER_ASSETS / FOLDER_ICONS / ICON_FILENAME
         if icon_path.exists():
             # Convert Path to str since some older PyQt versions prefer string primitives for UI assets
             self.setWindowIcon(QIcon(str(icon_path)))

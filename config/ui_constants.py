@@ -1,6 +1,10 @@
+import sys
+
 # --- Front End Assets Directory Names ---
+FOLDER_ASSETS = "assets"
 FOLDER_STYLES = "styles"
 FOLDER_TEMPLATES = "templates"
+FOLDER_ICONS = "icons"
 # --- Stylesheet File Names ---
 STYLE_BTN_SETTINGS = "btn_settings.qss"
 STYLE_COMMANDS = "commands_overlay.qss"
@@ -16,7 +20,15 @@ STYLE_TELEMETRY_HUD = "telemetry_hud.qss"
 TEMPLATE_SPLASH = "splash_hud.html"
 TEMPLATE_COMMANDS = "commands_overlay.html"
 
-ICON_FILENAME = "icon.png"
+
+# --- ICON File Name ---
+if sys.platform == "win32":
+    ICON_FILENAME = "icon.ico"
+elif sys.platform == "darwin":
+    ICON_FILENAME = "icon.icns"
+else:
+    ICON_FILENAME = "icon.png"
+
 
 # --- App Window & Views Titles ---
 WINDOW_TITLE = "LossLess Crop"

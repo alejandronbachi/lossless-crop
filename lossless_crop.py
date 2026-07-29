@@ -71,7 +71,12 @@ class LossLessCropApp(QMainWindow):
         self.resize_throttle_timer.timeout.connect(self.execute_deferred_resize_recalc)
 
         #  Core Application Icon Registry Initialization
-        icon_path = app_constants.APP_ROOT_DIR / ui_constants.ICON_FILENAME
+        icon_path = (
+            app_constants.APP_ROOT_DIR
+            / ui_constants.FOLDER_ASSETS
+            / ui_constants.FOLDER_ICONS
+            / ui_constants.ICON_FILENAME
+        )
         if icon_path.exists():
             # Convert Path to str since some older PyQt versions prefer string primitives for UI assets
             self.setWindowIcon(QIcon(str(icon_path)))  # Sets Title Bar Icon
