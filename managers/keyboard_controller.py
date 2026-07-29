@@ -30,6 +30,7 @@ class KeyboardController(QObject):
                 Qt.Key.Key_I,
                 Qt.Key.Key_S,
                 Qt.Key.Key_Space,
+                Qt.Key.Key_Escape,
             ):
                 if key == Qt.Key.Key_F:
                     self.trigger_forward_navigation()
@@ -48,6 +49,8 @@ class KeyboardController(QObject):
                 elif key == Qt.Key.Key_Space:
                     self.main_window.process_and_execute_crop()
                     self.trigger_forward_navigation()
+                elif key == Qt.Key.Key_Escape:
+                    self.main_window.close()
                 return True  # Intercepted! Do not let the letter type inside the spinbox number box
 
             # EXCEPTION: Spinboxes keep their default text cursor manipulation

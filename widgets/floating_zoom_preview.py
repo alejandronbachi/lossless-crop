@@ -152,21 +152,3 @@ class FloatingZoomPreview(QWidget):
             ):
                 self.main_app.cfg_show_preview.setChecked(False)
             event.accept()
-
-    def keyPressEvent(self, event):
-        """Listens for specific keystrokes when the preview window has active focus."""
-        # 🌟 CLOSE ON ESCAPE: If the user hits Esc, cleanly dismiss the HUD panel
-        if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_P):
-            self.hide()
-
-            # Uncheck the matching drawer checkbox in the main window for sync consistency
-            if (
-                hasattr(self.main_app, "cfg_show_preview")
-                and self.main_app.cfg_show_preview is not None
-                and self.main_app.cfg_show_preview
-            ):
-                self.main_app.cfg_show_preview.setChecked(False)
-
-            event.accept()
-        else:
-            super().keyPressEvent(event)
