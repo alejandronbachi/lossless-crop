@@ -42,7 +42,9 @@ class FloatingZoomPreview(QWidget):
         self.is_moving = False
 
     #  Accept the live texture reference straight from the caller parameters
-    def refresh_scaled_preview_live(self, current_pixmap, crop_box_pil_coords: tuple):
+    def refresh_scaled_preview_live(
+        self, current_pixmap, fit_enabled, crop_box_pil_coords: tuple
+    ):
         """Hardware-accelerated slice and scale directly inside VRAM (Instant)."""
         # Read directly from the incoming texture parameter instead of self.master_pixmap
         if current_pixmap is None or current_pixmap.isNull():
@@ -68,9 +70,15 @@ class FloatingZoomPreview(QWidget):
                 return
 
             # 3. Scale the sub-section to fit HUD view layout rules
+            aspect_mode = (
+                Qt.AspectRatioMode.KeepAspectRatio
+                if fit_enabled
+                else Qt.AspectRatioMode.KeepAspectRatioByExpanding
+            )
+
             scaled_pixmap = cropped_pixmap.scaled(
                 current_window_size,
-                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                aspect_mode,
                 Qt.TransformationMode.SmoothTransformation,
             )
             self.lbl_canvas.setPixmap(scaled_pixmap)

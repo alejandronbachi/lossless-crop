@@ -171,6 +171,7 @@ class LossLessCropApp(QMainWindow):
             spin_height=self.spin_height,
             combo_ratio=self.combo_ratio,
             cfg_show_preview=self.cfg_show_preview,
+            cfg_fit_preview=self.cfg_fit_preview,
             viewport_factory=self._build_viewport_geometry,
         )
         self.image_display_container.setFocus()

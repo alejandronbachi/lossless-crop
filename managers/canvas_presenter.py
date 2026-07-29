@@ -31,6 +31,7 @@ class CanvasPresenter:
         spin_height,
         combo_ratio,
         cfg_show_preview,
+        cfg_fit_preview,
         viewport_factory,
     ):
         self.image_session = image_session
@@ -43,6 +44,7 @@ class CanvasPresenter:
         self.spin_height = spin_height
         self.combo_ratio = combo_ratio
         self.cfg_show_preview = cfg_show_preview
+        self.cfg_fit_preview = cfg_fit_preview
         self.viewport_factory = viewport_factory
         self._updating_spinboxes = False
 
@@ -223,7 +225,9 @@ class CanvasPresenter:
 
                 if self.zoom_hud is not None:
                     self.zoom_hud.refresh_scaled_preview_live(
-                        self.image_session.master_pixmap, pil_coords
+                        self.image_session.master_pixmap,
+                        self.cfg_fit_preview.isChecked(),
+                        pil_coords,
                     )
                 return
 

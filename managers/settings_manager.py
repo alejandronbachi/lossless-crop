@@ -132,6 +132,9 @@ class SettingsManager:
         binder.bind_checkbox(
             main_window.cfg_show_preview, app_constants.SETTING_SHOW_PREVIEW_HUD
         )
+        binder.bind_checkbox(
+            main_window.cfg_fit_preview, app_constants.SETTING_FIT_PREVIEW
+        )
 
         # Category 3: Window Persistence
         binder.bind_checkbox(

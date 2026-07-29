@@ -20,6 +20,7 @@ class AppSettings:
     hud_win_w: int = 200
     hud_win_h: int = 200
     show_preview_hud: bool = True
+    fit_preview: bool = False
 
     # --- Persistent Configuration Toggles ---
     persist_main_win: bool = True
