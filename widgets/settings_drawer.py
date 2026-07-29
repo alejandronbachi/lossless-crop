@@ -131,6 +131,16 @@ class SettingsDrawer(
         )
         self.layout.addWidget(self.main_app.cfg_show_preview)
 
+        self.main_app.cfg_fit_preview = QCheckBox(
+            ui_constants.CHECKBOX_FIT_PREVIEW_TEXT
+        )
+        self.main_app.cfg_fit_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.cfg_fit_preview.setChecked(False)
+        self.main_app.cfg_fit_preview.stateChanged.connect(
+            self.main_app.status_manager.invalidate_ui_state
+        )
+        self.layout.addWidget(self.main_app.cfg_fit_preview)
+
         # --- CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE ---
         lbl_layout_section = QLabel(ui_constants.LABEL_LAYOUT_SECTION)
         lbl_layout_section.setStyleSheet(
