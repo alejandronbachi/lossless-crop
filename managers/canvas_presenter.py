@@ -1,5 +1,5 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 
 from config import app_constants, ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine
@@ -96,6 +96,40 @@ class CanvasPresenter:
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
+
+        # -----------------------------------------------------------------
+        # Enforce alpha format safety & draw a true canvas divider line
+        # -----------------------------------------------------------------
+
+        # 1. Strip out any accidental solid scaling background fills
+        alpha_img = scaled_pixmap.toImage().convertToFormat(QImage.Format.Format_ARGB32)
+        scaled_pixmap = QPixmap.fromImage(alpha_img)
+
+        # 2. Build a drawing layer to safely inject our visual border frame
+        bordered_pixmap = QPixmap(scaled_pixmap.size())
+        bordered_pixmap.fill(
+            QColor(Qt.GlobalColor.transparent)
+        )  # Maintain transparency
+
+        painter = QPainter(bordered_pixmap)
+        painter.drawPixmap(0, 0, scaled_pixmap)  # Paint the image pixels first
+
+        # -----------------------------------------------------------------
+        # FIXED: Changed Pen Style from SolidLine to DashLine
+        # -----------------------------------------------------------------
+        pen = QPen(QColor("#777777"), 1)
+        pen.setStyle(
+            Qt.PenStyle.DashLine
+        )  # 🚀 This creates the broken line pattern automatically
+        painter.setPen(pen)
+
+        # Draw the frame precisely tracing the image's layout edges
+        painter.drawRect(
+            0, 0, bordered_pixmap.width() - 1, bordered_pixmap.height() - 1
+        )
+        painter.end()
+
+        scaled_pixmap = bordered_pixmap
         self.image_display_container.setPixmap(scaled_pixmap)
 
     def get_current_forced_ratio(self):
