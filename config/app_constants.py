@@ -1,6 +1,10 @@
+import sys
 from pathlib import Path
 
-APP_ROOT_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    APP_ROOT_DIR = Path(sys._MEIPASS)
+else:
+    APP_ROOT_DIR = Path(__file__).resolve().parent.parent
 
 JPEG_EXTENSIONS = {".jpg", ".jpeg"}
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
