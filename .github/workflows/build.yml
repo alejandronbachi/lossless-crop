@@ -1,7 +1,6 @@
 name: 1 - Compile App Binables
 
 on:
-  # Keeps only the manual web button active so you can test compilation safely
   workflow_dispatch:
 
 jobs:
@@ -55,37 +54,24 @@ jobs:
       run: |
         pyinstaller lossless_crop.spec
 
-    - name: Archive Windows Build
-      if: matrix.os == 'windows-latest'
-      run: |
-        # Target the standalone .exe file directly instead of a folder
-        Compress-Archive -Path dist/LosslessCrop.exe -DestinationPath LosslessCrop-Windows.zip
-
-    - name: Archive Linux Build
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        # This targets the compiled standalone binary file directly inside dist/
-        tar -czvf LosslessCrop-Linux.tar.gz -C dist LosslessCrop
-
-    - name: Archive macOS Build
-      if: matrix.os == 'macos-latest'
-      run: |
-        # This targets the compiled standalone binary file directly inside dist/
-        tar -czvf LosslessCrop-macOS.tar.gz -C dist LosslessCrop
-
     - name: Upload Windows Artifact
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
         name: staging-windows
-        path: LosslessCrop-Windows.zip
+        path: dist/LosslessCrop.exe
 
     - name: Upload Linux Artifact
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
         name: staging-linux
-        path: LosslessCrop-Linux.tar.gz
+        path: dist/LosslessCrop
+
+    - name: Compress macOS Binary for Permissions Protection
+      if: matrix.os == 'macos-latest'
+      run: |
+        tar -czvf LosslessCrop-macOS.tar.gz -C dist LosslessCrop
 
     - name: Upload macOS Artifact
       if: matrix.os == 'macos-latest'
