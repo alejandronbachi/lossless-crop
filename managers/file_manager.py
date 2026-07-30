@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL import Image
 
 from config.app_constants import APP_ROOT_DIR, SUPPORTED_IMAGE_EXTENSIONS
+from config.ui_constants import FOLDER_ASSETS
 from managers.settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class FileManager:
 
     def load_asset(self, filename: str, folder_name: str) -> str:
         """Dynamically loads layout styling text / HTML / QSS content safely."""
-        file_path = APP_ROOT_DIR / folder_name / filename
+        file_path = APP_ROOT_DIR / FOLDER_ASSETS / folder_name / filename
         try:
             return file_path.read_text(encoding="utf-8")
         except FileNotFoundError:

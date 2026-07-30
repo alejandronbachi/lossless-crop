@@ -1,0 +1,96 @@
+name: Build and Release Executables
+
+on:
+  # 1. Adds the manual "Run workflow" selection button back to the Actions tab
+  workflow_dispatch:
+
+  # 2. Automatically triggers a production build when you publish a formal software release
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Prepare jpegtran binary (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libjpeg-turbo-progs
+        mkdir -p binaries
+        cp $(which jpegtran) binaries/jpegtran_linux
+        chmod +x binaries/jpegtran_linux
+
+    - name: Prepare jpegtran binary (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install jpeg
+        mkdir -p binaries
+        cp $(which jpegtran) binaries/jpegtran_mac
+        chmod +x binaries/jpegtran_mac
+
+    - name: Verify binaries
+      run: |
+        python -c "import pathlib; print(list(pathlib.Path('binaries').iterdir()))"
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller lossless_crop.spec
+
+    - name: Archive Windows Build
+      if: matrix.os == 'windows-latest'
+      run: |
+        Compress-Archive -Path dist/LosslessCrop -DestinationPath LosslessCrop-Windows.zip
+
+    - name: Archive Linux Build
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        tar -czvf LosslessCrop-Linux.tar.gz -C dist LosslessCrop
+
+    - name: Archive macOS Build
+      if: matrix.os == 'macos-latest'
+      run: |
+        tar -czvf LosslessCrop-macOS.tar.gz -C dist LosslessCrop
+
+    - name: Upload Windows Artifact
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: LosslessCrop-Windows
+        path: LosslessCrop-Windows.zip
+
+    - name: Upload Linux Artifact
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: LosslessCrop-Linux
+        path: LosslessCrop-Linux.tar.gz
+
+    - name: Upload macOS Artifact
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: LosslessCrop-macOS
+        path: LosslessCrop-macOS.tar.gz
