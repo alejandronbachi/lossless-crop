@@ -1,11 +1,12 @@
 name: Build and Release Executables
 
 on:
-  push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, master ]
+  # 1. Adds the manual "Run workflow" selection button back to the Actions tab
+  workflow_dispatch:
+
+  # 2. Automatically triggers a production build when you publish a formal software release
+  release:
+    types: [published]
 
 jobs:
   build:
