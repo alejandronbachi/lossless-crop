@@ -1,0 +1,45 @@
+name: 2 - Deploy Binables to Release
+
+on:
+  # Renders your independent manual deployment button on your Actions tab
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Publish Staged Assets to Active Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download Staged Windows Binaries
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: build.yml # Points directly into the file name above
+        name: staging-windows
+        path: ./artifacts
+
+    - name: Download Staged Linux Binaries
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: build.yml
+        name: staging-linux
+        path: ./artifacts
+
+    - name: Download Staged macOS Binaries
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: build.yml
+        name: staging-macos
+        path: ./artifacts
+
+    - name: Verify Staged Asset Tree
+      run: |
+        ls -la ./artifacts
+
+    - name: Publish All Assets to Active Release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ./artifacts/*
+        tag: v1.0.0-beta # Adjust this string to match the targeted release tag on your GitHub page!
+        overwrite: true
+        file_glob: true
