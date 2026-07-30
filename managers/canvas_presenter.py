@@ -76,7 +76,12 @@ class CanvasPresenter:
             or self.image_session.master_pixmap.isNull()
         ):
             self._selection_overlay.set_base_pixmap(None)
-            icon_path = app_constants.APP_ROOT_DIR / ui_constants.ICON_FILENAME
+            icon_path = (
+                app_constants.APP_ROOT_DIR
+                / ui_constants.FOLDER_ASSETS
+                / ui_constants.FOLDER_ICONS
+                / ui_constants.ICON_FILENAME
+            )
             if icon_path.exists():
                 logo_pixmap = QPixmap(str(icon_path))
                 scaled_logo = logo_pixmap.scaled(
