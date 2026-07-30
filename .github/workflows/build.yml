@@ -1,12 +1,8 @@
-name: Build and Release Executables
+name: 1 - Compile App Binables
 
 on:
-  # 1. Adds the manual "Run workflow" selection button back to the Actions tab
+  # Keeps only the manual web button active so you can test compilation safely
   workflow_dispatch:
-
-  # 2. Automatically triggers a production build when you publish a formal software release
-  release:
-    types: [published]
 
 jobs:
   build:
@@ -46,7 +42,7 @@ jobs:
     - name: Prepare jpegtran binary (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        brew install jpeg
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install jpeg
         mkdir -p binaries
         cp $(which jpegtran) binaries/jpegtran_mac
         chmod +x binaries/jpegtran_mac
@@ -78,19 +74,19 @@ jobs:
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: LosslessCrop-Windows
+        name: staging-windows
         path: LosslessCrop-Windows.zip
 
     - name: Upload Linux Artifact
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: LosslessCrop-Linux
+        name: staging-linux
         path: LosslessCrop-Linux.tar.gz
 
     - name: Upload macOS Artifact
       if: matrix.os == 'macos-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: LosslessCrop-macOS
+        name: staging-macos
         path: LosslessCrop-macOS.tar.gz
