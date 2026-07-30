@@ -103,6 +103,26 @@ class SelectionOverlayRenderer:
         pen = QPen(SELECTION_BORDER_COLOR, SELECTION_BORDER_WIDTH)
         painter.setPen(pen)
         painter.drawRect(clipped.adjusted(0, 0, -1, -1))
+
+        # Setup a solid 2px white pen for the corner brackets
+        painter.setPen(QPen(QColor(255, 255, 255), 2, Qt.PenStyle.SolidLine))
+        h_len = 15  # Length of the corner handle lines in pixels
+
+        r = clipped  # The active selection bounding box variable name
+
+        # Draw L-brackets perfectly tracing the crop edges
+        painter.drawLine(r.left(), r.top(), r.left() + h_len, r.top())
+        painter.drawLine(r.left(), r.top(), r.left(), r.top() + h_len)
+
+        painter.drawLine(r.right(), r.top(), r.right() - h_len, r.top())
+        painter.drawLine(r.right(), r.top(), r.right(), r.top() + h_len)
+
+        painter.drawLine(r.left(), r.bottom(), r.left() + h_len, r.bottom())
+        painter.drawLine(r.left(), r.bottom(), r.left(), r.bottom() - h_len)
+
+        painter.drawLine(r.right(), r.bottom(), r.right() - h_len, r.bottom())
+        painter.drawLine(r.right(), r.bottom(), r.right(), r.bottom() - h_len)
+
         painter.end()
 
         return composite

@@ -216,18 +216,45 @@ class LossLessCropApp(QMainWindow):
             return
 
         self.status_manager.hide_overlays_on_mouse_press()
+        click_point = event.position().toPoint()
 
         if event.button() == Qt.MouseButton.LeftButton:
-            self.selection_manager.begin_draw(event.position().toPoint())
+            # 🚀 INTERCEPTION: Check if a corner handle was clicked to drag-resize
+            detected_grip = self.selection_manager.detect_grip_zone(click_point)
+            static_anchor = self.selection_manager.get_opposite_corner_anchor(
+                detected_grip
+            )
+
+            if static_anchor is not None:
+                # Freeze opposite corner and take control of the grabbed handle point
+                self.selection_manager.begin_draw(static_anchor)
+            else:
+                # Normal behavior: No grip clicked, clear and draw a fresh box from scratch
+                self.selection_manager.begin_draw(click_point)
+
         elif event.button() == Qt.MouseButton.RightButton:
-            self.selection_manager.begin_move(event.position().toPoint())
+            self.selection_manager.begin_move(click_point)
 
         self.update_zoom_hud_payload()
 
     def on_mouse_move(self, event):
+        current_point = event.position().toPoint()
+
+        # 🚀 HOVER EFFECT: Track and swap the mouse cursor shapes when hovering over grips
+        if event.buttons() == Qt.MouseButton.NoButton:
+            grip = self.selection_manager.detect_grip_zone(current_point)
+            if grip in (1, 4):  # Top-Left or Bottom-Right corner grips
+                self.image_display_container.setCursor(Qt.CursorShape.SizeFDiagCursor)
+            elif grip in (2, 3):  # Top-Right or Bottom-Left corner grips
+                self.image_display_container.setCursor(Qt.CursorShape.SizeBDiagCursor)
+            else:
+                # Default back to standard crosshair when floating in open space
+                self.image_display_container.setCursor(Qt.CursorShape.CrossCursor)
+
+        # Safety baseline protection block guard (Kept exactly intact)
         if self.selection_manager.drag_start_origin.isNull():
             return
-        current_point = event.position().toPoint()
+
         if self.selection_manager.is_moving_box:
             self.selection_manager.update_move(current_point)
         else:
@@ -241,11 +268,30 @@ class LossLessCropApp(QMainWindow):
                 self.spin_height.blockSignals(False)
 
     def on_mouse_release(self, event):
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and not self.selection_manager.is_moving_box
-        ):
-            self.selection_manager.finalize_draw()
+        if event.button() == Qt.MouseButton.LeftButton:
+            # 🚀 FIXED: Check if the user just performed a static single-click without dragging
+            start_pt = self.selection_manager.drag_start_origin
+            end_pt = event.position().toPoint()
+
+            # If the cursor barely moved (tolerance of 2 pixels), treat it as a deliberate single click
+            if not start_pt.isNull() and (end_pt - start_pt).manhattanLength() <= 2:
+                active_box = self.selection_manager.last_crop_geometry
+
+                # If a box is active and the click happened completely outside its borders, clear it!
+                if active_box and not active_box.contains(end_pt):
+                    self.selection_manager.clear_selection()
+                    # Restore the standard crosshair cursor for a clean drawing environment
+                    self.image_display_container.setCursor(Qt.CursorShape.CrossCursor)
+
+                    # Run your original clean teardown handlers and exit early
+                    self.status_manager.restore_overlays_on_mouse_release()
+                    self.update_resolution_metrics_display()
+                    return
+
+            # Your original standard finalize routine (safely preserved)
+            if not self.selection_manager.is_moving_box:
+                self.selection_manager.finalize_draw()
+
         elif event.button() == Qt.MouseButton.RightButton:
             self.selection_manager.end_move()
 
