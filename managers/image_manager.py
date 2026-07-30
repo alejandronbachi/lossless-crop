@@ -102,8 +102,8 @@ class ImageProcessor:
         startupinfo = None
         if os.name == "nt":  # Only applies to Windows
             startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = subprocess.SW_HIDE  # 0
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE  # 0
 
         try:
             result = subprocess.run(
