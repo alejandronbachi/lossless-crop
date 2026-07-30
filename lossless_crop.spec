@@ -47,29 +47,22 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,       # <-- Added this line to pack binaries inside
+    a.zipfiles,       # <-- Added this line to pack python modules inside
+    a.datas,          # <-- Added this line to pack your assets folder inside
     [],
-    exclude_binaries=True,
     name='LosslessCrop',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False, # Hides the messy black terminal window on startup
+    console=False,     # Hides the black terminal box
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=[current_icon], # Safely injects the perfect native platform icon
+    icon=[current_icon],
 )
 
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='LosslessCrop',
-)
+
