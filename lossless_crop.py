@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 class LossLessCropApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(ui_constants.WINDOW_TITLE)
+        self.setWindowTitle(f"Lossless Crop  - {app_constants.APP_VERSION}")
         self.resize(900, 700)
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()

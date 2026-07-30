@@ -20,8 +20,9 @@ jobs:
         name: staging-windows
         path: ./artifacts
 
+    # Dynamically injects the runtime branch or tag name into the filename
     - name: Label Windows Binary
-      run: mv ./artifacts/LosslessCrop.exe ./artifacts/LosslessCrop-Windows.exe || true
+      run: mv ./artifacts/LosslessCrop.exe ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows.exe || true
 
     - name: Download Staged Linux Binaries
       uses: dawidd6/action-download-artifact@v6
@@ -31,7 +32,7 @@ jobs:
         path: ./artifacts
 
     - name: Label Linux Binary
-      run: mv ./artifacts/LosslessCrop ./artifacts/LosslessCrop-Linux || true
+      run: mv ./artifacts/LosslessCrop ./artifacts/LosslessCrop-${{ github.ref_name }}-Linux || true
 
     - name: Download Staged macOS Binaries
       uses: dawidd6/action-download-artifact@v6
@@ -39,6 +40,10 @@ jobs:
         workflow: build.yml
         name: staging-macos
         path: ./artifacts
+
+    # Dynamically rename the mac archive file to include the release tag
+    - name: Label macOS Binary
+      run: mv ./artifacts/LosslessCrop-macOS.tar.gz ./artifacts/LosslessCrop-${{ github.ref_name }}-macOS.tar.gz || true
 
     - name: Verify Staged Asset Tree
       run: |
@@ -49,6 +54,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ./artifacts/*
-        tag: v1.0.0-beta # Ensure this string always matches your target release tag name!
+        # Dynamically targets the release page matching your active run tag
+        tag: ${{ github.ref_name }}
         overwrite: true
         file_glob: true

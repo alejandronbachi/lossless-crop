@@ -37,3 +37,26 @@ SETTING_OVERWRITE_FILES = "overwrite_files"
 SETTING_RATIO_PREFERENCE = "ratio_preference"
 SETTING_ENGINE_PREFERENCE = "engine_preference"
 SETTING_SNAP_PREFERENCE = "snap_preference"
+
+
+# --- DYNAMIC SEMANTIC VERSION ENGINE ---
+def get_application_version():
+    """
+    Dynamically captures the version tag.
+    If compiled by GitHub Actions, it reads the embedded metadata.
+    If running locally in dev mode, it fallbacks to a local dev string.
+    """
+    # 1. Look for an external version file generated during cloud packaging
+    version_file = APP_ROOT_DIR / "version.txt"
+    if version_file.exists():
+        try:
+            return version_file.read_text().strip()
+        except Exception:
+            pass
+
+    # 2. Local development fallback identifier
+    return "v1.0.0-dev"
+
+
+# Global constant ready to be imported by any PyQt window handle
+APP_VERSION = get_application_version()
