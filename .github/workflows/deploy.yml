@@ -4,6 +4,10 @@ on:
   # Renders your independent manual deployment button on your Actions tab
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: write
+  
 jobs:
   deploy:
     name: Publish Staged Assets to Active Release
