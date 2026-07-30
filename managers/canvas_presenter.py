@@ -1,9 +1,10 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 
 from config import app_constants, ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine
 from managers.image_session import ImageSession
+from managers.selection_overlay_renderer import SelectionOverlayRenderer
 
 # Check for Pillow availability
 try:
@@ -48,6 +49,7 @@ class CanvasPresenter:
         self.cfg_fit_preview = cfg_fit_preview
         self.viewport_factory = viewport_factory
         self._updating_spinboxes = False
+        self._selection_overlay = SelectionOverlayRenderer()
 
     def load_image_to_viewport(self):
         if not self.image_session.has_active_image:
@@ -73,6 +75,7 @@ class CanvasPresenter:
             not self.image_session.master_pixmap
             or self.image_session.master_pixmap.isNull()
         ):
+            self._selection_overlay.set_base_pixmap(None)
             icon_path = app_constants.APP_ROOT_DIR / ui_constants.ICON_FILENAME
             if icon_path.exists():
                 logo_pixmap = QPixmap(str(icon_path))
@@ -130,7 +133,47 @@ class CanvasPresenter:
         painter.end()
 
         scaled_pixmap = bordered_pixmap
+        # Baseline: identical to today's behavior when there's no selection.
         self.image_display_container.setPixmap(scaled_pixmap)
+        # Feed the fresh frame to the blur-mask renderer and repaint the
+        # selection cutout on top of it, if a selection is currently active.
+        self._selection_overlay.set_base_pixmap(scaled_pixmap)
+        self.repaint_selection_overlay()
+
+    def _selection_rect_in_pixmap_space(self) -> QRect | None:
+        """Same label->pixmap centering translation SelectionManager already
+        performs inline in update_draw()/apply_target_dimensions(): the
+        selector's geometry is in image_display_container's (label)
+        coordinate space, and the base pixmap is centered inside that label
+        whenever the label is larger than the pixmap. Subtract that offset to
+        land in the pixmap's own (0,0)-origin space, which is what
+        SelectionOverlayRenderer composites against."""
+        selector = self.selection_manager.selector
+        pixmap = self.image_display_container.pixmap()
+        if selector.isHidden() or not pixmap:
+            return None
+
+        lbl_w = self.image_display_container.width()
+        lbl_h = self.image_display_container.height()
+        pix_w, pix_h = pixmap.width(), pixmap.height()
+        offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
+
+        return selector.geometry().translated(-offset_x, -offset_y)
+
+    def repaint_selection_overlay(self):
+        """Recomposites the canvas pixmap around the live selection rect.
+        Wired as the single repaint hook for every selection-geometry change
+        (see the on_selection_changed callback passed into SelectionManager
+        in LossLessCropApp.init_ui) -- mouse drag, move, spinbox resize,
+        snap, ratio changes, and model-sync all funnel through here already,
+        so this method needs no other call sites."""
+        if not self.image_session.has_active_image:
+            return
+
+        rect = self._selection_rect_in_pixmap_space()
+        composite = self._selection_overlay.render(rect)
+        if composite is not None:
+            self.image_display_container.setPixmap(composite)
 
     def get_current_forced_ratio(self):
         """Returns the active aspect ratio multiplier float based on toolbar combo selections."""
