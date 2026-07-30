@@ -149,6 +149,13 @@ class LossLessCropApp(QMainWindow):
             QRubberBand.Shape.Rectangle, self.image_display_container
         )
 
+        # Visual replaced by CanvasPresenter's blurred-background overlay;
+        # this widget still exists purely as a geometry/state carrier for
+        # SelectionManager (isHidden()/geometry()/show()/hide() calls
+        # throughout the codebase all key off it), so keep it fully
+        # invisible instead of removing it.
+        self.crop_box_selector.setStyleSheet("background: transparent; border: none;")
+
         self.selection_manager = SelectionManager(
             canvas=self.image_display_container,
             selector=self.crop_box_selector,
@@ -159,7 +166,7 @@ class LossLessCropApp(QMainWindow):
             snap_combo=self.combo_snap,
             viewport_factory=self._build_viewport_geometry,
             lossless_check=self.determine_if_lossless_active,
-            on_selection_changed=lambda: self.status_manager.invalidate_ui_state(),
+            on_selection_changed=self._on_selection_changed,
         )
 
         # Register UI controls with SettingsBinder for automatic 2-way sync
@@ -190,6 +197,10 @@ class LossLessCropApp(QMainWindow):
 
     def refresh_display_canvas(self):
         return self.canvas_presenter.refresh_display_canvas()
+
+    def _on_selection_changed(self):
+        self.status_manager.invalidate_ui_state()
+        self.canvas_presenter.repaint_selection_overlay()
 
     # -----------------------------------------------------------------
     # MOUSE INTERACTION & ASPECT BOX OVERLAYS
