@@ -154,8 +154,7 @@ class LossLessCropApp(QMainWindow):
         # SelectionManager (isHidden()/geometry()/show()/hide() calls
         # throughout the codebase all key off it), so keep it fully
         # invisible instead of removing it.
-        self.crop_box_selector.setStyleSheet("background: transparent; border: none;")
-
+        self.crop_box_selector.paintEvent = lambda event: None
         self.selection_manager = SelectionManager(
             canvas=self.image_display_container,
             selector=self.crop_box_selector,
