@@ -101,30 +101,52 @@ class SelectionOverlayRenderer:
         painter.setClipping(False)
 
         # -----------------------------------------------------------------
-        # 🚀 ASYMMETRIC WEIGHTED BRANDING: Thick Overflow + Thin Closed Brackets
+        # 🚀 GRADIENT BRANDING REWRITE: Custom White-to-Teal Color Fade
         # -----------------------------------------------------------------
-        # Define our two distinct pens for structural hierarchy
-        thick_pen = QPen(QColor(255, 255, 255, 230), 2, Qt.PenStyle.SolidLine)
-        thin_pen = QPen(QColor(255, 255, 255, 140), 1, Qt.PenStyle.SolidLine)
+        from PyQt6.QtGui import QBrush, QLinearGradient
+
+        r = clipped  # The active selection bounding box reference matrix
+
+        # 1. Map out a diagonal gradient line spanning from top-left to bottom-right
+        gradient = QLinearGradient(
+            r.left(),
+            r.top(),  # Start Point (Top-Left)
+            r.right(),
+            r.bottom(),  # End Point (Bottom-Right)
+        )
+
+        # 2. Configure the color stops to match your app icon layout perfectly
+        gradient.setColorAt(
+            0.0, QColor(255, 255, 255, 240)
+        )  # Pristine brilliant white at start
+        gradient.setColorAt(
+            0.5, QColor(140, 235, 255, 200)
+        )  # Smooth transit ice-blue color in middle
+        gradient.setColorAt(
+            1.0, QColor(0, 243, 255, 255)
+        )  # Intense, glowing electric teal at end
+
+        # 3. Create your structural pens using the gradient brush color fill mapping
+        gradient_brush = QBrush(gradient)
+
+        thick_pen = QPen(gradient_brush, 2, Qt.PenStyle.SolidLine)
+        thin_pen = QPen(gradient_brush, 1, Qt.PenStyle.SolidLine)
 
         overflow = 12  # How many pixels lines shoot outward past the corner
         length = 24  # The total length of each bracket arm
 
-        r = clipped  # The active selection bounding box reference matrix
-
-        # --- 1. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
+        # --- A. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
         painter.setPen(thick_pen)
 
-        # Top-Left Corner
+        # Top-Left Corner (Paints with the white-leaning shades of the gradient)
         painter.drawLine(
             r.left() - overflow, r.top(), r.left() + (length - overflow), r.top()
         )
-        # The small adjustment (-1) fixes subpixel rounding gaps when mixing line weights
         painter.drawLine(
             r.left(), r.top() - overflow, r.left(), r.top() + (length - overflow)
         )
 
-        # Bottom-Right Corner
+        # Bottom-Right Corner (Paints with the rich, intense electric teal shades)
         painter.drawLine(
             r.right() + overflow,
             r.bottom(),
@@ -138,14 +160,14 @@ class SelectionOverlayRenderer:
             r.bottom() - (length - overflow),
         )
 
-        # --- 2. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
+        # --- B. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
         painter.setPen(thin_pen)
 
-        # Top-Right Corner (Starts exactly at the vertex and draws inward)
+        # Top-Right Corner
         painter.drawLine(r.right(), r.top(), r.right() - length, r.top())
         painter.drawLine(r.right(), r.top(), r.right(), r.top() + length)
 
-        # Bottom-Left Corner (Starts exactly at the vertex and draws inward)
+        # Bottom-Left Corner
         painter.drawLine(r.left(), r.bottom(), r.left() + length, r.bottom())
         painter.drawLine(r.left(), r.bottom(), r.left(), r.bottom() - length)
         # -----------------------------------------------------------------
