@@ -50,6 +50,11 @@ jobs:
       run: |
         python -c "import pathlib; print(list(pathlib.Path('binaries').iterdir()))"
 
+    # Creates a flat version.txt string file so your Python app can read its own tag at runtime
+    - name: Inject Version Metadata
+      run: |
+        echo "${{ github.ref_name }}" > version.txt
+
     - name: Build with PyInstaller
       run: |
         pyinstaller lossless_crop.spec
