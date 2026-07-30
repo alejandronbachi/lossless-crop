@@ -1,13 +1,12 @@
 name: 2 - Deploy Binables to Release
 
 on:
-  # Renders your independent manual deployment button on your Actions tab
   workflow_dispatch:
 
 permissions:
   actions: read
   contents: write
-  
+
 jobs:
   deploy:
     name: Publish Staged Assets to Active Release
@@ -17,9 +16,12 @@ jobs:
     - name: Download Staged Windows Binaries
       uses: dawidd6/action-download-artifact@v6
       with:
-        workflow: build.yml # Points directly into the file name above
+        workflow: build.yml
         name: staging-windows
         path: ./artifacts
+
+    - name: Label Windows Binary
+      run: mv ./artifacts/LosslessCrop.exe ./artifacts/LosslessCrop-Windows.exe || true
 
     - name: Download Staged Linux Binaries
       uses: dawidd6/action-download-artifact@v6
@@ -27,6 +29,9 @@ jobs:
         workflow: build.yml
         name: staging-linux
         path: ./artifacts
+
+    - name: Label Linux Binary
+      run: mv ./artifacts/LosslessCrop ./artifacts/LosslessCrop-Linux || true
 
     - name: Download Staged macOS Binaries
       uses: dawidd6/action-download-artifact@v6
@@ -44,6 +49,6 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ./artifacts/*
-        tag: v1.0.0-beta # Adjust this string to match the targeted release tag on your GitHub page!
+        tag: v1.0.0-beta # Ensure this string always matches your target release tag name!
         overwrite: true
         file_glob: true
