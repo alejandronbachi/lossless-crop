@@ -100,28 +100,55 @@ class SelectionOverlayRenderer:
         painter.drawPixmap(0, 0, self._sharp)
         painter.setClipping(False)
 
-        pen = QPen(SELECTION_BORDER_COLOR, SELECTION_BORDER_WIDTH)
-        painter.setPen(pen)
-        painter.drawRect(clipped.adjusted(0, 0, -1, -1))
+        # -----------------------------------------------------------------
+        # 🚀 ASYMMETRIC WEIGHTED BRANDING: Thick Overflow + Thin Closed Brackets
+        # -----------------------------------------------------------------
+        # Define our two distinct pens for structural hierarchy
+        thick_pen = QPen(QColor(255, 255, 255, 230), 2, Qt.PenStyle.SolidLine)
+        thin_pen = QPen(QColor(255, 255, 255, 140), 1, Qt.PenStyle.SolidLine)
 
-        # Setup a solid 2px white pen for the corner brackets
-        painter.setPen(QPen(QColor(255, 255, 255), 2, Qt.PenStyle.SolidLine))
-        h_len = 15  # Length of the corner handle lines in pixels
+        overflow = 12  # How many pixels lines shoot outward past the corner
+        length = 24  # The total length of each bracket arm
 
-        r = clipped  # The active selection bounding box variable name
+        r = clipped  # The active selection bounding box reference matrix
 
-        # Draw L-brackets perfectly tracing the crop edges
-        painter.drawLine(r.left(), r.top(), r.left() + h_len, r.top())
-        painter.drawLine(r.left(), r.top(), r.left(), r.top() + h_len)
+        # --- 1. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
+        painter.setPen(thick_pen)
 
-        painter.drawLine(r.right(), r.top(), r.right() - h_len, r.top())
-        painter.drawLine(r.right(), r.top(), r.right(), r.top() + h_len)
+        # Top-Left Corner
+        painter.drawLine(
+            r.left() - overflow, r.top(), r.left() + (length - overflow), r.top()
+        )
+        # The small adjustment (-1) fixes subpixel rounding gaps when mixing line weights
+        painter.drawLine(
+            r.left(), r.top() - overflow, r.left(), r.top() + (length - overflow)
+        )
 
-        painter.drawLine(r.left(), r.bottom(), r.left() + h_len, r.bottom())
-        painter.drawLine(r.left(), r.bottom(), r.left(), r.bottom() - h_len)
+        # Bottom-Right Corner
+        painter.drawLine(
+            r.right() + overflow,
+            r.bottom(),
+            r.right() - (length - overflow),
+            r.bottom(),
+        )
+        painter.drawLine(
+            r.right(),
+            r.bottom() + overflow,
+            r.right(),
+            r.bottom() - (length - overflow),
+        )
 
-        painter.drawLine(r.right(), r.bottom(), r.right() - h_len, r.bottom())
-        painter.drawLine(r.right(), r.bottom(), r.right(), r.bottom() - h_len)
+        # --- 2. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
+        painter.setPen(thin_pen)
+
+        # Top-Right Corner (Starts exactly at the vertex and draws inward)
+        painter.drawLine(r.right(), r.top(), r.right() - length, r.top())
+        painter.drawLine(r.right(), r.top(), r.right(), r.top() + length)
+
+        # Bottom-Left Corner (Starts exactly at the vertex and draws inward)
+        painter.drawLine(r.left(), r.bottom(), r.left() + length, r.bottom())
+        painter.drawLine(r.left(), r.bottom(), r.left(), r.bottom() - length)
+        # -----------------------------------------------------------------
 
         painter.end()
 
