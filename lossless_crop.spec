@@ -21,8 +21,9 @@ a = Analysis(
     pathex=[],
     binaries=active_binaries, # Only bundles the file that physically exists on this active machine
     datas=[
-        ('assets', 'assets'), # Maps your new consolidated assets directory perfectly
+        ('assets', 'assets'), # Maps your consolidated assets tree
         ('config', 'config'), # Keeps your custom config bundle intact
+        ('version.txt', '.'),  # Adds version for the app to grab and show
     ],
     hiddenimports=[
         'PyQt6.QtCore',
