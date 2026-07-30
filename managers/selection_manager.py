@@ -249,11 +249,21 @@ class SelectionManager:
         aspect = CropGeometryEngine.resolve_aspect_ratio(
             ratio_label, (viewport.source_width, viewport.source_height)
         )
+
         if aspect is not None:
             sign_w = 1 if raw_w >= 0 else -1
             sign_h = 1 if raw_h >= 0 else -1
-            raw_h = sign_h * abs(int(raw_w / aspect))
 
+            # 🚀 THE DOMINANT AXIS CORRECTION:
+            # Check if the vertical movement is greater than the horizontal movement
+            if abs(raw_h) * aspect > abs(raw_w):
+                # Vertical drag is dominant: calculate width (raw_w) from height (raw_h)
+                raw_w = sign_w * abs(int(raw_h * aspect))
+            else:
+                # Horizontal drag is dominant: calculate height (raw_h) from width (raw_w)
+                raw_h = sign_h * abs(int(raw_w / aspect))
+
+            # Strictly maintain your original safety boundaries against image edges
             if y1 + raw_h < offset_y:
                 raw_h = offset_y - y1
                 raw_w = sign_w * abs(int(raw_h * aspect))
@@ -527,6 +537,53 @@ class SelectionManager:
         self.hide_ghost()
         self._notify_changed()  # NEW: previously this fell through silently;
         # now it's needed so crop_model.clear() actually fires.
+
+    def detect_grip_zone(self, mouse_point: QPoint) -> int:
+        """Evaluates cursor position and returns a matching grip type identifier."""
+        rect = self.last_crop_geometry
+        if not rect or rect.isEmpty():
+            return 0  # No selection active, no grip zone possible
+
+        x, y = mouse_point.x(), mouse_point.y()
+        t = 12  # Grip touch hitbox radius in canvas pixels
+
+        # Check Corners (Returns numeric identifiers 1 through 4)
+        if abs(x - rect.left()) <= t and abs(y - rect.top()) <= t:
+            return 1  # Top-Left
+        if abs(x - rect.right()) <= t and abs(y - rect.top()) <= t:
+            return 2  # Top-Right
+        if abs(x - rect.left()) <= t and abs(y - rect.bottom()) <= t:
+            return 3  # Bottom-Left
+        if abs(x - rect.right()) <= t and abs(y - rect.bottom()) <= t:
+            return 4  # Bottom-Right
+
+        return 0
+
+    def get_opposite_corner_anchor(self, grip_zone: int) -> QPoint | None:
+        """Returns the exact diagonal corner point of the active crop rect to freeze as an anchor."""
+        rect = self.last_crop_geometry
+        if not rect or rect.isEmpty():
+            return None
+
+        # Map the grabbed corner to its static diagonal anchor point
+        if grip_zone == 1:
+            return QPoint(
+                rect.right(), rect.bottom()
+            )  # Grabbing Top-Left anchors Bottom-Right
+        if grip_zone == 2:
+            return QPoint(
+                rect.left(), rect.bottom()
+            )  # Grabbing Top-Right anchors Bottom-Left
+        if grip_zone == 3:
+            return QPoint(
+                rect.right(), rect.top()
+            )  # Grabbing Bottom-Left anchors Top-Right
+        if grip_zone == 4:
+            return QPoint(
+                rect.left(), rect.top()
+            )  # Grabbing Bottom-Right anchors Top-Left
+
+        return None
 
     # -----------------------------------------------------------------
     # Aspect ratio update on pixel-perfect
