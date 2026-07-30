@@ -80,7 +80,7 @@ class SelectionManager:
         self._lossless_check = lossless_check
         self._on_selection_changed = on_selection_changed
 
-        self.ghost_selector: QRubberBand | None = None
+        self.ghost_crop_geometry = None
         self.last_crop_geometry: QRect | None = None
         self.drag_start_origin = QPoint()
         self.is_moving_box = False
@@ -98,20 +98,6 @@ class SelectionManager:
         if not pixmap:
             return None
         return self._viewport_factory(pixmap)
-
-    def _ensure_ghost_selector(self) -> QRubberBand:
-        if self.ghost_selector is None:
-            self.ghost_selector = QRubberBand(
-                QRubberBand.Shape.Rectangle, self._ghost_parent
-            )
-            self.ghost_selector.setStyleSheet(
-                "background-color: rgba(255, 165, 0, 30); border: 1px dashed orange;"
-            )
-        return self.ghost_selector
-
-    def hide_ghost(self):
-        if self.ghost_selector is not None:
-            self.ghost_selector.hide()
 
     def _snap_rect(self, screen_rect: QRect) -> QRect:
         viewport = self._current_viewport()
@@ -293,18 +279,13 @@ class SelectionManager:
             self.last_crop_geometry = fluid_rect
 
         elif snap_mode == ui_constants.SNAP_GHOSTING:
-            ghost = self._ensure_ghost_selector()
+            self.hide_ghost()
             self.selector.setGeometry(fluid_rect)
             self.selector.show()
             self.selector.raise_()
             self.last_crop_geometry = fluid_rect
-
-            if use_lossless:
-                ghost.setGeometry(snapped_rect)
-                ghost.show()
-                ghost.raise_()
-            else:
-                ghost.hide()
+            #  Store lossless bounds during drag
+            self.ghost_crop_geometry = snapped_rect if use_lossless else None
 
         self._notify_changed()
 
@@ -317,6 +298,9 @@ class SelectionManager:
             ratio_label=ratio_label,
         )
 
+    def hide_ghost(self):
+        pass
+
     # -----------------------------------------------------------------
     # Mouse-release entry point (called from LossLessCropApp.on_mouse_release)
     # -----------------------------------------------------------------
@@ -327,12 +311,20 @@ class SelectionManager:
             return
 
         snap_mode = self.snap_combo.currentText()
-
         if snap_mode in (ui_constants.SNAP_POST_RELEASE, ui_constants.SNAP_REAL_TIME):
             self.snap_selection()
         elif snap_mode == ui_constants.SNAP_GHOSTING:
             self.hide_ghost()
-            snapped_rect = self._snap_rect(self.selector.geometry())
+            self.ghost_crop_geometry = None  # Clear coordinates on release
+
+            # Lock the final selection to the snapped boundaries if lossless is active
+            use_lossless = self._lossless_check()
+            snapped_rect = (
+                self._snap_rect(self.selector.geometry())
+                if use_lossless
+                else self.selector.geometry()
+            )
+
             self.selector.setGeometry(snapped_rect)
             self.last_crop_geometry = snapped_rect
 
@@ -533,6 +525,7 @@ class SelectionManager:
         remembered geometry — mirrors the 'else' branch of
         sync_workspace_after_loading_image when preservation is off."""
         self.selector.hide()
+        self.ghost_crop_geometry = None  # 🚀 Flush on reset
         self.last_crop_geometry = None
         self.hide_ghost()
         self._notify_changed()  # NEW: previously this fell through silently;
