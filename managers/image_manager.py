@@ -97,8 +97,22 @@ class ImageProcessor:
                 str(src),
             ]
         )
+
+        # Create a startup info object to hide the console window
+        startupinfo = None
+        if os.name == "nt":  # Only applies to Windows
+            startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE  # 0
+
         try:
-            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                startupinfo=startupinfo,
+            )
             if result.stdout:
                 logger.debug("jpegtran stdout: %s", result.stdout.strip())
             logger.info(
