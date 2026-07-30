@@ -48,10 +48,11 @@ class SelectionOverlayRenderer:
     """Caches a sharp/blurred pair for the currently displayed canvas pixmap
     and composites them against a selection rect on demand."""
 
-    def __init__(self, blur_radius: float = BLUR_RADIUS):
+    def __init__(self, selection_manager=None, blur_radius: float = BLUR_RADIUS):
         self._blur_radius = blur_radius
         self._sharp: QPixmap | None = None
         self._blurred: QPixmap | None = None
+        self.selection_manager = selection_manager
 
     def set_base_pixmap(self, pixmap: QPixmap | None) -> None:
         """Call whenever the underlying canvas image changes: new image
@@ -65,6 +66,7 @@ class SelectionOverlayRenderer:
             else None
         )
 
+    # 🚀 FIXED: We add `selection_manager=None` directly to the method parameters
     def render(self, selection_rect_in_pixmap_space: QRect | None) -> QPixmap | None:
         """Returns the pixmap that should be shown on the canvas label.
         `selection_rect_in_pixmap_space` must already be translated into the
@@ -101,44 +103,58 @@ class SelectionOverlayRenderer:
         painter.setClipping(False)
 
         # -----------------------------------------------------------------
-        # 🚀 GRADIENT BRANDING REWRITE: Custom White-to-Teal Color Fade
+        # 🚀 PART A: PREDICTIVE DUAL-BOX SNAP FEEDBACK LAYER
+        # -----------------------------------------------------------------
+        # Use the passed manager directly instead of guessing with __main__
+        mgr = self.selection_manager
+
+        if mgr is not None:
+            ghost_geom = getattr(mgr, "ghost_crop_geometry", None)
+
+            # If ghosting coordinates are active, map them to pixmap space and paint them
+            if ghost_geom and not ghost_geom.isEmpty():
+                # Extract the centering labels offset matrix parameters natively
+                lbl_w, lbl_h = mgr.canvas.width(), mgr.canvas.height()
+                pix_w, pix_h = self._sharp.width(), self._sharp.height()
+                ox, oy = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
+
+                # Project the screen coordinates directly into raw pixmap space bounds
+                ghost_clipped = ghost_geom.translated(-ox, -oy).intersected(
+                    self._sharp.rect()
+                )
+
+                if not ghost_clipped.isEmpty():
+                    # Draw a subtle, professional dashed neon-teal frame showing the snap landing
+                    snap_pen = QPen(QColor(0, 243, 255, 130), 1, Qt.PenStyle.DashLine)
+                    painter.setPen(snap_pen)
+                    painter.drawRect(ghost_clipped.adjusted(0, 0, -1, -1))
+
+        # -----------------------------------------------------------------
+        # 🚀 PART B: ASYMMETRIC GRADIENT CROP BRACKETS (Fluid Mouse Position)
         # -----------------------------------------------------------------
         from PyQt6.QtGui import QBrush, QLinearGradient
 
         r = clipped  # The active selection bounding box reference matrix
 
-        # 1. Map out a diagonal gradient line spanning from top-left to bottom-right
-        gradient = QLinearGradient(
-            r.left(),
-            r.top(),  # Start Point (Top-Left)
-            r.right(),
-            r.bottom(),  # End Point (Bottom-Right)
-        )
+        # Map out a diagonal gradient line spanning from top-left to bottom-right
+        gradient = QLinearGradient(r.left(), r.top(), r.right(), r.bottom())
 
-        # 2. Configure the color stops to match your app icon layout perfectly
-        gradient.setColorAt(
-            0.0, QColor(255, 255, 255, 240)
-        )  # Pristine brilliant white at start
-        gradient.setColorAt(
-            0.5, QColor(140, 235, 255, 200)
-        )  # Smooth transit ice-blue color in middle
-        gradient.setColorAt(
-            1.0, QColor(0, 243, 255, 255)
-        )  # Intense, glowing electric teal at end
+        # Configure the color stops to match your app icon layout perfectly
+        gradient.setColorAt(0.0, QColor(255, 255, 255, 240))  # Brilliant white at start
+        gradient.setColorAt(0.5, QColor(140, 235, 255, 200))  # Ice-blue color in middle
+        gradient.setColorAt(1.0, QColor(0, 243, 255, 255))  # Electric teal at end
 
-        # 3. Create your structural pens using the gradient brush color fill mapping
         gradient_brush = QBrush(gradient)
-
         thick_pen = QPen(gradient_brush, 2, Qt.PenStyle.SolidLine)
         thin_pen = QPen(gradient_brush, 1, Qt.PenStyle.SolidLine)
 
         overflow = 12  # How many pixels lines shoot outward past the corner
         length = 24  # The total length of each bracket arm
 
-        # --- A. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
+        # --- 1. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
         painter.setPen(thick_pen)
 
-        # Top-Left Corner (Paints with the white-leaning shades of the gradient)
+        # Top-Left Corner
         painter.drawLine(
             r.left() - overflow, r.top(), r.left() + (length - overflow), r.top()
         )
@@ -146,7 +162,7 @@ class SelectionOverlayRenderer:
             r.left(), r.top() - overflow, r.left(), r.top() + (length - overflow)
         )
 
-        # Bottom-Right Corner (Paints with the rich, intense electric teal shades)
+        # Bottom-Right Corner
         painter.drawLine(
             r.right() + overflow,
             r.bottom(),
@@ -160,7 +176,7 @@ class SelectionOverlayRenderer:
             r.bottom() - (length - overflow),
         )
 
-        # --- B. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
+        # --- 2. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
         painter.setPen(thin_pen)
 
         # Top-Right Corner
@@ -173,5 +189,4 @@ class SelectionOverlayRenderer:
         # -----------------------------------------------------------------
 
         painter.end()
-
         return composite
