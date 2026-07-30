@@ -14,8 +14,8 @@ from PyQt6.QtGui import QColor, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QGraphicsBlurEffect, QGraphicsPixmapItem, QGraphicsScene
 
 # Tunables -- move to config/ui_constants.py if these should be user-facing.
-BLUR_RADIUS = 18.0
-DIM_OVERLAY_ALPHA = 60  # extra darkening over the blurred area, 0-255, 0 disables it
+BLUR_RADIUS = 4.0
+DIM_OVERLAY_ALPHA = 145  # extra darkening over the blurred area, 0-255, 0 disables it
 SELECTION_BORDER_COLOR = QColor(255, 255, 255, 235)
 SELECTION_BORDER_WIDTH = 1
 
