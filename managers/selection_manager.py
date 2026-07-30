@@ -249,11 +249,21 @@ class SelectionManager:
         aspect = CropGeometryEngine.resolve_aspect_ratio(
             ratio_label, (viewport.source_width, viewport.source_height)
         )
+
         if aspect is not None:
             sign_w = 1 if raw_w >= 0 else -1
             sign_h = 1 if raw_h >= 0 else -1
-            raw_h = sign_h * abs(int(raw_w / aspect))
 
+            # 🚀 THE DOMINANT AXIS CORRECTION:
+            # Check if the vertical movement is greater than the horizontal movement
+            if abs(raw_h) * aspect > abs(raw_w):
+                # Vertical drag is dominant: calculate width (raw_w) from height (raw_h)
+                raw_w = sign_w * abs(int(raw_h * aspect))
+            else:
+                # Horizontal drag is dominant: calculate height (raw_h) from width (raw_w)
+                raw_h = sign_h * abs(int(raw_w / aspect))
+
+            # Strictly maintain your original safety boundaries against image edges
             if y1 + raw_h < offset_y:
                 raw_h = offset_y - y1
                 raw_w = sign_w * abs(int(raw_h * aspect))
