@@ -23,8 +23,11 @@ class KeyboardController(QObject):
             # Capture global workflow letters before the spinbox text cursor eats them
             if key in (
                 Qt.Key.Key_F,
+                Qt.Key.Key_D,
                 Qt.Key.Key_B,
+                Qt.Key.Key_A,
                 Qt.Key.Key_P,
+                Qt.Key.Key_Q,
                 Qt.Key.Key_R,
                 Qt.Key.Key_O,
                 Qt.Key.Key_I,
@@ -32,11 +35,11 @@ class KeyboardController(QObject):
                 Qt.Key.Key_Space,
                 Qt.Key.Key_Escape,
             ):
-                if key == Qt.Key.Key_F:
+                if key in (Qt.Key.Key_F, Qt.Key.Key_D):
                     self.trigger_forward_navigation()
-                elif key == Qt.Key.Key_B:
+                if key in (Qt.Key.Key_B, Qt.Key.Key_A):
                     self.trigger_backward_navigation()
-                elif key == Qt.Key.Key_P:
+                if key in (Qt.Key.Key_P, Qt.Key.Key_Q):
                     self.toggle_preview_state()
                 elif key == Qt.Key.Key_R:
                     self.main_window.rotate_current_image()
