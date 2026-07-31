@@ -2,6 +2,7 @@ from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 
 from config import app_constants, ui_constants
+from managers import theme_manager
 from managers.crop_geometry_engine import CropGeometryEngine
 from managers.image_session import ImageSession
 from managers.selection_overlay_renderer import SelectionOverlayRenderer
@@ -125,10 +126,9 @@ class CanvasPresenter:
         # -----------------------------------------------------------------
         # FIXED: Changed Pen Style from SolidLine to DashLine
         # -----------------------------------------------------------------
-        pen = QPen(QColor("#777777"), 1)
-        pen.setStyle(
-            Qt.PenStyle.DashLine
-        )  # 🚀 This creates the broken line pattern automatically
+        grid_color = theme_manager.get_color("@CANVAS_GRID")
+        pen = QPen(QColor(grid_color), 1)
+        pen.setStyle(Qt.PenStyle.DashLine)
         painter.setPen(pen)
 
         # Draw the frame precisely tracing the image's layout edges

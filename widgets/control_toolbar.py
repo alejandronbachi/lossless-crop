@@ -33,9 +33,7 @@ class ControlToolbar(QFrame):
         # 1. Directory Loader Button
         self.main_app.lbl_folder_name = QPushButton(ui_constants.TEXT_NO_DIRECTORY)
         self.main_app.lbl_folder_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.lbl_folder_name.setStyleSheet(
-            "font-weight: bold; color: #aaa; margin-left: 5px; min-width: 140px; text-align: left;"
-        )
+        self.main_app.lbl_folder_name.setObjectName("lblFolder")
         self.main_app.lbl_folder_name.clicked.connect(self.main_app.select_directory)
         self.layout.addWidget(self.main_app.lbl_folder_name)
 
@@ -87,16 +85,10 @@ class ControlToolbar(QFrame):
         self.main_app._updating_spinboxes = False
 
         self.main_app.spin_container = QFrame()
-        self.main_app.spin_container.setStyleSheet(
-            "background-color: transparent; border: none; margin: 0; padding: 0;"
-        )
+        self.main_app.spin_container.setObjectName("spinContainer")
         spin_layout = QHBoxLayout(self.main_app.spin_container)
         spin_layout.setContentsMargins(5, 0, 5, 0)
         spin_layout.setSpacing(6)
-
-        spin_box_stylesheet = self.file_manager.load_asset(
-            self.ui_constants.STYLE_SPINBOXES, self.ui_constants.FOLDER_STYLES
-        )
 
         # Width Numeric Field
         self.main_app.spin_width = QSpinBox()
@@ -105,7 +97,6 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width.setPrefix(ui_constants.SPIN_WIDTH_PREFIX)
         self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
         self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.spin_width.setStyleSheet(spin_box_stylesheet)
         self.main_app.spin_width.editingFinished.connect(
             self.main_app.on_spin_width_changed
         )
@@ -118,7 +109,6 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height.setPrefix(ui_constants.SPIN_HEIGHT_PREFIX)
         self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
         self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.spin_height.setStyleSheet(spin_box_stylesheet)
         self.main_app.spin_height.editingFinished.connect(
             self.main_app.on_spin_height_changed
         )
@@ -143,13 +133,9 @@ class ControlToolbar(QFrame):
 
         # 7. Configuration Gear Toggle Button
         self.main_app.btn_settings = QPushButton("⚙️")
+        self.main_app.btn_settings.setObjectName("btnSettings")
         self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.btn_settings.setToolTip(ui_constants.TOOLTIP_SETTINGS)
         self.main_app.btn_settings.setFixedSize(38, 38)
-        self.main_app.btn_settings.setStyleSheet(
-            self.file_manager.load_asset(
-                self.ui_constants.STYLE_BTN_SETTINGS, self.ui_constants.FOLDER_STYLES
-            )
-        )
         self.main_app.btn_settings.clicked.connect(self.main_app.toggle_settings_drawer)
         self.layout.addWidget(self.main_app.btn_settings)

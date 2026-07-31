@@ -14,13 +14,6 @@ class SettingsDrawer(
         self.drawer_width = 240
         self.setObjectName("SettingsDrawer")
 
-        # Style the drawer with semi-transparent obsidian glass aesthetics
-        self.setStyleSheet(
-            file_manager.load_asset(
-                ui_constants.STYLE_DRAWER, ui_constants.FOLDER_STYLES
-            )
-        )
-
         # Build the structural menu layout
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(15, 20, 15, 20)
@@ -35,17 +28,14 @@ class SettingsDrawer(
         divider = QWidget()
         divider.setMinimumHeight(1)
         divider.setMaximumHeight(1)
-        divider.setStyleSheet(
-            "background-color: rgba(255, 255, 255, 0.1); margin-bottom: 5px;"
-        )
+        divider.setObjectName("divider")
         return divider
 
     def _build_ui(self):
         # --- CATEGORY 1: AUTOMATION & PERSISTENCE OPTIONS ---
         lbl_auto_section = QLabel(ui_constants.LABEL_GENERAL_SECTION)
-        lbl_auto_section.setStyleSheet(
-            "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;"
-        )
+        lbl_auto_section.setProperty("class", "sectionHeading")
+        lbl_auto_section.setObjectName("lblAutoSection")
         self.layout.addWidget(lbl_auto_section)
         self.layout.addWidget(self._create_divider())
 
@@ -66,9 +56,8 @@ class SettingsDrawer(
 
         # --- CATEGORY 2: SHOW / DISPLAY OPTIONS ---
         lbl_show_section = QLabel(ui_constants.LABEL_SHOW_SECTION)
-        lbl_show_section.setStyleSheet(
-            "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 10px; padding-bottom: 2px;"
-        )
+        lbl_show_section.setProperty("class", "sectionHeading")
+        lbl_show_section.setObjectName("lblShowSection")
         self.layout.addWidget(lbl_show_section)
         self.layout.addWidget(self._create_divider())
 
@@ -143,9 +132,8 @@ class SettingsDrawer(
 
         # --- CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE ---
         lbl_layout_section = QLabel(ui_constants.LABEL_LAYOUT_SECTION)
-        lbl_layout_section.setStyleSheet(
-            "color: #888888; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; border: none; margin-top: 15px; padding-bottom: 2px;"
-        )
+        lbl_layout_section.setProperty("class", "sectionHeading")
+        lbl_layout_section.setObjectName("lblLayoutSection")
         self.layout.addWidget(lbl_layout_section)
         self.layout.addWidget(self._create_divider())
 

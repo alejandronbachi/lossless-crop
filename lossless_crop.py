@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config import app_constants, ui_constants
+from managers import theme_manager
 from managers.canvas_presenter import CanvasPresenter
 from managers.crop_execution_manager import CropExecutionController
 from managers.crop_geometry_engine import ViewportGeometry
@@ -63,6 +64,9 @@ class LossLessCropApp(QMainWindow):
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()
         self.file_manager = FileManager(self.settings_manager)
+        theme_manager.init_theme(
+            file_manager_instance=self.file_manager, default_mode="dark"
+        )
         self.image_manager = ImageProcessor()
         self.crop_executor = CropExecutionController(self.image_manager)
         #  Create a single-shot timer for layout throttling
@@ -80,12 +84,6 @@ class LossLessCropApp(QMainWindow):
         if icon_path.exists():
             # Convert Path to str since some older PyQt versions prefer string primitives for UI assets
             self.setWindowIcon(QIcon(str(icon_path)))  # Sets Title Bar Icon
-
-        self.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_MAIN, ui_constants.FOLDER_STYLES
-            )
-        )
 
         # Image Pipeline Management Variables
         self.image_session = ImageSession(self.settings)

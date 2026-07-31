@@ -20,7 +20,7 @@ class InfoBar(QFrame):
         # Primary Centered File Status Label
         self.lbl_status = QLabel(ui_constants.TEXT_READY_STATUS)
         self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_status.setStyleSheet("color: #bbb; font-size: 15px; font-weight: 500;")
+        self.lbl_status.setObjectName("lblStatus")
         self.layout.addWidget(self.lbl_status)
 
         self.layout.addStretch(1)
@@ -30,7 +30,5 @@ class InfoBar(QFrame):
         self.lbl_metrics.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        self.lbl_metrics.setStyleSheet(
-            "color: #888888; font-family: monospace; font-size: 13px; font-weight: bold;"
-        )
+        self.lbl_metrics.setObjectName("lblMetrics")
         self.layout.addWidget(self.lbl_metrics)

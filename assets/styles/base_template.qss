@@ -1,0 +1,215 @@
+/* ============================================================================
+   LossLess Crop - Master Application Stylesheet Template
+   ============================================================================ */
+
+/* --- GLOBAL APP SPECIFICS --- */
+QWidget {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+}
+
+/* --- FROM: btn_settings.qss --- */
+QPushButton#btnSettings {
+    background-color: transparent;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px; 
+    color: @BTN_SETTINGS_COLOR;
+    padding: 0px;   
+    margin: 0px;
+}
+QPushButton#btnSettings:hover {
+    background-color: @BTN_SETTINGS_HOVER_BG;
+    color: @BTN_SETTINGS_HOVER_COLOR;
+}
+QPushButton#btnSettings:pressed {
+    background-color: @BTN_SETTINGS_PRESSED_BG;
+}
+QPushButton#btnSettings:focus {
+    background-color: @BTN_SETTINGS_FOCUS_BG;
+    border: 1px solid @PRIMARY_ACCENT;
+    color: @BTN_SETTINGS_FOCUS_COLOR;
+    outline: none;
+}
+
+/* --- FROM: commands_overlay.qss --- */
+QWidget#CommandsOverlay QLabel {
+    color: @COMMANDS_TEXT;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: bold;
+    background-color: @COMMANDS_BG;
+    border: 1px solid @COMMANDS_BORDER;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+/* --- FROM: drawer.qss --- */
+QWidget#SettingsDrawer {
+    background-color: @DRAWER_BG;
+    border-left: 1px solid @DRAWER_BORDER;
+}
+QWidget#SettingsDrawer QCheckBox {
+    color: @DRAWER_CHECKBOX_TEXT;
+    font-size: 13px;
+    padding: 4px;
+}
+QWidget#SettingsDrawer QLabel {
+    color: @DRAWER_LABEL_TEXT;
+    font-size: 14px;
+    font-weight: bold;
+    padding-bottom: 5px;
+    border-bottom: 1px solid @DRAWER_LABEL_BORDER;
+}
+
+/* --- FROM: notification.qss --- */
+QWidget#NotificationOverlay QLabel {
+    color: @NOTIF_TEXT;
+    font-size: 28px;
+    font-weight: bold;
+    background-color: @NOTIF_BG;
+    border: 2px solid @NOTIF_BORDER;
+    border-radius: 12px;
+    padding: 15px 30px;
+}
+
+/* --- FROM: telemetry_hud.qss --- */
+QLabel#TelemetryHUD {
+    color: @TELEMETRY_TEXT;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: bold;
+    background-color: @TELEMETRY_BG;
+    border: 1px solid @TELEMETRY_BORDER;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+/* --- FROM: splash_hud.qss --- */
+QLabel#SplashHUD {
+    color: @SPLASH_TEXT;
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    background-color: @SPLASH_BG;
+    border: 1px solid @SPLASH_BORDER;
+    border-radius: 12px;
+    padding: 35px 50px;
+    line-height: 150%;
+}
+
+/* --- FROM: spinboxes.qss --- */
+QSpinBox {
+    background-color: @SPIN_BG;
+    border: 1px solid @SPIN_BORDER;
+    border-radius: 4px;
+    color: @SPIN_TEXT;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 95px;
+}
+QSpinBox:hover {
+    border: 1px solid @SPIN_BORDER_HOVER;
+}
+QSpinBox::editor {
+    background-color: @SPIN_BG;
+    color: @SPIN_TEXT;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    padding-left: 5px;
+    padding-right: 20px; 
+}
+QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 18px;
+    height: 12px; 
+    border-left: 1px solid @SPIN_BTN_BORDER;
+    border-bottom: 1px solid @SPIN_BTN_BORDER;
+    background-color: @SPIN_BTN_BG;
+}
+QSpinBox::up-button:hover {
+    background-color: @SPIN_BTN_HOVER;
+}
+QSpinBox::up-button:pressed {
+    background-color: @SPIN_BTN_PRESSED;
+}
+QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 18px;
+    height: 12px; 
+    border-left: 1px solid @SPIN_BTN_BORDER;
+    background-color: @SPIN_BTN_BG;
+}
+QSpinBox::down-button:hover {
+    background-color: @SPIN_BTN_HOVER;
+}
+QSpinBox::down-button:pressed {
+    background-color: @SPIN_BTN_PRESSED;
+}
+QSpinBox::up-arrow {
+    image: @SPIN_UP_ARROW;
+    width: 10px;
+    height: 10px;
+}
+QSpinBox::down-arrow {
+    image: @SPIN_DOWN_ARROW;
+    width: 10px;
+    height: 10px;
+}
+QSpinBox:focus {
+    border: 1px solid @PRIMARY_ACCENT;
+    background-color: @SPIN_FOCUS_BG;
+}
+
+/* --- FROM: inline styles refactored into master selectors --- */
+QLabel#lblFolder {
+    font-weight: bold; 
+    color: @LBL_FOLDER_TEXT; 
+    margin-left: 5px; 
+    min-width: 140px; 
+    text-align: left;
+}
+
+QWidget#spinContainer {
+    background-color: transparent; 
+    border: none; 
+    margin: 0; 
+    padding: 0;
+}
+
+QLabel#lblCanvas {
+    background-color: @CANVAS_BG; 
+    border: 2px solid @CANVAS_BORDER;
+}
+
+QLabel#lblStatus { 
+    color: @LBL_STATUS_TEXT; 
+    font-size: 15px; 
+    font-weight: 500;
+}
+
+QLabel#lblMetrics {
+    color: @LBL_METRICS_TEXT; 
+    font-family: monospace; 
+    font-size: 13px; 
+    font-weight: bold;
+}
+
+QFrame#divider {
+    background-color: @DIVIDER_COLOR; 
+    margin-bottom: 5px;
+}
+
+QLabel.sectionHeading {
+    color: @SECTION_HEAD_TEXT; 
+    font-size: 11px; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+    border: none; 
+    padding-bottom: 2px;
+}
+
+QLabel#lblAutoSection { margin-top: 15px; }
+QLabel#lblShowSection { margin-top: 10px; }
+QLabel#lblLayoutSection { margin-top: 15px; }
