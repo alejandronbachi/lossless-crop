@@ -156,7 +156,7 @@ class StatusManager(QObject):
         self.lbl_telemetry_hud.hide()
         self.lbl_commands_overlay.hide()
 
-        # 🚀 Ensure the splash layout panel is rendered visible and snapped perfectly to center
+        #  Ensure the splash layout panel is rendered visible and snapped perfectly to center
         self.lbl_splash_hud.show()
         self.lbl_splash_hud.raise_()
         self.reposition_splash_hud()
@@ -166,7 +166,7 @@ class StatusManager(QObject):
     # -------------------------------------------------------------
 
     def reposition_splash_hud(self):
-        """🚀 THE GEOMETRY FIX: Uses parent context boundaries to center perfectly."""
+        """THE GEOMETRY FIX: Uses parent context boundaries to center perfectly."""
         canvas = self.lbl_splash_hud.parentWidget()
         if canvas:
             self.lbl_splash_hud.adjustSize()

@@ -49,7 +49,6 @@ class CommandsOverlay(QLabel):
 class SplashHUD(QLabel):
     def __init__(self, parent_container, file_manager, ui_constants):
         super().__init__(parent_container)
-        self.setObjectName(ui_constants.WIDGET_SPLASH_HUD)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hide()  # Maintained hidden by default until evaluated on launch

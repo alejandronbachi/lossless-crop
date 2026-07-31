@@ -1,12 +1,12 @@
 import logging
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QWidget
 
 logger = logging.getLogger(__name__)
 
 
 # 1. Global State Variables (Module Scope)
-current_theme = "dark"
+current_theme = "light"
 current_palette = {}
 _file_manager = None  # Holds the saved reference to your file manager
 
@@ -14,6 +14,8 @@ _file_manager = None  # Holds the saved reference to your file manager
 # --- Unified Dual-Theme Palettes for LossLess Crop ---
 THEME_PALETTES = {
     "dark": {
+        # --- main windows ---
+        "@WINDOW_BG": "#121212",  # Sleek dark window background color
         # --- QPainter Grid Canvas ---
         "@CANVAS_GRID": "#777777",
         # --- Global Layout Colors ---
@@ -37,7 +39,7 @@ THEME_PALETTES = {
         "@COMMANDS_TEXT": "#ffffff",
         "@COMMANDS_BG": "rgba(10, 10, 10, 0.55)",
         "@COMMANDS_BORDER": "rgba(255, 255, 255, 0.05)",
-        # --- Settings Drawer (drawer.qss) ---
+        # --- Settings Drawer & Toolbars (drawer.qss) ---
         "@DRAWER_BG": "rgba(20, 20, 20, 0.94)",
         "@DRAWER_BORDER": "rgba(255, 255, 255, 0.15)",
         "@DRAWER_CHECKBOX_TEXT": "#e0e0e0",
@@ -55,7 +57,7 @@ THEME_PALETTES = {
         "@SPLASH_TEXT": "#ffffff",
         "@SPLASH_BG": "rgba(15, 15, 15, 0.85)",
         "@SPLASH_BORDER": "rgba(255, 255, 255, 0.08)",
-        # --- Spinboxes (spinboxes.qss) ---
+        # --- Spinboxes & Comboboxes (spinboxes.qss) ---
         "@SPIN_BG": "#1e1e1e",
         "@SPIN_BORDER": "#333333",
         "@SPIN_BORDER_HOVER": "#444444",
@@ -67,62 +69,71 @@ THEME_PALETTES = {
         "@SPIN_FOCUS_BG": "#202630",
         "@SPIN_UP_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjE4IDE1IDEyIDkgNiAxNSIvPjwvc3ZnPg==)",
         "@SPIN_DOWN_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ii8+PC9zdmc+)",
+        # Splash hud
+        "@SPLASH_TEXT_MAIN": "#ffffff",
+        "@SPLASH_TEXT_MUTED": "#bbbbbb",
+        "@SPLASH_OR_DIVIDER": "#555555",
     },
     "light": {
         # --- QPainter Grid Canvas ---
-        "@CANVAS_GRID": "#b0b0b0",
+        "@CANVAS_GRID": "#BCAFA5",  # Muted clay-taupe for the dash-line grid pattern
         # --- Global Layout Colors ---
-        "@PRIMARY_ACCENT": "#007acc",
-        "@DIVIDER_COLOR": "rgba(0, 0, 0, 0.1)",
-        "@CANVAS_BG": "#ffffff",
-        "@CANVAS_BORDER": "#a0b0d0",
-        # --- General Text Elements ---
-        "@LBL_FOLDER_TEXT": "#444444",
-        "@LBL_STATUS_TEXT": "#333333",
-        "@LBL_METRICS_TEXT": "#555555",
-        "@SECTION_HEAD_TEXT": "#666666",
+        "@WINDOW_BG": "#F5EFEB",  # Soft Linen Grey-Beige main workspace background
+        "@PRIMARY_ACCENT": "#D97D54",  # Beautiful Muted Terracotta Orange highlight accent color
+        "@DIVIDER_COLOR": "rgba(46, 37, 32, 0.12)",  # Elegant dark coffee divider line
+        "@CANVAS_BG": "#F5EFEB",  # Blends completely with your workspace frame context
+        "@CANVAS_BORDER": "#D97D54",  # Terracotta accent framing your central canvas wrapper
+        # --- General Text Elements (Dark Roasted Coffee / High Readability) ---
+        "@LBL_FOLDER_TEXT": "#5C4A40",
+        "@LBL_STATUS_TEXT": "#2E2520",
+        "@LBL_METRICS_TEXT": "#5C4A40",
+        "@SECTION_HEAD_TEXT": "#7A6559",
         # --- Settings Button (btn_settings.qss) ---
-        "@BTN_SETTINGS_COLOR": "#555555",
-        "@BTN_SETTINGS_HOVER_BG": "rgba(0, 0, 0, 0.05)",
-        "@BTN_SETTINGS_HOVER_COLOR": "#000000",
-        "@BTN_SETTINGS_PRESSED_BG": "rgba(0, 0, 0, 0.08)",
-        "@BTN_SETTINGS_FOCUS_BG": "rgba(0, 0, 0, 0.05)",
-        "@BTN_SETTINGS_FOCUS_COLOR": "#000000",
+        "@BTN_SETTINGS_COLOR": "#5C4A40",
+        "@BTN_SETTINGS_HOVER_BG": "rgba(217, 125, 84, 0.14)",  # Soft terracotta hover highlight hue
+        "@BTN_SETTINGS_HOVER_COLOR": "#2E2520",
+        "@BTN_SETTINGS_PRESSED_BG": "rgba(217, 125, 84, 0.08)",
+        "@BTN_SETTINGS_FOCUS_BG": "rgba(217, 125, 84, 0.14)",
+        "@BTN_SETTINGS_FOCUS_COLOR": "#2E2520",
         # --- Commands Overlay (commands_overlay.qss) ---
-        "@COMMANDS_TEXT": "#111111",
-        "@COMMANDS_BG": "rgba(245, 245, 245, 0.90)",
-        "@COMMANDS_BORDER": "rgba(0, 0, 0, 0.1)",
-        # --- Settings Drawer (drawer.qss) ---
-        "@DRAWER_BG": "rgba(240, 240, 240, 0.96)",
-        "@DRAWER_BORDER": "rgba(0, 0, 0, 0.15)",
-        "@DRAWER_CHECKBOX_TEXT": "#222222",
-        "@DRAWER_LABEL_TEXT": "#000000",
-        "@DRAWER_LABEL_BORDER": "rgba(0, 0, 0, 0.1)",
+        "@COMMANDS_TEXT": "#2E2520",
+        "@COMMANDS_BG": "rgba(240, 232, 226, 0.45)",  # Warm Latte Clay base structure
+        "@COMMANDS_BORDER": "rgba(46, 37, 32, 0.15)",
+        # --- Settings Drawer & Toolbars (drawer.qss / toolbars) ---
+        "@DRAWER_BG": "rgba(240, 232, 226, 0.95)",  # Perfectly blended translucent side drawer
+        "@DRAWER_BORDER": "rgba(46, 37, 32, 0.15)",
+        "@DRAWER_CHECKBOX_TEXT": "#2E2520",
+        "@DRAWER_LABEL_TEXT": "#2E2520",
+        "@DRAWER_LABEL_BORDER": "rgba(46, 37, 32, 0.12)",
         # --- Notifications (notification.qss) ---
-        "@NOTIF_TEXT": "#000000",
-        "@NOTIF_BG": "rgba(255, 255, 255, 0.90)",
-        "@NOTIF_BORDER": "rgba(0, 0, 0, 0.2)",
+        "@NOTIF_TEXT": "#2E2520",
+        "@NOTIF_BG": "rgba(230, 220, 212, 0.60)",
+        "@NOTIF_BORDER": "#D97D54",  # Crisp terracotta boundary alert box
         # --- Telemetry HUD (telemetry_hud.qss) ---
-        "@TELEMETRY_TEXT": "#444444",
-        "@TELEMETRY_BG": "rgba(245, 245, 245, 0.85)",
-        "@TELEMETRY_BORDER": "rgba(0, 0, 0, 0.1)",
+        "@TELEMETRY_TEXT": "#2E2520",
+        "@TELEMETRY_BG": "rgba(230, 220, 212, 0.45)",
+        "@TELEMETRY_BORDER": "rgba(46, 37, 32, 0.08)",
         # --- Splash HUD (splash_hud.qss) ---
-        "@SPLASH_TEXT": "#111111",
-        "@SPLASH_BG": "rgba(250, 250, 250, 0.95)",
-        "@SPLASH_BORDER": "rgba(0, 0, 0, 0.1)",
-        # --- Spinboxes (spinboxes.qss) ---
-        "@SPIN_BG": "#ffffff",
-        "@SPIN_BORDER": "#cccccc",
-        "@SPIN_BORDER_HOVER": "#aaaaaa",
-        "@SPIN_TEXT": "#000000",
-        "@SPIN_BTN_BORDER": "#cccccc",
-        "@SPIN_BTN_BG": "#f0f0f0",
-        "@SPIN_BTN_HOVER": "#e0e0e0",
-        "@SPIN_BTN_PRESSED": "#d0d0d0",
-        "@SPIN_FOCUS_BG": "#eef4fc",
-        # SVGs updated from stroke="white" to stroke="black" via Base64 encoding
-        "@SPIN_UP_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjE4IDE1IDEyIDkgNiAxNSIvPjwvc3ZnPg==)",
-        "@SPIN_DOWN_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjYgOSAxMiAxNSAxOCA5Ii8+PC9zdmc+)",
+        "@SPLASH_TEXT": "#2E2520",
+        "@SPLASH_BG": "rgba(230, 220, 212, 0.55)",
+        "@SPLASH_BORDER": "rgba(46, 37, 32, 0.12)",
+        # --- Spinboxes & Comboboxes (spinboxes.qss / combos) ---
+        "@SPIN_BG": "#FAF6F3",  # Pale clean cream container background pop
+        "@SPIN_BORDER": "#DDD1C7",  # Soft linen boundary frame lines
+        "@SPIN_BORDER_HOVER": "#D97D54",  # Accent hover glow
+        "@SPIN_TEXT": "#2E2520",
+        "@SPIN_BTN_BORDER": "#DDD1C7",
+        "@SPIN_BTN_BG": "#F5EFEB",  # Subtle shading for control buttons
+        "@SPIN_BTN_HOVER": "#EBE1DA",
+        "@SPIN_BTN_PRESSED": "#DDD1C7",
+        "@SPIN_FOCUS_BG": "#FAF6F3",
+        # Custom Base64 micro-arrows updated with stroke="#2E2520" (Dark Roasted Coffee) for strong contrast
+        "@SPIN_UP_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUyNTIwIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iMTggMTUgMTIgOSYgMTUiLz48L3N2Zz4=)",
+        "@SPIN_DOWN_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUyNTIwIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iNiA5IDEyIDE1IDE4IDkiLz48L3N2Zz4=)",
+        # splash hud
+        "@SPLASH_TEXT_MAIN": "#2E2520",
+        "@SPLASH_TEXT_MUTED": "#5C4A40",
+        "@SPLASH_OR_DIVIDER": "#9C8A7F",
     },
 }
 
@@ -137,11 +148,11 @@ def init_theme(file_manager_instance, default_mode: str = "dark"):
         current_palette = THEME_PALETTES[default_mode]
 
     # Notice we don't need to pass the instance anymore!
-    apply_theme(current_theme)
+    apply_theme("light")
 
 
 def apply_theme(theme_mode: str):
-    """Loads the template using the saved file manager and applies it to Qt."""
+    """Loads blueprint template assets, swaps variables, and pushes straight to Qt."""
     global current_theme, current_palette, _file_manager
 
     if not _file_manager:
@@ -150,34 +161,48 @@ def apply_theme(theme_mode: str):
         )
         return
 
-    if theme_mode not in THEME_PALETTES:
-        logger.error("Theme '%s' not recognized.", theme_mode)
-        return
-
     current_theme = theme_mode
     current_palette = THEME_PALETTES[theme_mode]
 
-    # Uses the stored global reference automatically
-    qss_buffer = _file_manager.load_asset(
+    # --- 1. COMPILE AND APPLY GLOBAL APPLICATION QSS ---
+    raw_payload = _file_manager.load_asset(
         filename="base_template.qss", folder_name="styles"
     )
+    if not raw_payload:
+        return
+
+    qss_buffer = raw_payload.replace("\r\n", "\n").replace("\ufeff", "").strip()
     sorted_tokens = sorted(
-        current_palette.items(), key=lambda item: len(item[0]), reverse=True
+        current_palette.items(), key=lambda item: len(item), reverse=True
     )
 
-    # Replace variables on the fly using the correct string-length priority order
     for token, hex_color in sorted_tokens:
         qss_buffer = qss_buffer.replace(token, hex_color)
 
     app_instance = QApplication.instance()
     if app_instance:
         app_instance.setStyleSheet(qss_buffer)
-        for widget in app_instance.allWidgets():
-            widget.style().unpolish(widget)
-            widget.style().polish(widget)
-            widget.update()
+
+        # --- 2. DYNAMICALLY RE-COMPILE AND SET SPLASH HUD TEXT DIRECTLY ---
+        # Look through active windows to find the custom SplashHUD object ID string name
+        for window in app_instance.topLevelWidgets():
+            if hasattr(window, "findChild"):
+                splash_hud = window.findChild(QWidget, "SplashHUD")
+
+                # If found, load the splash asset, swap tokens, and set it directly!
+                if splash_hud and hasattr(splash_hud, "setText"):
+                    raw_html = _file_manager.load_asset(
+                        filename="splash.html", folder_name="templates"
+                    )
+                    if raw_html:
+                        # Process token string replacements directly on the HTML
+                        for token, hex_color in sorted_tokens:
+                            raw_html = raw_html.replace(token, hex_color)
+
+                        # Direct call on the widget instance inside the theme manager loop
+                        splash_hud.setText(raw_html)
     else:
-        logger.warning("QApplication core instance loop not found.")
+        logger.warning("Application runtime loop missed.")
 
 
 def get_color(token_name: str) -> str:

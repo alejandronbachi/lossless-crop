@@ -7,6 +7,10 @@ QWidget {
     font-family: 'Segoe UI', -apple-system, sans-serif;
 }
 
+QMainWindow, QMainWindow > QWidget {
+    background-color: @WINDOW_BG;
+}
+
 /* --- FROM: btn_settings.qss --- */
 QPushButton#btnSettings {
     background-color: transparent;
@@ -32,7 +36,7 @@ QPushButton#btnSettings:focus {
 }
 
 /* --- FROM: commands_overlay.qss --- */
-QWidget#CommandsOverlay QLabel {
+QLabel#CommandsOverlay, QWidget#CommandsOverlay, .CommandsOverlay {
     color: @COMMANDS_TEXT;
     font-family: monospace;
     font-size: 13px;
@@ -43,7 +47,33 @@ QWidget#CommandsOverlay QLabel {
     padding: 10px;
 }
 
-/* --- FROM: drawer.qss --- */
+QCheckBox {
+    color: @DRAWER_CHECKBOX_TEXT;
+    font-size: 13px;
+    padding: 4px;
+}
+
+/* Customize the tiny selection box layer indicators */
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid @SPIN_BORDER;
+    border-radius: 4px;
+    background-color: @SPIN_BG;
+}
+
+QCheckBox::indicator:hover {
+    border: 1px solid @SPIN_BORDER_HOVER;
+}
+
+QCheckBox::indicator:checked {
+    background-color: @PRIMARY_ACCENT;
+    border: 1px solid @PRIMARY_ACCENT;
+    /* Native geometric checkmark shape marker */
+    image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjIwIDYgOSAxNyA0IDEyIi8+PC9zdmc+);
+}
+
+/* --- FROM: drawer.qss (Keep your original explicit nesting safe) --- */
 QWidget#SettingsDrawer {
     background-color: @DRAWER_BG;
     border-left: 1px solid @DRAWER_BORDER;
@@ -62,7 +92,8 @@ QWidget#SettingsDrawer QLabel {
 }
 
 /* --- FROM: notification.qss --- */
-QWidget#NotificationOverlay QLabel {
+/* Fixed: Target the overlay element directly whether it's a raw QLabel subclass or wrapped */
+QLabel#NotificationOverlay, QWidget#NotificationOverlay, .CenterNotification, .NotificationOverlay {
     color: @NOTIF_TEXT;
     font-size: 28px;
     font-weight: bold;
@@ -73,7 +104,7 @@ QWidget#NotificationOverlay QLabel {
 }
 
 /* --- FROM: telemetry_hud.qss --- */
-QLabel#TelemetryHUD {
+QLabel#TelemetryHUD, .TelemetryHUD {
     color: @TELEMETRY_TEXT;
     font-family: monospace;
     font-size: 13px;
@@ -85,14 +116,46 @@ QLabel#TelemetryHUD {
 }
 
 /* --- FROM: splash_hud.qss --- */
-QLabel#SplashHUD {
-    color: @SPLASH_TEXT;
+QLabel#SplashHUD, .SplashHUD {
+    color: @SPLASH_TEXT !important;
     font-family: 'Segoe UI', -apple-system, sans-serif;
     background-color: @SPLASH_BG;
     border: 1px solid @SPLASH_BORDER;
     border-radius: 12px;
     padding: 35px 50px;
     line-height: 150%;
+}
+
+/* --- TOOLBARS & BOTTOM INFO BARS --- */
+/* Fixed: Forces custom classes like ControlToolbar to inherit background & boundary color traits */
+QToolBar, ControlToolbar, .ControlToolbar, QStatusBar, #bottomInfoBar {
+    background-color: @DRAWER_BG;
+    border: none;
+    border-bottom: 1px solid @DRAWER_BORDER;
+}
+
+/* --- COMBO BOXES & DROP DOWN VIEWS --- */
+/* Fixed: Fully maps custom combo setups alongside native dropdown frameworks */
+QComboBox, .QComboBox {
+    background-color: @SPIN_BG;
+    border: 1px solid @SPIN_BORDER;
+    border-radius: 4px;
+    color: @SPIN_TEXT;
+    padding: 3px 7px;
+}
+QComboBox:hover, .QComboBox:hover {
+    border: 1px solid @SPIN_BORDER_HOVER;
+}
+QComboBox:focus, .QComboBox:focus {
+    border: 1px solid @PRIMARY_ACCENT;
+}
+/* Crucial: Styles the independent popping menu container layers where items live */
+QComboBox QAbstractItemView, .QComboBox QAbstractItemView {
+    background-color: @SPIN_BG;
+    border: 1px solid @SPIN_BORDER;
+    color: @SPIN_TEXT;
+    selection-background-color: @PRIMARY_ACCENT;
+    selection-color: @SPIN_TEXT;
 }
 
 /* --- FROM: spinboxes.qss --- */
@@ -103,7 +166,7 @@ QSpinBox {
     color: @SPIN_TEXT;
     font-family: monospace;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: normal; /* 🌟 Fixed: Changed from Bold to Normal for layout coherence */
     min-width: 95px;
 }
 QSpinBox:hover {
@@ -112,6 +175,7 @@ QSpinBox:hover {
 QSpinBox::editor {
     background-color: @SPIN_BG;
     color: @SPIN_TEXT;
+    font-weight: normal; /* 🌟 Fixed: Standardized input cursor layer weight */
     padding-top: 3px;
     padding-bottom: 3px;
     padding-left: 5px;
@@ -162,12 +226,15 @@ QSpinBox:focus {
 }
 
 /* --- FROM: inline styles refactored into master selectors --- */
-QLabel#lblFolder {
-    font-weight: bold; 
+/* 🌟 Renamed from QLabel#lblFolder to QPushButton#btnFolder and standardized weight */
+QPushButton#btnFolder {
+    font-weight: normal; /* 🌟 Fixed: Removed Bold property to seamlessly blend with Combos */
     color: @LBL_FOLDER_TEXT; 
     margin-left: 5px; 
     min-width: 140px; 
     text-align: left;
+    background-color: transparent; /* Keep it look clean like text but behave like a link button */
+    border: none;
 }
 
 QWidget#spinContainer {
@@ -185,14 +252,14 @@ QLabel#lblCanvas {
 QLabel#lblStatus { 
     color: @LBL_STATUS_TEXT; 
     font-size: 15px; 
-    font-weight: 500;
+    font-weight: normal; /* 🌟 Fixed: Changed from 500 to normal for clean typography matching */
 }
 
 QLabel#lblMetrics {
     color: @LBL_METRICS_TEXT; 
     font-family: monospace; 
     font-size: 13px; 
-    font-weight: bold;
+    font-weight: normal; /* 🌟 Fixed: Dropped bold constraint across system matrix values */
 }
 
 QFrame#divider {
@@ -203,7 +270,7 @@ QFrame#divider {
 QLabel.sectionHeading {
     color: @SECTION_HEAD_TEXT; 
     font-size: 11px; 
-    font-weight: bold; 
+    font-weight: bold; /* Note: We keep section category headers bold since they serve as static structural labels */
     text-transform: uppercase; 
     letter-spacing: 1px; 
     border: none; 

@@ -31,11 +31,11 @@ class ControlToolbar(QFrame):
 
     def _build_ui(self, pillow_available):
         # 1. Directory Loader Button
-        self.main_app.lbl_folder_name = QPushButton(ui_constants.TEXT_NO_DIRECTORY)
-        self.main_app.lbl_folder_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.lbl_folder_name.setObjectName("lblFolder")
-        self.main_app.lbl_folder_name.clicked.connect(self.main_app.select_directory)
-        self.layout.addWidget(self.main_app.lbl_folder_name)
+        self.main_app.btn_folder_name = QPushButton(ui_constants.TEXT_NO_DIRECTORY)
+        self.main_app.btn_folder_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.btn_folder_name.setObjectName("btnFolder")
+        self.main_app.btn_folder_name.clicked.connect(self.main_app.select_directory)
+        self.layout.addWidget(self.main_app.btn_folder_name)
 
         self.layout.addStretch()
 

@@ -717,7 +717,7 @@ class LossLessCropApp(QMainWindow):
         # 2. 🚀 THE CHECK: Only update your UI components if the session loaded error-free
         if session_ready:
             folder_name = self.image_session.folder_path.name
-            self.lbl_folder_name.setText(f"📁 {folder_name}")
+            self.btn_folder_name.setText(f"📁 {folder_name}")
 
             # Refresh views using our newly integrated session data
             self.load_image_to_viewport()
