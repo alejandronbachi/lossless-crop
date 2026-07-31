@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import QObject, QSettings, QSignalBlocker
-from PyQt6.QtWidgets import QCheckBox, QComboBox, QWidget
+from PyQt6.QtWidgets import QAbstractButton, QComboBox, QWidget
 
 from config import app_constants
 from models.app_settings import AppSettings
@@ -22,8 +22,8 @@ class SettingsBinder(QObject):
         # List of binding tuples: (widget, attribute_name, widget_type)
         self._bindings: list[tuple[QWidget, str, str]] = []
 
-    def bind_checkbox(self, widget: QCheckBox, attr_name: str) -> None:
-        """Binds a QCheckBox to a boolean property on AppSettings with real-time sync."""
+    def bind_checkbox(self, widget: QAbstractButton, attr_name: str) -> None:
+        """Binds a QAbstractButton (QCheckBox/SlidingSwitch) to a boolean property on AppSettings with real-time sync."""
         if not hasattr(self.model, attr_name):
             raise AttributeError(f"AppSettings has no attribute '{attr_name}'")
 
@@ -56,7 +56,8 @@ class SettingsBinder(QObject):
                 widget
             )  # Prevent feedback loop during populating UI
             try:
-                if widget_type == "checkbox" and isinstance(widget, QCheckBox):
+                # 🌟 FIXED: Swapped QCheckBox for QAbstractButton to catch sliding toggle elements
+                if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                     widget.setChecked(bool(value))
                 elif widget_type == "combobox" and isinstance(widget, QComboBox):
                     index = widget.findText(str(value))
@@ -68,9 +69,11 @@ class SettingsBinder(QObject):
     def update_model_from_ui(self) -> None:
         """Reads all bound UI widgets and writes values back to AppSettings model."""
         for widget, attr_name, widget_type in self._bindings:
-            if widget_type == "checkbox" and isinstance(widget, QCheckBox):
+            # 🌟 FIXED: Swapped QCheckBox for QAbstractButton to cleanly write data back to models
+            if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                 setattr(self.model, attr_name, widget.isChecked())
             elif widget_type == "combobox" and isinstance(widget, QComboBox):
+                setattr(self.model, attr_name, widget.currentText())
                 setattr(self.model, attr_name, widget.currentText())
 
 

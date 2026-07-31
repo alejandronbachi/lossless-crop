@@ -51,11 +51,11 @@ THEME_PALETTES = {
         "@NOTIF_BORDER": "rgba(255, 255, 255, 0.4)",
         # --- Telemetry HUD (telemetry_hud.qss) ---
         "@TELEMETRY_TEXT": "#888888",
-        "@TELEMETRY_BG": "rgba(230, 220, 212, 0.45)",
+        "@TELEMETRY_BG": "rgba(10, 10, 10, 0.45)",
         "@TELEMETRY_BORDER": "rgba(255, 255, 255, 0.1)",
         # --- Splash HUD (splash_hud.qss) ---
         "@SPLASH_TEXT": "#ffffff",
-        "@SPLASH_BG": "rgba(230, 220, 212, 0.55)",
+        "@SPLASH_BG": "rgba(15, 15, 15, 0.45)",
         "@SPLASH_BORDER": "rgba(255, 255, 255, 0.08)",
         # --- Spinboxes & Comboboxes (spinboxes.qss) ---
         "@SPIN_BG": "#1e1e1e",
@@ -154,7 +154,7 @@ def init_theme(file_manager_instance, default_mode: str = "dark"):
         current_palette = THEME_PALETTES[default_mode]
 
     # Notice we don't need to pass the instance anymore!
-    apply_theme("light")
+    apply_theme("dark")
 
 
 def apply_theme(theme_mode: str):

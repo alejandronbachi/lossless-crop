@@ -1,7 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -10,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config import ui_constants
+from widgets.sliding_switch import SlidingSwitch
 
 
 class ControlToolbar(QFrame):
@@ -117,7 +117,7 @@ class ControlToolbar(QFrame):
         self.layout.addWidget(self.main_app.spin_container)
 
         # 6. Toolbar Checkboxes
-        self.main_app.chk_preserve = QCheckBox(
+        self.main_app.chk_preserve = SlidingSwitch(
             ui_constants.CHECKBOX_KEEP_SELECTION_TEXT
         )
         self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -125,7 +125,9 @@ class ControlToolbar(QFrame):
         self.main_app.chk_preserve.setChecked(True)
         self.layout.addWidget(self.main_app.chk_preserve)
 
-        self.main_app.chk_overwrite = QCheckBox(ui_constants.CHECKBOX_OVERWRITE_TEXT)
+        self.main_app.chk_overwrite = SlidingSwitch(
+            ui_constants.CHECKBOX_OVERWRITE_TEXT
+        )
         self.main_app.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.chk_overwrite.setToolTip(ui_constants.TOOLTIP_OVERWRITE)
         self.main_app.chk_overwrite.setChecked(False)

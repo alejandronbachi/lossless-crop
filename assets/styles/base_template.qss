@@ -78,57 +78,8 @@ QWidget#info_bar_widget {
 /* --- 3. THE REFACTORED CHECKBOX STRUCTURE (Fixed Outline and Hover Glitches) --- */
 QCheckBox {
     font-size: 13px;
-    color: @DRAWER_CHECKBOX_TEXT;
-    spacing: 6px;
+    spacing: 10px;
     background-color: transparent;
-    outline: none;
-}
-QCheckBox:hover {
-    color: @CHECKBOX_TEXT_HOVER;
-}
-QCheckBox:focus {
-    color: @CHECKBOX_TEXT_HOVER;
-    background-color: @SPIN_FOCUS_BG;
-}
-
-/* Base resting block layout definition for indicator selection boxes */
-QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border: 1px solid @SPIN_BORDER;
-    border-radius: 3px;
-    background-color: @SPIN_BG;
-}
-
-/* Unchecked Hover Pass */
-QCheckBox::indicator:unchecked:hover {
-    border: 1px solid @CHECKBOX_HOVER_BORDER; /* 🌟 FIXED: Pulls high-contrast theme-specific boundaries */
-    background-color: @CHECKBOX_HOVER_BG;     /* 🌟 FIXED: Pulls visible interactive box filling colors */
-}
-
-/* Unchecked Focus Pass */
-QCheckBox::indicator:unchecked:focus {
-    border: 1px solid @PRIMARY_ACCENT;
-    background-color: @SPIN_FOCUS_BG;
-}
-
-/* Active Checked Pass */
-QCheckBox::indicator:checked {
-    background-color: @CANVAS_BORDER;         /* Maps to your original dark blue framework #4a6fa5 */
-    border: 1px solid @PRIMARY_ACCENT;
-    image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwb2x5bGluZSBwb2ludHM9IjIwIDYgOSAxNyA0IDEyIi8+PC9zdmc+");
-}
-
-/* Checked Hover Pass */
-QCheckBox::indicator:checked:hover {
-    background-color: @PRIMARY_ACCENT;
-    border: 1px solid @PRIMARY_ACCENT;
-}
-
-/* Checked Focus Pass */
-QCheckBox::indicator:checked:focus {
-    border: 1px solid @PRIMARY_ACCENT;
-    background-color: @CANVAS_BORDER;
 }
 
 /* --- 4. INDIVIDUAL MODULAR BLOCKS --- */
