@@ -68,7 +68,7 @@ THEME_PALETTES = {
         # --- Spinboxes & Comboboxes (spinboxes.qss) ---
         "@SPIN_BG": "#1e1e1e",
         "@SPIN_BORDER": "#333333",
-        "@SPIN_BORDER_HOVER": "#444444",
+        "@SPIN_BORDER_HOVER": "#007acc",
         "@SPIN_TEXT": "#ffffff",
         "@SPIN_BTN_BORDER": "#333333",
         "@SPIN_BTN_BG": "#252525",
