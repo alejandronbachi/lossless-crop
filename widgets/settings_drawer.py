@@ -95,7 +95,7 @@ class SettingsDrawer(
         self.main_app.cfg_show_filename.setChecked(True)
         # 🚀 FIX: Point callback away from deleted method straight to your centralized StatusManager engine
         self.main_app.cfg_show_filename.stateChanged.connect(
-            self.main_app.status_manager.update_status_and_telemetry
+            self.main_app.status_manager.sync_drawer_visibility_rules
         )
         self.layout.addWidget(self.main_app.cfg_show_filename)
 
@@ -106,7 +106,7 @@ class SettingsDrawer(
         self.main_app.cfg_show_imgsize.setChecked(True)
         # 🚀 FIX: Point callback to StatusManager here too
         self.main_app.cfg_show_imgsize.stateChanged.connect(
-            self.main_app.status_manager.update_status_and_telemetry
+            self.main_app.status_manager.sync_drawer_visibility_rules
         )
         self.layout.addWidget(self.main_app.cfg_show_imgsize)
 

@@ -189,12 +189,16 @@ class StatusManager(QObject):
 
     def restore_overlays_on_mouse_release(self):
         """Restores shortcut and telemetry visibility smoothly once clicks release."""
-        if (
-            self.main_app.cfg_show_shortcuts.isChecked()
-            and self.main_app.image_session.has_active_image
-        ):
-            self.lbl_commands_overlay.show()
-            self.lbl_commands_overlay.raise_()
+
+        if self.main_app.image_session.has_active_image:
+            if self.main_app.cfg_show_shortcuts.isChecked():
+                self.lbl_commands_overlay.show()
+                self.lbl_commands_overlay.raise_()
+
+            if not self.main_app.cfg_show_infobar.isChecked():
+                self.lbl_telemetry_hud.show()
+                self.lbl_telemetry_hud.raise_()
+
         self.invalidate_ui_state()
 
     def sync_drawer_visibility_rules(self):
@@ -211,7 +215,13 @@ class StatusManager(QObject):
 
         #  Check the live checkbox widget state instead of the static dataclass property!
         if self.main_app.cfg_show_infobar.isChecked():
-            self.info_bar.show()
+            if (
+                self.main_app.cfg_show_imgsize.isChecked()
+                or self.main_app.cfg_show_filename.isChecked()
+            ):
+                self.info_bar.show()
+            else:
+                self.info_bar.hide()
         else:
             self.info_bar.hide()
 
