@@ -70,6 +70,7 @@ CHECKBOX_MAIN_WINDOW_TEXT = "Main Window"
 CHECKBOX_PREVIEW_HUD_TEXT = "Preview HUD"
 CHECKBOX_KEEP_SELECTION_TEXT = "Keep selection"
 CHECKBOX_OVERWRITE_TEXT = "Overwrite"
+CHECKBOX_DARK_THEME = "Dark Theme"
 
 TOOLTIP_PREVIEW = "Display Zoom Preview HUD"
 TOOLTIP_ENGINE = "Choose processing engine mode for saving operations."

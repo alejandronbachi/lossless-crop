@@ -56,7 +56,6 @@ class SettingsBinder(QObject):
                 widget
             )  # Prevent feedback loop during populating UI
             try:
-                # 🌟 FIXED: Swapped QCheckBox for QAbstractButton to catch sliding toggle elements
                 if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                     widget.setChecked(bool(value))
                 elif widget_type == "combobox" and isinstance(widget, QComboBox):
@@ -69,7 +68,6 @@ class SettingsBinder(QObject):
     def update_model_from_ui(self) -> None:
         """Reads all bound UI widgets and writes values back to AppSettings model."""
         for widget, attr_name, widget_type in self._bindings:
-            # 🌟 FIXED: Swapped QCheckBox for QAbstractButton to cleanly write data back to models
             if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                 setattr(self.model, attr_name, widget.isChecked())
             elif widget_type == "combobox" and isinstance(widget, QComboBox):
@@ -153,6 +151,9 @@ class SettingsManager:
         )
         binder.bind_checkbox(
             main_window.chk_overwrite, app_constants.SETTING_OVERWRITE_FILES
+        )
+        binder.bind_checkbox(
+            main_window.cfg_dark_theme, app_constants.SETTING_DARK_THEME
         )
 
         # Category 5: Dropdowns

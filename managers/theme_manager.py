@@ -2,11 +2,19 @@ import logging
 
 from PyQt6.QtWidgets import QApplication, QWidget
 
-logger = logging.getLogger(__name__)
+from config.ui_constants import (
+    BASE_STYLE_TEMPLATE,
+    FOLDER_STYLES,
+    FOLDER_TEMPLATES,
+    TEMPLATE_SPLASH,
+)
 
+logger = logging.getLogger(__name__)
+THEME_DARK = "dark"
+THEME_LIGHT = "light"
 
 # 1. Global State Variables (Module Scope)
-current_theme = "light"
+current_theme = THEME_DARK
 current_palette = {}
 _file_manager = None  # Holds the saved reference to your file manager
 
@@ -154,7 +162,7 @@ def init_theme(file_manager_instance, default_mode: str = "dark"):
         current_palette = THEME_PALETTES[default_mode]
 
     # Notice we don't need to pass the instance anymore!
-    apply_theme("dark")
+    apply_theme(current_theme)
 
 
 def apply_theme(theme_mode: str):
@@ -172,7 +180,7 @@ def apply_theme(theme_mode: str):
 
     # --- 1. COMPILE AND APPLY GLOBAL APPLICATION QSS ---
     raw_payload = _file_manager.load_asset(
-        filename="base_template.qss", folder_name="styles"
+        filename=BASE_STYLE_TEMPLATE, folder_name=FOLDER_STYLES
     )
     if not raw_payload:
         return
@@ -198,7 +206,7 @@ def apply_theme(theme_mode: str):
                 # If found, load the splash asset, swap tokens, and set it directly!
                 if splash_hud and hasattr(splash_hud, "setText"):
                     raw_html = _file_manager.load_asset(
-                        filename="splash.html", folder_name="templates"
+                        filename=TEMPLATE_SPLASH, folder_name=FOLDER_TEMPLATES
                     )
                     if raw_html:
                         # Process token string replacements directly on the HTML
@@ -214,3 +222,11 @@ def apply_theme(theme_mode: str):
 def get_color(token_name: str) -> str:
     """Helper method used by your custom Canvas loops to pull color hex strings."""
     return current_palette.get(token_name, "#FFFFFF")
+
+
+def toggle_theme():
+    """Toggles the application between dark and light themes automatically."""
+    global current_theme
+    # Calculate the opposite layout state based on the active runtime value
+    next_theme = "light" if current_theme == "dark" else "dark"
+    apply_theme(next_theme)

@@ -2,6 +2,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 
 from config import ui_constants
+from managers import theme_manager
 from widgets.sliding_switch import SlidingSwitch
 
 
@@ -55,6 +56,22 @@ class SettingsDrawer(
         self.main_app.cfg_auto_folder.setChecked(False)
         self.layout.addWidget(self.main_app.cfg_auto_folder)
 
+        self.main_app.cfg_fit_preview = SlidingSwitch(
+            ui_constants.CHECKBOX_FIT_PREVIEW_TEXT
+        )
+        self.main_app.cfg_fit_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.cfg_fit_preview.setChecked(False)
+        self.main_app.cfg_fit_preview.toggled.connect(
+            self.main_app.status_manager.invalidate_ui_state
+        )
+        self.layout.addWidget(self.main_app.cfg_fit_preview)
+
+        self.main_app.cfg_dark_theme = SlidingSwitch(ui_constants.CHECKBOX_DARK_THEME)
+        self.main_app.cfg_dark_theme.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.cfg_dark_theme.setChecked(False)
+        self.main_app.cfg_dark_theme.toggled.connect(theme_manager.toggle_theme)
+        self.layout.addWidget(self.main_app.cfg_dark_theme)
+
         # --- CATEGORY 2: SHOW / DISPLAY OPTIONS ---
         lbl_show_section = QLabel(ui_constants.LABEL_SHOW_SECTION)
         lbl_show_section.setProperty("class", "sectionHeading")
@@ -94,7 +111,6 @@ class SettingsDrawer(
         )
         self.main_app.cfg_show_filename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_filename.setChecked(True)
-        # 🚀 FIX: Point callback away from deleted method straight to your centralized StatusManager engine
         self.main_app.cfg_show_filename.toggled.connect(
             self.main_app.status_manager.sync_drawer_visibility_rules
         )
@@ -105,7 +121,6 @@ class SettingsDrawer(
         )
         self.main_app.cfg_show_imgsize.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_imgsize.setChecked(True)
-        # 🚀 FIX: Point callback to StatusManager here too
         self.main_app.cfg_show_imgsize.toggled.connect(
             self.main_app.status_manager.sync_drawer_visibility_rules
         )
@@ -117,21 +132,10 @@ class SettingsDrawer(
         self.main_app.cfg_show_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.main_app.cfg_show_preview.setToolTip(ui_constants.TOOLTIP_PREVIEW)
         self.main_app.cfg_show_preview.setChecked(False)
-        # 🚀 FIX: Redirect callback to your unified main window visibility toggle
         self.main_app.cfg_show_preview.toggled.connect(
             self.main_app.toggle_zoom_hud_window_visibility
         )
         self.layout.addWidget(self.main_app.cfg_show_preview)
-
-        self.main_app.cfg_fit_preview = SlidingSwitch(
-            ui_constants.CHECKBOX_FIT_PREVIEW_TEXT
-        )
-        self.main_app.cfg_fit_preview.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.cfg_fit_preview.setChecked(False)
-        self.main_app.cfg_fit_preview.toggled.connect(
-            self.main_app.status_manager.invalidate_ui_state
-        )
-        self.layout.addWidget(self.main_app.cfg_fit_preview)
 
         # --- CATEGORY 3: WINDOW LAYOUT MEMORY PERMANENCE ---
         lbl_layout_section = QLabel(ui_constants.LABEL_LAYOUT_SECTION)

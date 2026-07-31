@@ -65,7 +65,8 @@ class LossLessCropApp(QMainWindow):
         self.settings = AppSettings()
         self.file_manager = FileManager(self.settings_manager)
         theme_manager.init_theme(
-            file_manager_instance=self.file_manager, default_mode="dark"
+            file_manager_instance=self.file_manager,
+            default_mode=theme_manager.THEME_DARK,
         )
         self.image_manager = ImageProcessor()
         self.crop_executor = CropExecutionController(self.image_manager)
@@ -623,6 +624,12 @@ class LossLessCropApp(QMainWindow):
             self.automate_folder_loading(self.settings.last_used_folder)
         else:
             self.status_manager.set_empty_workspace_state()
+
+        if self.cfg_dark_theme.isChecked():
+            current_theme = theme_manager.THEME_DARK
+        else:
+            current_theme = theme_manager.THEME_LIGHT
+        theme_manager.apply_theme(current_theme)
 
     def automate_folder_loading(self, target_folder_str: str):
         """Asks the FileManager to scan the directory and updates current tracking indices."""
