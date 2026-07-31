@@ -13,22 +13,30 @@ class SlidingSwitch(QAbstractButton):
         self.setText(text)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        # Explicitly size the physical toggle track box dimensions
+        # 🌟 NEW ADDITION PART 1: Turn on mouse event tracking and set base state
+        self.setMouseTracking(True)
+        self._is_hovered = False
+
         self.track_width = 38
         self.track_height = 20
         self.thumb_radius = 6
+        self._thumb_x = self.thumb_radius + 4
 
-        # Initialize internal tracking state for the knob's X position
-        self._thumb_x = self.thumb_radius + 4  # Start position (Left)
-
-        # Set up a smooth, fluid 150ms interpolation curve animation
         self.animation = QVariantAnimation(self)
         self.animation.setDuration(150)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.animation.valueChanged.connect(self._animate_thumb)
-
-        # Update layout footprint padding properties
         self.setMinimumHeight(self.track_height + 8)
+
+    def enterEvent(self, event):
+        self._is_hovered = True
+        self.update()  # Request immediate repaint pass
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._is_hovered = False
+        self.update()  # Request immediate repaint pass
+        super().leaveEvent(event)
 
     def sizeHint(self):
         """Informs parent layouts of the exact pixel boundaries required for this element."""
@@ -85,19 +93,28 @@ class SlidingSwitch(QAbstractButton):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Pull active hex colors from your global theme dictionaries
-        bg_color = QColor(
-            theme_manager.get_color(
-                "@PRIMARY_ACCENT" if self.isChecked() else "@SPIN_BG"
+        if self.isChecked():
+            bg_color = QColor(theme_manager.get_color("@PRIMARY_ACCENT"))
+            border_color = QColor(theme_manager.get_color("@PRIMARY_ACCENT"))
+            thumb_color = QColor("#FFFFFF")
+        else:
+            # If the mouse glides over an unchecked switch, use your hover tokens instead of resting styles!
+            bg_color = QColor(
+                theme_manager.get_color(
+                    "@SPIN_BTN_HOVER" if self._is_hovered else "@SPIN_BG"
+                )
             )
-        )
-        border_color = QColor(
-            theme_manager.get_color(
-                "@PRIMARY_ACCENT" if self.isChecked() else "@SPIN_BORDER"
+            border_color = QColor(
+                theme_manager.get_color(
+                    "@SPIN_BORDER_HOVER" if self._is_hovered else "@SPIN_BORDER"
+                )
             )
+            thumb_color = QColor("#FFFFFF" if self._is_hovered else "#8B8B8B")
+
+        text_token = (
+            "@CHECKBOX_TEXT_HOVER" if self._is_hovered else "@DRAWER_CHECKBOX_TEXT"
         )
-        thumb_color = QColor("#FFFFFF" if self.isChecked() else "#8B8B8B")
-        text_color = QColor(theme_manager.get_color("@DRAWER_CHECKBOX_TEXT"))
+        text_color = QColor(theme_manager.get_color(text_token))
 
         # 1. Paint the outer rounded pill track layer
         painter.setPen(border_color)
