@@ -13,7 +13,19 @@ QLabel, QCheckBox, QPushButton, QComboBox, QSpinBox {
     color: @DRAWER_CHECKBOX_TEXT;
 }
 
+
+
 /* --- 2. GLOBAL WIDGET COMPONENT DEFINITIONS (FROM main.qss mapped to original tokens) --- */
+QLabel {
+    background-color: @SPIN_BG;              /* Dynamically maps to your dark/light container backgrounds */
+    border: 1px solid @SPIN_BORDER;          /* Dynamically maps to your standard border colors */
+    border-radius: 4px;
+}
+
+QLabel:focus {
+    border: 1px solid @PRIMARY_ACCENT;       /* Dynamically maps to your primary active accent color */
+}
+
 /* Interactive PushButtons */
 QPushButton {
     background-color: @SPIN_BG;              /* Inherits your spinbox base background color token */
