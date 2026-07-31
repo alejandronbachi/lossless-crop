@@ -13,9 +13,9 @@ class SlidingSwitch(QAbstractButton):
         self.setText(text)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        # 🌟 NEW ADDITION PART 1: Turn on mouse event tracking and set base state
         self.setMouseTracking(True)
         self._is_hovered = False
+        self._is_focused = False
 
         self.track_width = 38
         self.track_height = 20
@@ -71,7 +71,6 @@ class SlidingSwitch(QAbstractButton):
         """Intercepts setting states from code to force the knob to snap to the correct side."""
         super().setChecked(checked)
 
-        # 🌟 Calculate the correct resting X position boundary for the thumb circle node
         if checked:
             target_x = self.track_width - self.thumb_radius - 4
         else:
@@ -92,16 +91,20 @@ class SlidingSwitch(QAbstractButton):
         """Vector paints the switch surfaces cleanly using your active theme manager palette colors."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
+        is_active_interaction = self._is_hovered or self._is_focused
         if self.isChecked():
             bg_color = QColor(theme_manager.get_color("@PRIMARY_ACCENT"))
-            border_color = QColor(theme_manager.get_color("@PRIMARY_ACCENT"))
+            border_color = QColor(
+                "#FFFFFF"
+                if is_active_interaction
+                else theme_manager.get_color("@PRIMARY_ACCENT")
+            )
             thumb_color = QColor("#FFFFFF")
         else:
             # If the mouse glides over an unchecked switch, use your hover tokens instead of resting styles!
             bg_color = QColor(
                 theme_manager.get_color(
-                    "@SPIN_BTN_HOVER" if self._is_hovered else "@SPIN_BG"
+                    "@SPIN_BTN_HOVER" if is_active_interaction else "@SPIN_BG"
                 )
             )
             border_color = QColor(
@@ -136,11 +139,13 @@ class SlidingSwitch(QAbstractButton):
         painter.drawEllipse(
             QPointF(self._thumb_x, center_y), self.thumb_radius, self.thumb_radius
         )
-
         # 3. Paint your descriptive setting option label text on the right
         if self.text():
             painter.setPen(text_color)
-            painter.setFont(self.font())
+            # Fetch the widget's current default typography font layout profile
+            switch_font = self.font()
+            switch_font.setItalic(is_active_interaction)
+            painter.setFont(switch_font)
             text_x = self.track_width + 12
             painter.drawText(
                 text_x,
@@ -150,3 +155,23 @@ class SlidingSwitch(QAbstractButton):
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                 self.text(),
             )
+
+    def focusInEvent(self, event):
+        self._is_focused = True
+        self.update()  # Request immediate repaint pass
+        super().focusInEvent(event)
+
+    #  Capture when the widget loses keyboard tab focus highlight
+    def focusOutEvent(self, event):
+        self._is_focused = False
+        self.update()  # Request immediate repaint pass
+        super().focusOutEvent(event)
+
+    #  Intercept Enter/Return keyboard strikes to dynamically toggle the slider switch
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            # Programmatically trigger a click to initiate the sliding timeline animation pass
+            self.click()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
