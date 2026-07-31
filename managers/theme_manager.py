@@ -51,11 +51,11 @@ THEME_PALETTES = {
         "@NOTIF_BORDER": "rgba(255, 255, 255, 0.4)",
         # --- Telemetry HUD (telemetry_hud.qss) ---
         "@TELEMETRY_TEXT": "#888888",
-        "@TELEMETRY_BG": "rgba(10, 10, 10, 0.75)",
+        "@TELEMETRY_BG": "rgba(230, 220, 212, 0.45)",
         "@TELEMETRY_BORDER": "rgba(255, 255, 255, 0.1)",
         # --- Splash HUD (splash_hud.qss) ---
         "@SPLASH_TEXT": "#ffffff",
-        "@SPLASH_BG": "rgba(15, 15, 15, 0.85)",
+        "@SPLASH_BG": "rgba(230, 220, 212, 0.55)",
         "@SPLASH_BORDER": "rgba(255, 255, 255, 0.08)",
         # --- Spinboxes & Comboboxes (spinboxes.qss) ---
         "@SPIN_BG": "#1e1e1e",
@@ -73,6 +73,9 @@ THEME_PALETTES = {
         "@SPLASH_TEXT_MAIN": "#ffffff",
         "@SPLASH_TEXT_MUTED": "#bbbbbb",
         "@SPLASH_OR_DIVIDER": "#555555",
+        "@CHECKBOX_HOVER_BORDER": "#666666",  # Your exact original dark hover border
+        "@CHECKBOX_HOVER_BG": "#252525",
+        "@CHECKBOX_TEXT_HOVER": "#ffffff",
     },
     "light": {
         # --- QPainter Grid Canvas ---
@@ -134,6 +137,9 @@ THEME_PALETTES = {
         "@SPLASH_TEXT_MAIN": "#2E2520",
         "@SPLASH_TEXT_MUTED": "#5C4A40",
         "@SPLASH_OR_DIVIDER": "#9C8A7F",
+        "@CHECKBOX_HOVER_BORDER": "#BCAFA5",  # Richer clay-taupe to create a sharp visible border
+        "@CHECKBOX_HOVER_BG": "#EADED5",
+        "@CHECKBOX_TEXT_HOVER": "#000000",
     },
 }
 
@@ -173,7 +179,7 @@ def apply_theme(theme_mode: str):
 
     qss_buffer = raw_payload.replace("\r\n", "\n").replace("\ufeff", "").strip()
     sorted_tokens = sorted(
-        current_palette.items(), key=lambda item: len(item), reverse=True
+        current_palette.items(), key=lambda item: len(item[0]), reverse=True
     )
 
     for token, hex_color in sorted_tokens:
