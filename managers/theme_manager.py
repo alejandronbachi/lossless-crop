@@ -155,7 +155,7 @@ THEME_PALETTES = {
         "@CHECKBOX_HOVER_BG": "#EADED5",
         "@CHECKBOX_TEXT_HOVER": "#000000",
         # Menu Bar
-        "@MENUBAR_BG": "#FAF6F3",
+        "@MENUBAR_BG": "#ffffff",
         "@MENU_BORDER": "#DDD1C7",
         "@MENU_SEPARATOR_BG": "#5C4A40",
     },

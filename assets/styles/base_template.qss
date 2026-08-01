@@ -322,8 +322,10 @@ QLabel#lblLayoutSection { margin-top: 15px; }
 QMenuBar#CustomAppMenuBar {
     background-color: @MENUBAR_BG;       /* A clean dark charcoal color */
     color: @PRIMARY_TEXT;                  /* White text for visibility */
-    padding: 4px;                    /* Small breathing room */
     font-size: 13px;
+    margin: 0px;
+    padding: 0px;
+    spacing: 5px; /* Space between 'File' and 'Help' text horizontally */
 }
 
 QMenuBar#CustomAppMenuBar::item {
