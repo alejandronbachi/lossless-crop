@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QStandardPaths, QUrl
 from PyQt6.QtGui import QAction, QDesktopServices
-from PyQt6.QtWidgets import QMenu, QMenuBar
+from PyQt6.QtWidgets import QMenu, QMenuBar, QMessageBox
 
 logger = logging.getLogger(__name__)
 
@@ -94,9 +94,6 @@ class ApplicationMenuBar(QMenuBar):
     def handle_user_manual(self):
         self.setVisible(False)
 
-    def handle_about(self):
-        self.setVisible(False)
-
     def handle_see_logs(self):
         """
         Locates the application's local log directory and opens it natively.
@@ -143,3 +140,21 @@ class ApplicationMenuBar(QMenuBar):
             self.main_win.status_manager.show_center_notification(
                 "OS failed to launch file explorer."
             )
+
+    def handle_about(self):
+        """Displays a clean, HTML-formatted About pop-up with your logo"""
+        # 1. Locate your logo relative to your script
+
+        # 2. Design the HTML structure (inline CSS works perfectly here)
+        about_text = """
+        <div style='text-align: center;'>
+            <br>
+            <h2>Lossless Crop Engine</h2>
+            <p><b>Version:</b> 1.0.0</p>
+            <p>A high-performance, cross-platform tool for lossless image manipulation.</p>
+            <hr>
+            <p style='font-size: 11px; color: #888;'>Copyright © 2026. All rights reserved.</p>
+        </div>
+        """
+        # 3. Display using the native static about popup
+        QMessageBox.about(self.main_win, "About Lossless Crop", about_text)
