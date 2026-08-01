@@ -48,7 +48,6 @@ from widgets.settings_drawer import SettingsDrawer
 # Check for Pillow availability
 try:
     from PIL import Image
-    from PIL.ImageQt import ImageQt
 
     Image.MAX_IMAGE_PIXELS = None
     PILLOW_AVAILABLE = True
