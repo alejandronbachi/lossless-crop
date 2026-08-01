@@ -108,6 +108,7 @@ class LossLessCropApp(QMainWindow):
         # -------------------------------------------------------------
         self.custom_menu = ApplicationMenuBar(self)
         self.setMenuBar(self.custom_menu)
+        self.custom_menu.setVisible(False)
 
         # -------------------------------------------------------------
         # TOP SYSTEM TOOLBAR

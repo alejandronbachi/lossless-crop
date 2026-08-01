@@ -329,4 +329,5 @@ QMenuBar::item {
     padding: 2px 6px; /* Tight vertical padding (2px top/bottom, 6px left/right) */
     margin: 0px;
     background: transparent;
+    color:@SPLASH_TEXT_MAIN;
 }

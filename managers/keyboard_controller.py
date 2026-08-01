@@ -34,6 +34,7 @@ class KeyboardController(QObject):
                 Qt.Key.Key_S,
                 Qt.Key.Key_Space,
                 Qt.Key.Key_Escape,
+                Qt.Key.Key_Alt,
             ):
                 if key in (Qt.Key.Key_F, Qt.Key.Key_D):
                     self.trigger_forward_navigation()
@@ -54,6 +55,9 @@ class KeyboardController(QObject):
                     self.trigger_forward_navigation()
                 elif key == Qt.Key.Key_Escape:
                     self.main_window.close()
+                elif key == Qt.Key.Key_Alt:
+                    is_visible = self.main_window.custom_menu.isVisible()
+                    self.main_window.custom_menu.setVisible(not is_visible)
                 return True  # Intercepted! Do not let the letter type inside the spinbox number box
 
             # EXCEPTION: Spinboxes keep their default text cursor manipulation
