@@ -226,11 +226,8 @@ class StatusManager(QObject):
             self.info_bar.hide()
 
         # Force the main structural layout container to update its dimensions
-        if (
-            hasattr(self.main_app, "central_widget")
-            and self.main_app.central_widget.layout()
-        ):
-            self.main_app.central_widget.layout().activate()
+
+        self.main_app.central_widget.layout().activate()
 
         # Instead of running heavy text distributions instantly,
         # mark it as dirty so the 60FPS heart-rate timer repaints it perfectly aligned!

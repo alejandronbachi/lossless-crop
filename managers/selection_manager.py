@@ -240,7 +240,7 @@ class SelectionManager:
             sign_w = 1 if raw_w >= 0 else -1
             sign_h = 1 if raw_h >= 0 else -1
 
-            # 🚀 THE DOMINANT AXIS CORRECTION:
+            #  THE DOMINANT AXIS CORRECTION:
             # Check if the vertical movement is greater than the horizontal movement
             if abs(raw_h) * aspect > abs(raw_w):
                 # Vertical drag is dominant: calculate width (raw_w) from height (raw_h)
@@ -264,7 +264,6 @@ class SelectionManager:
         snapped_rect = self._snap_rect(fluid_rect) if use_lossless else fluid_rect
 
         if snap_mode == ui_constants.SNAP_REAL_TIME:
-            self.hide_ghost()
             active_rect = snapped_rect if use_lossless else fluid_rect
             self.selector.setGeometry(active_rect)
             self.last_crop_geometry = active_rect
@@ -272,14 +271,12 @@ class SelectionManager:
             self.selector.raise_()
 
         elif snap_mode == ui_constants.SNAP_POST_RELEASE:
-            self.hide_ghost()
             self.selector.setGeometry(fluid_rect)
             self.selector.show()
             self.selector.raise_()
             self.last_crop_geometry = fluid_rect
 
         elif snap_mode == ui_constants.SNAP_GHOSTING:
-            self.hide_ghost()
             self.selector.setGeometry(fluid_rect)
             self.selector.show()
             self.selector.raise_()
@@ -298,9 +295,6 @@ class SelectionManager:
             ratio_label=ratio_label,
         )
 
-    def hide_ghost(self):
-        pass
-
     # -----------------------------------------------------------------
     # Mouse-release entry point (called from LossLessCropApp.on_mouse_release)
     # -----------------------------------------------------------------
@@ -314,7 +308,6 @@ class SelectionManager:
         if snap_mode in (ui_constants.SNAP_POST_RELEASE, ui_constants.SNAP_REAL_TIME):
             self.snap_selection()
         elif snap_mode == ui_constants.SNAP_GHOSTING:
-            self.hide_ghost()
             self.ghost_crop_geometry = None  # Clear coordinates on release
 
             # Lock the final selection to the snapped boundaries if lossless is active
@@ -525,9 +518,8 @@ class SelectionManager:
         remembered geometry — mirrors the 'else' branch of
         sync_workspace_after_loading_image when preservation is off."""
         self.selector.hide()
-        self.ghost_crop_geometry = None  # 🚀 Flush on reset
+        self.ghost_crop_geometry = None
         self.last_crop_geometry = None
-        self.hide_ghost()
         self._notify_changed()  # NEW: previously this fell through silently;
         # now it's needed so crop_model.clear() actually fires.
 
