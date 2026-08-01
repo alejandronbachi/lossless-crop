@@ -8,6 +8,7 @@ from config.logging_setup import initialize_logging
 initialize_logging()
 from PyQt6.QtCore import (
     QEasingCurve,
+    QPoint,
     QPropertyAnimation,
     QRect,
     Qt,
@@ -26,6 +27,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config import app_constants, ui_constants
+from managers import theme_manager
 from managers.canvas_presenter import CanvasPresenter
 from managers.crop_execution_manager import CropExecutionController
 from managers.crop_geometry_engine import ViewportGeometry
@@ -63,6 +65,10 @@ class LossLessCropApp(QMainWindow):
         self.settings_manager = SettingsManager()
         self.settings = AppSettings()
         self.file_manager = FileManager(self.settings_manager)
+        theme_manager.init_theme(
+            file_manager_instance=self.file_manager,
+            default_mode=theme_manager.THEME_DARK,
+        )
         self.image_manager = ImageProcessor()
         self.crop_executor = CropExecutionController(self.image_manager)
         #  Create a single-shot timer for layout throttling
@@ -80,12 +86,6 @@ class LossLessCropApp(QMainWindow):
         if icon_path.exists():
             # Convert Path to str since some older PyQt versions prefer string primitives for UI assets
             self.setWindowIcon(QIcon(str(icon_path)))  # Sets Title Bar Icon
-
-        self.setStyleSheet(
-            self.file_manager.load_asset(
-                ui_constants.STYLE_MAIN, ui_constants.FOLDER_STYLES
-            )
-        )
 
         # Image Pipeline Management Variables
         self.image_session = ImageSession(self.settings)
@@ -276,6 +276,8 @@ class LossLessCropApp(QMainWindow):
             # If the cursor barely moved (tolerance of 2 pixels), treat it as a deliberate single click
             if not start_pt.isNull() and (end_pt - start_pt).manhattanLength() <= 2:
                 active_box = self.selection_manager.last_crop_geometry
+                self.selection_manager.drag_start_origin = QPoint()
+                self.selection_manager.is_moving_box = False
 
                 # If a box is active and the click happened completely outside its borders, clear it!
                 if active_box and not active_box.contains(end_pt):
@@ -626,6 +628,12 @@ class LossLessCropApp(QMainWindow):
         else:
             self.status_manager.set_empty_workspace_state()
 
+        if self.cfg_dark_theme.isChecked():
+            current_theme = theme_manager.THEME_DARK
+        else:
+            current_theme = theme_manager.THEME_LIGHT
+        theme_manager.apply_theme(current_theme)
+
     def automate_folder_loading(self, target_folder_str: str):
         """Asks the FileManager to scan the directory and updates current tracking indices."""
         if not target_folder_str:
@@ -719,7 +727,7 @@ class LossLessCropApp(QMainWindow):
         # 2. 🚀 THE CHECK: Only update your UI components if the session loaded error-free
         if session_ready:
             folder_name = self.image_session.folder_path.name
-            self.lbl_folder_name.setText(f"📁 {folder_name}")
+            self.btn_folder_name.setText(f"📁 {folder_name}")
 
             # Refresh views using our newly integrated session data
             self.load_image_to_viewport()

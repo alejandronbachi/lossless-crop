@@ -35,9 +35,7 @@ class FloatingZoomPreview(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.lbl_canvas = QLabel()
-        self.lbl_canvas.setStyleSheet(
-            "background-color: #000000; border: 2px solid #4a6fa5;"
-        )
+        self.lbl_canvas.setObjectName("lblCanvas")
         self.lbl_canvas.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.lbl_canvas)
 

@@ -12,11 +12,7 @@ class CenterNotification(QLabel):
         self.hide()
 
         # Load your custom cinematic alert styles
-        self.setStyleSheet(
-            file_manager.load_asset(
-                ui_constants.STYLE_NOTIFICATIONS, ui_constants.FOLDER_STYLES
-            )
-        )
+        self.setObjectName("NotificationOverlay")
 
         # Apply your exact soft ambient shadow configuration
         shadow = QGraphicsDropShadowEffect(self)
@@ -36,11 +32,7 @@ class CommandsOverlay(QLabel):
         super().__init__(parent_container)
         self.hide()
 
-        self.setStyleSheet(
-            file_manager.load_asset(
-                ui_constants.STYLE_COMMANDS, ui_constants.FOLDER_STYLES
-            )
-        )
+        self.setObjectName("CommandsOverlay")
         self.setText(
             file_manager.load_asset(
                 ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
@@ -57,15 +49,10 @@ class CommandsOverlay(QLabel):
 class SplashHUD(QLabel):
     def __init__(self, parent_container, file_manager, ui_constants):
         super().__init__(parent_container)
-        self.setObjectName(ui_constants.WIDGET_SPLASH_HUD)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hide()  # Maintained hidden by default until evaluated on launch
-        self.setStyleSheet(
-            file_manager.load_asset(
-                ui_constants.STYLE_SPLASH_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
+        self.setObjectName("SplashHUD")
         splash_text = file_manager.load_asset(
             ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
         )
@@ -81,11 +68,7 @@ class TelemetryHUD(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.hide()  # Hidden by default until bar collapses
         # 3. Restore your exact asset-loaded styling rule variable
-        self.setStyleSheet(
-            file_manager.load_asset(
-                ui_constants.STYLE_TELEMETRY_HUD, ui_constants.FOLDER_STYLES
-            )
-        )
+        self.setObjectName("TelemetryHUD")
         # 4. Restore your exact soft drop-shadow graphic layer effects
         telemetry_shadow = QGraphicsDropShadowEffect(self)
         telemetry_shadow.setBlurRadius(3)

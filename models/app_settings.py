@@ -33,6 +33,7 @@ class AppSettings:
     show_imgsize: bool = True
     conserve_selection: bool = False
     overwrite_files: bool = False
+    dark_theme: bool = True
 
     # --- Dropdown ComboBox States ---
     ratio_preference: str = ui_constants.RATIO_FREEFORM

@@ -37,6 +37,7 @@ SETTING_OVERWRITE_FILES = "overwrite_files"
 SETTING_RATIO_PREFERENCE = "ratio_preference"
 SETTING_ENGINE_PREFERENCE = "engine_preference"
 SETTING_SNAP_PREFERENCE = "snap_preference"
+SETTING_DARK_THEME = "dark_theme"
 
 
 # --- DYNAMIC SEMANTIC VERSION ENGINE ---
