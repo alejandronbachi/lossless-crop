@@ -9,7 +9,7 @@ class ApplicationMenuBar(QMenuBar):
         super().__init__(parent_window)
         self.main_win = parent_window
         self.settings_mgr = settings_manager
-
+        self.setObjectName("CustomAppMenuBar")
         self.init_menus()
 
     def init_menus(self):
@@ -88,10 +88,10 @@ class ApplicationMenuBar(QMenuBar):
         self.main_win.automate_folder_loading(path_str)
 
     def handle_see_logs(self):
-        pass
+        self.setVisible(False)
 
     def handle_user_manual(self):
-        pass
+        self.setVisible(False)
 
     def handle_about(self):
-        pass
+        self.setVisible(False)

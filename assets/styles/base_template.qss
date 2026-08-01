@@ -319,14 +319,14 @@ padding-bottom: 2px;
 QLabel#lblAutoSection { margin-top: 15px; }
 QLabel#lblShowSection { margin-top: 10px; }
 QLabel#lblLayoutSection { margin-top: 15px; }
-QMenuBar {
+QMenuBar#CustomAppMenuBar {
     background-color: @MENUBAR_BG;       /* A clean dark charcoal color */
     color: @PRIMARY_TEXT;                  /* White text for visibility */
     padding: 4px;                    /* Small breathing room */
     font-size: 13px;
 }
 
-QMenuBar::item {
+QMenuBar#CustomAppMenuBar::item {
     background: transparent;
     padding: 4px 10px;               /* Tight vertical padding, comfortable horizontal spacing */
     margin: 0px 2px;
@@ -334,7 +334,7 @@ QMenuBar::item {
     border-radius: 0px;              /* Keeps the underline sharp and square */
 }
 
-QMenuBar::item:selected {            /* 'selected' means hovered/active in QMenuBar context */
+QMenuBar#CustomAppMenuBar::item:selected {            /* 'selected' means hovered/active in QMenuBar context */
     background-color: transparent;   /* Keeps background solid, doesn't tint it ugly grey */
     color: @PRIMARY_ACCENT;                  /* Optional: Shifts text color slightly on hover (e.g., nice neon blue) */
     border-bottom: 2px solid @PRIMARY_ACCENT; /* Beautiful, clean underline effect */
