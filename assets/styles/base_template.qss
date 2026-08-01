@@ -319,3 +319,14 @@ padding-bottom: 2px;
 QLabel#lblAutoSection { margin-top: 15px; }
 QLabel#lblShowSection { margin-top: 10px; }
 QLabel#lblLayoutSection { margin-top: 15px; }
+QMenuBar {
+        background-color: transparent;
+        margin: 0px;
+        padding: 0px;
+        spacing: 5px; /* Space between 'File' and 'Help' text horizontally */
+    }
+QMenuBar::item {
+    padding: 2px 6px; /* Tight vertical padding (2px top/bottom, 6px left/right) */
+    margin: 0px;
+    background: transparent;
+}
