@@ -320,14 +320,42 @@ QLabel#lblAutoSection { margin-top: 15px; }
 QLabel#lblShowSection { margin-top: 10px; }
 QLabel#lblLayoutSection { margin-top: 15px; }
 QMenuBar {
-        background-color: transparent;
-        margin: 0px;
-        padding: 0px;
-        spacing: 5px; /* Space between 'File' and 'Help' text horizontally */
-    }
+    background-color: @MENUBAR_BG;       /* A clean dark charcoal color */
+    color: @PRIMARY_TEXT;                  /* White text for visibility */
+    padding: 4px;                    /* Small breathing room */
+    font-size: 13px;
+}
+
 QMenuBar::item {
-    padding: 2px 6px; /* Tight vertical padding (2px top/bottom, 6px left/right) */
-    margin: 0px;
     background: transparent;
-    color:@SPLASH_TEXT_MAIN;
+    padding: 4px 10px;               /* Tight vertical padding, comfortable horizontal spacing */
+    margin: 0px 2px;
+    border-bottom: 2px solid transparent; /* Hidden invisible border to prevent text jumping */
+    border-radius: 0px;              /* Keeps the underline sharp and square */
+}
+
+QMenuBar::item:selected {            /* 'selected' means hovered/active in QMenuBar context */
+    background-color: transparent;   /* Keeps background solid, doesn't tint it ugly grey */
+    color: @PRIMARY_ACCENT;                  /* Optional: Shifts text color slightly on hover (e.g., nice neon blue) */
+    border-bottom: 2px solid @PRIMARY_ACCENT; /* Beautiful, clean underline effect */
+}
+
+/* --- OPTIONAL: Styling the drop-down menus themselves to match --- */
+QMenu {
+    background-color: @MENUBAR_BG;       /* Drop-down matches the top bar */
+    color: @PRIMARY_TEXT;
+    border: 1px solid @MENU_BORDER;       /* Subtle border boundary line */
+    padding: 5px 0px;
+}
+QMenu::item {
+    padding: 6px 25px 6px 20px;      /* Standard spacing for menu text */
+}
+QMenu::item:selected {
+    background-color: @PRIMARY_ACCENT;       /* Standard blue selection block inside drop-downs */
+    color: @PRIMARY_TEXT;
+}
+QMenu::separator {
+    height: 1px;
+    background: @MENU_SEPARATOR_BG;             /* Clean separator line */
+    margin: 4px 10px;
 }

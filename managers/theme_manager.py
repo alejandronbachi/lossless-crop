@@ -28,6 +28,7 @@ THEME_PALETTES = {
         "@CANVAS_GRID": "#777777",
         # --- Global Layout Colors ---
         "@PRIMARY_ACCENT": "#007acc",
+        "@PRIMARY_TEXT": "#ffffff",
         "@DIVIDER_COLOR": "rgba(255, 255, 255, 0.1)",
         "@CANVAS_BG": "#000000",
         "@CANVAS_BORDER": "#4a6fa5",
@@ -84,6 +85,10 @@ THEME_PALETTES = {
         "@CHECKBOX_HOVER_BORDER": "#666666",  # Your exact original dark hover border
         "@CHECKBOX_HOVER_BG": "#252525",
         "@CHECKBOX_TEXT_HOVER": "#ffffff",
+        # Menu Bar
+        "@MENUBAR_BG": "#2b2b2b",
+        "@MENU_BORDER": "#3a3a3a",
+        "@MENU_SEPARATOR_BG": "#444444",
     },
     "light": {
         # --- QPainter Grid Canvas ---
@@ -91,6 +96,7 @@ THEME_PALETTES = {
         # --- Global Layout Colors ---
         "@WINDOW_BG": "#F5EFEB",  # Soft Linen Grey-Beige main workspace background
         "@PRIMARY_ACCENT": "#D97D54",  # Beautiful Muted Terracotta Orange highlight accent color
+        "@PRIMARY_TEXT": "#2E2520",
         "@DIVIDER_COLOR": "rgba(46, 37, 32, 0.12)",  # Elegant dark coffee divider line
         "@CANVAS_BG": "#F5EFEB",  # Blends completely with your workspace frame context
         "@CANVAS_BORDER": "#D97D54",  # Terracotta accent framing your central canvas wrapper
@@ -148,6 +154,10 @@ THEME_PALETTES = {
         "@CHECKBOX_HOVER_BORDER": "#BCAFA5",  # Richer clay-taupe to create a sharp visible border
         "@CHECKBOX_HOVER_BG": "#EADED5",
         "@CHECKBOX_TEXT_HOVER": "#000000",
+        # Menu Bar
+        "@MENUBAR_BG": "#F5EFEB",
+        "@MENU_BORDER": "#DDD1C7",
+        "@MENU_SEPARATOR_BG": "#5C4A40",
     },
 }
 
