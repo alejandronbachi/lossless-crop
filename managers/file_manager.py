@@ -66,7 +66,7 @@ class FileManager:
         ]
         raw_files.sort(key=lambda x: x.name)
 
-        # 🚨 FIX: Save the full Path object, not just file_path.name
+        #  Save the full Path object, not just file_path.name
         valid_paths = []
         for file_path in raw_files:
             try:
@@ -78,7 +78,8 @@ class FileManager:
                     "[SECURITY SHIELD] Discarded fake or corrupted image: %s",
                     file_path.name,
                 )
-
+        if valid_paths:
+            self.settings.add_to_recent(directory.as_posix())
         return valid_paths
 
     def process_path(self, target_str_path: str) -> tuple[str, str | None, list[str]]:

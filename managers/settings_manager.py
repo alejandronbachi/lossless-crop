@@ -1,6 +1,6 @@
 import dataclasses
 from pathlib import Path
-from typing import Any
+from typing import Any, get_origin
 
 from PyQt6.QtCore import QObject, QSettings, QSignalBlocker
 from PyQt6.QtWidgets import QAbstractButton, QComboBox, QWidget
@@ -99,6 +99,7 @@ class SettingsManager:
     ):
         self.org = organization
         self.app = application
+        self.max_recent_items = 10  # Strict ceiling constraint
         self.current_settings = AppSettings()
         self.binder = SettingsBinder(self.current_settings)
 
@@ -205,12 +206,28 @@ class SettingsManager:
             if q_settings.contains(field.name):
                 raw_value = q_settings.value(field.name)
 
-                if field.type is bool:
+                # 1. Safely extract the base type (handles both 'list' and 'list[str]')
+                field_base_type = get_origin(field.type) or field.type
+
+                if field_base_type is bool:
                     setattr(
                         model, field.name, self._safe_bool(raw_value, field.default)
                     )
-                elif field.type is int and raw_value is not None:
+
+                elif field_base_type is int and raw_value is not None:
                     setattr(model, field.name, int(raw_value))
+
+                elif field_base_type is list:
+                    # 2. Force data normalization. QSettings may return None or a single string
+                    if isinstance(raw_value, list):
+                        setattr(model, field.name, raw_value)
+                    elif isinstance(raw_value, str) and raw_value:
+                        setattr(
+                            model, field.name, [raw_value]
+                        )  # Wrap single item strings safely
+                    else:
+                        setattr(model, field.name, [])  # Fallback to empty list default
+
                 else:
                     setattr(model, field.name, raw_value)
 
@@ -270,3 +287,39 @@ class SettingsManager:
         if path_str and Path(path_str).exists():
             return path_str
         return ""
+
+    def add_to_recent(self, raw_path: str):
+        """Updates the in-memory dataclass history queue."""
+        if not raw_path:
+            return
+
+        target_path = Path(raw_path).resolve()
+        if not target_path.exists():
+            return
+
+        path_str = str(target_path)
+        current_list = self.get_recent_paths()  # Gets the live filtered list
+
+        # Deduplicate
+        if path_str in current_list:
+            current_list.remove(path_str)
+
+        # Slide item to the top
+        current_list.insert(0, path_str)
+        current_list = current_list[: self.max_recent_items]
+
+        # Update the memory state
+        self.current_settings.recent_items_history = current_list
+
+    def get_recent_paths(self) -> list[str]:
+        """Retrieves and self-heals the list in memory."""
+        raw_list = self.current_settings.recent_items_history
+
+        # Filter ghost files using pathlib
+        valid_paths = [p for p in raw_list if Path(p).exists()]
+
+        # Self-healing: If ghost files were found, update the memory state immediately
+        if len(valid_paths) != len(raw_list):
+            self.current_settings.recent_items_history = valid_paths
+
+        return valid_paths
