@@ -1,7 +1,11 @@
+import logging
 from pathlib import Path
 
-from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QStandardPaths, QUrl
+from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtWidgets import QMenu, QMenuBar
+
+logger = logging.getLogger(__name__)
 
 
 class ApplicationMenuBar(QMenuBar):
@@ -87,11 +91,55 @@ class ApplicationMenuBar(QMenuBar):
         self.setVisible(False)
         self.main_win.automate_folder_loading(path_str)
 
-    def handle_see_logs(self):
-        self.setVisible(False)
-
     def handle_user_manual(self):
         self.setVisible(False)
 
     def handle_about(self):
         self.setVisible(False)
+
+    def handle_see_logs(self):
+        """
+        Locates the application's local log directory and opens it natively.
+        Logs system failures silently to file and triggers visual toast notifications.
+        """
+        self.setVisible(False)
+        raw_data_dir = QStandardPaths.writableLocation(
+            QStandardPaths.StandardLocation.AppLocalDataLocation
+        )
+        log_dir = Path(raw_data_dir)
+        # --- FILESYSTEM CHECK ---
+        try:
+            if not log_dir.exists():
+                log_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            # 1. Log the full traceback information to your background log file
+            logger.exception(
+                "Failed to open log folder due to missing directory permissions."
+            )
+            # 2. Inform the user gracefully on screen using your status manager
+            self.main_win.status_manager.show_center_notification(
+                "Permission denied: Cannot access log directory."
+            )
+            return
+        except Exception:
+            logger.exception(
+                "Unexpected system exception occurred during log folder preparation."
+            )
+            self.main_win.status_manager.show_center_notification(
+                "System error: Unable to prepare logs."
+            )
+            return
+
+        # --- OPERATING SYSTEM LAUNCHER CHECK ---
+        folder_url = QUrl.fromLocalFile(str(log_dir))
+        success = QDesktopServices.openUrl(folder_url)
+
+        if not success:
+            # Log the platform launch failure error
+            logger.error(
+                f"OS Shell failed to trigger default file manager for path: {log_dir}"
+            )
+            # Notify the user smoothly
+            self.main_win.status_manager.show_center_notification(
+                "OS failed to launch file explorer."
+            )
