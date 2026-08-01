@@ -8,6 +8,7 @@ from config.logging_setup import initialize_logging
 initialize_logging()
 from PyQt6.QtCore import (
     QEasingCurve,
+    QPoint,
     QPropertyAnimation,
     QRect,
     Qt,
@@ -275,6 +276,8 @@ class LossLessCropApp(QMainWindow):
             # If the cursor barely moved (tolerance of 2 pixels), treat it as a deliberate single click
             if not start_pt.isNull() and (end_pt - start_pt).manhattanLength() <= 2:
                 active_box = self.selection_manager.last_crop_geometry
+                self.selection_manager.drag_start_origin = QPoint()
+                self.selection_manager.is_moving_box = False
 
                 # If a box is active and the click happened completely outside its borders, clear it!
                 if active_box and not active_box.contains(end_pt):
