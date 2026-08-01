@@ -1,6 +1,6 @@
 import logging.config
-import os
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import QCoreApplication, QStandardPaths
 
@@ -11,12 +11,17 @@ def initialize_logging():
     QCoreApplication.setOrganizationName("losslesscropteam")
     QCoreApplication.setApplicationName("LossLessCropApp")
 
-    # 2. Establish safe, platform-agnostic file targets
-    app_data_dir = QStandardPaths.writableLocation(
+    # 1. Retrieve the local app data root string from Qt
+    raw_data_dir = QStandardPaths.writableLocation(
         QStandardPaths.StandardLocation.AppLocalDataLocation
     )
-    os.makedirs(app_data_dir, exist_ok=True)
-    log_file_path = os.path.join(app_data_dir, "lossless_crop.log")
+
+    # 2. Convert to a pathlib Path object and create the directory safely
+    app_data_dir = Path(raw_data_dir)
+    app_data_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3. Establish the clean log file path using the / slash operator
+    log_file_path = app_data_dir / "lossless_crop.log"
 
     # 3. Define the configuration profile schema
     LOGGING_CONFIG = {
