@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QDialog, QTextBrowser, QVBoxLayout
 
 from config.app_constants import APP_ROOT_DIR
+from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_USER_MANUAL
 
 # Import your global scope token replacement helper
 from managers.theme_manager import substitute_tokens
@@ -39,7 +40,7 @@ class UserManualDialog(QDialog):
 
         # 2. Fetch the external shell HTML layout template file
         raw_html_template = self.file_mgr.load_asset(
-            "user_manual_format.html", "templates"
+            TEMPLATE_USER_MANUAL, FOLDER_TEMPLATES
         )
 
         if not raw_html_template:
