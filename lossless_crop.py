@@ -15,7 +15,7 @@ from PyQt6.QtCore import (
     Qt,
     QTimer,
 )
-from PyQt6.QtGui import QIcon, QPixmap, QResizeEvent
+from PyQt6.QtGui import QIcon, QPixmap, QResizeEvent, QWheelEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -227,8 +227,11 @@ class LossLessCropApp(QMainWindow):
         self.status_manager.hide_overlays_on_mouse_press()
         click_point = event.position().toPoint()
 
-        if event.button() == Qt.MouseButton.LeftButton:
-            # 🚀 INTERCEPTION: Check if a corner handle was clicked to drag-resize
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.process_and_execute_crop()
+            return
+        elif event.button() == Qt.MouseButton.LeftButton:
+            #  INTERCEPTION: Check if a corner handle was clicked to drag-resize
             detected_grip = self.selection_manager.detect_grip_zone(click_point)
             static_anchor = self.selection_manager.get_opposite_corner_anchor(
                 detected_grip
@@ -248,8 +251,7 @@ class LossLessCropApp(QMainWindow):
 
     def on_mouse_move(self, event):
         current_point = event.position().toPoint()
-
-        # 🚀 HOVER EFFECT: Track and swap the mouse cursor shapes when hovering over grips
+        #  HOVER EFFECT: Track and swap the mouse cursor shapes when hovering over grips
         if event.buttons() == Qt.MouseButton.NoButton:
             grip = self.selection_manager.detect_grip_zone(current_point)
             if grip in (1, 4):  # Top-Left or Bottom-Right corner grips
@@ -278,7 +280,7 @@ class LossLessCropApp(QMainWindow):
 
     def on_mouse_release(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            # 🚀 FIXED: Check if the user just performed a static single-click without dragging
+            #  Check if the user just performed a static single-click without dragging
             start_pt = self.selection_manager.drag_start_origin
             end_pt = event.position().toPoint()
 
@@ -308,6 +310,14 @@ class LossLessCropApp(QMainWindow):
 
         self.status_manager.restore_overlays_on_mouse_release()
         self.update_resolution_metrics_display()
+
+    def wheelEvent(self, event: QWheelEvent):
+        # angleDelta().y() is positive when scrolling up, negative when scrolling down
+        if event.angleDelta().y() > 0:
+            self.keyboard_controller.trigger_backward_navigation()
+        else:
+            self.keyboard_controller.trigger_forward_navigation()
+        event.accept()
 
     def on_ratio_changed(self):
         self.snap_selector_widget()
@@ -462,7 +472,7 @@ class LossLessCropApp(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
-        # 🚀 THE COMPLETE LAYOUT FIX: Delegate ALL absolute overlay positioning
+        # Delegate ALL absolute overlay positioning
         # to the status manager, which natively tracks the fresh container sizes!
         if hasattr(self, "status_manager"):
             self.status_manager.reposition_all_overlays()
