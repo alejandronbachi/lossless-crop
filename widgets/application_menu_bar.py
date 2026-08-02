@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QMenuBar, QMessageBox
 from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
 from managers import theme_manager
 from managers.file_manager import FileManager
+from widgets.user_manual_dialog import UserManualDialog
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +97,6 @@ class ApplicationMenuBar(QMenuBar):
         self.setVisible(False)
         self.main_win.automate_folder_loading(path_str)
 
-    def handle_user_manual(self):
-        self.setVisible(False)
-
     def handle_see_logs(self):
         """
         Locates the application's local log directory and opens it natively.
@@ -151,6 +149,7 @@ class ApplicationMenuBar(QMenuBar):
         Displays an advanced HTML About dialog where users can natively
         highlight, select, and copy text values with their mouse.
         """
+        self.setVisible(False)
         # 1. Instantiate an explicit instance instead of using the static shortcut wrapper
         msg_box = QMessageBox(self.main_win)
 
@@ -172,3 +171,11 @@ class ApplicationMenuBar(QMenuBar):
         # 5. Populate and execute the modal popup event loop
         msg_box.setText(about_html)
         msg_box.exec()
+
+    def handle_user_manual(self):
+        """Launches the non-blocking compiled markdown README viewer dialog window."""
+        self.setVisible(False)
+        # Instantiated as non-modal (using show()) so users can keep this instruction window
+        # open on a second monitor while actively cropping items in the main window
+        self.manual_win = UserManualDialog(self.main_win, self.file_mgr)
+        self.manual_win.show()
