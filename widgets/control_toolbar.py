@@ -109,6 +109,7 @@ class ControlToolbar(QFrame):
         self.main_app.combo_engine.currentIndexChanged.connect(
             self.main_app.on_engine_changed
         )
+        self.main_app.combo_engine.setMinimumWidth(18)
         self.layout.addWidget(self.main_app.combo_engine)
 
         # 3. Aspect Ratio Dropdown
@@ -121,6 +122,7 @@ class ControlToolbar(QFrame):
         self.main_app.combo_ratio.currentIndexChanged.connect(
             self.main_app.on_ratio_changed
         )
+        self.main_app.combo_ratio.setMinimumWidth(18)
         self.layout.addWidget(self.main_app.combo_ratio)
 
         # 4. Snap Feedback Dropdown
@@ -130,6 +132,7 @@ class ControlToolbar(QFrame):
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
         self.main_app.combo_snap.addItems(ui_constants.SNAP_ITEMS)
+        self.main_app.combo_snap.setMinimumWidth(18)
         self.layout.addWidget(self.main_app.combo_snap)
 
         # 5. Precision Manual Crop Spinboxes Component Layout
@@ -138,7 +141,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_container = QFrame()
         self.main_app.spin_container.setObjectName("spinContainer")
         spin_layout = QHBoxLayout(self.main_app.spin_container)
-        spin_layout.setContentsMargins(5, 0, 5, 0)
+        spin_layout.setContentsMargins(0, 0, 0, 0)
         spin_layout.setSpacing(6)
 
         # Width Numeric Field
@@ -148,6 +151,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width.setPrefix(ui_constants.SPIN_WIDTH_PREFIX)
         self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
         self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.spin_width.setFixedWidth(22)
         self.main_app.spin_width.editingFinished.connect(
             self.main_app.on_spin_width_changed
         )
@@ -160,6 +164,7 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height.setPrefix(ui_constants.SPIN_HEIGHT_PREFIX)
         self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
         self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.spin_height.setFixedWidth(22)
         self.main_app.spin_height.editingFinished.connect(
             self.main_app.on_spin_height_changed
         )
