@@ -727,21 +727,18 @@ class LossLessCropApp(QMainWindow):
             self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
-
+                self.status_manager.info_bar.lbl_directory.setVisible(False)
             if hasattr(self, "resizeEvent"):
                 # Pass a mock event matching your current physical window size metrics
                 self.resizeEvent(QResizeEvent(self.size(), self.size()))
             return
-        # 1. 🚀 Hand the list to the session. It returns True if the texture cache bakes successfully!
+        # 1. Hand the list to the session. It returns True if the texture cache bakes successfully!
         session_ready = self.image_session.load_folder(
             folder_path, valid_files, target_file
         )
 
-        # 2. 🚀 THE CHECK: Only update your UI components if the session loaded error-free
+        # 2. Only update your UI components if the session loaded error-free
         if session_ready:
-            folder_name = self.image_session.folder_path.name
-            self.btn_folder_name.setText(f"📁 {folder_name}")
-
             # Refresh views using our newly integrated session data
             self.load_image_to_viewport()
             self.settings.last_used_folder = str(folder_path)

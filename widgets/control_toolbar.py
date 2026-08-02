@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,
-    QPushButton,
     QSpinBox,
     QToolButton,
 )
@@ -31,13 +30,7 @@ class ControlToolbar(QFrame):
         self._build_ui(pillow_available)
 
     def _build_ui(self, pillow_available):
-        # 1. Directory Loader Button
-        self.main_app.btn_folder_name = QPushButton(ui_constants.TEXT_NO_DIRECTORY)
-        self.main_app.btn_folder_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.main_app.btn_folder_name.setObjectName("btnFolder")
-        self.main_app.btn_folder_name.clicked.connect(self.main_app.select_directory)
-        self.layout.addWidget(self.main_app.btn_folder_name)
-
+        # 1 Toolbar Icons
         # Open folder
         self.main_app.btn_open_folder = QToolButton(self)
         self.main_app.btn_open_folder.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
