@@ -240,6 +240,7 @@ class StatusManager(QObject):
             if (
                 self.main_app.cfg_show_imgsize.isChecked()
                 or self.main_app.cfg_show_filename.isChecked()
+                or self.main_app.cfg_show_directory.isChecked()
             ):
                 self.info_bar.show()
             else:
