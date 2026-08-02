@@ -175,6 +175,31 @@ def init_theme(file_manager_instance, default_mode: str = "dark"):
     apply_theme(current_theme)
 
 
+def substitute_tokens(raw_payload: str) -> str:
+    """
+    Universal String Compiler. Sanitizes formatting noise and injects
+    theme colors into any text type (QSS, HTML, or Markdown) using the
+    global module scope variables.
+    """
+    if not raw_payload:
+        return ""
+
+    # 1. Universal Sanitation (Now safely protects HTML and MD files)
+    clean_buffer = raw_payload.replace("\r\n", "\n").replace("\ufeff", "").strip()
+
+    # 2. Extract palette map using global variable state
+    global current_palette
+    sorted_tokens = sorted(
+        current_palette.items(), key=lambda item: len(item[0]), reverse=True
+    )
+
+    # 3. Core Replacement Loop
+    for token, hex_color in sorted_tokens:
+        clean_buffer = clean_buffer.replace(token, hex_color)
+
+    return clean_buffer
+
+
 def apply_theme(theme_mode: str):
     """Loads blueprint template assets, swaps variables, and pushes straight to Qt."""
     global current_theme, current_palette, _file_manager
@@ -187,21 +212,13 @@ def apply_theme(theme_mode: str):
 
     current_theme = theme_mode
     current_palette = THEME_PALETTES[theme_mode]
-
-    # --- 1. COMPILE AND APPLY GLOBAL APPLICATION QSS ---
-    raw_payload = _file_manager.load_asset(
+    qss_buffer = _file_manager.load_asset(
         filename=BASE_STYLE_TEMPLATE, folder_name=FOLDER_STYLES
     )
-    if not raw_payload:
+    if not qss_buffer:
         return
 
-    qss_buffer = raw_payload.replace("\r\n", "\n").replace("\ufeff", "").strip()
-    sorted_tokens = sorted(
-        current_palette.items(), key=lambda item: len(item[0]), reverse=True
-    )
-
-    for token, hex_color in sorted_tokens:
-        qss_buffer = qss_buffer.replace(token, hex_color)
+    qss_buffer = substitute_tokens(qss_buffer)
 
     app_instance = QApplication.instance()
     if app_instance:
@@ -212,17 +229,13 @@ def apply_theme(theme_mode: str):
         for window in app_instance.topLevelWidgets():
             if hasattr(window, "findChild"):
                 splash_hud = window.findChild(QWidget, "SplashHUD")
-
-                # If found, load the splash asset, swap tokens, and set it directly!
                 if splash_hud and hasattr(splash_hud, "setText"):
+                    # If found, load the splash asset, swap tokens, and set it directly!
                     raw_html = _file_manager.load_asset(
                         filename=TEMPLATE_SPLASH, folder_name=FOLDER_TEMPLATES
                     )
                     if raw_html:
-                        # Process token string replacements directly on the HTML
-                        for token, hex_color in sorted_tokens:
-                            raw_html = raw_html.replace(token, hex_color)
-
+                        raw_html = substitute_tokens(raw_html)
                         # Direct call on the widget instance inside the theme manager loop
                         splash_hud.setText(raw_html)
     else:

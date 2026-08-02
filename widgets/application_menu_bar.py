@@ -1,18 +1,23 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QStandardPaths, QUrl
+from PyQt6.QtCore import QStandardPaths, Qt, QUrl
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtWidgets import QMenu, QMenuBar, QMessageBox
+
+from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
+from managers import theme_manager
+from managers.file_manager import FileManager
 
 logger = logging.getLogger(__name__)
 
 
 class ApplicationMenuBar(QMenuBar):
-    def __init__(self, parent_window, settings_manager):
+    def __init__(self, parent_window, settings_manager, file_manager: FileManager):
         super().__init__(parent_window)
         self.main_win = parent_window
         self.settings_mgr = settings_manager
+        self.file_mgr = file_manager
         self.setObjectName("CustomAppMenuBar")
         self.init_menus()
 
@@ -142,19 +147,28 @@ class ApplicationMenuBar(QMenuBar):
             )
 
     def handle_about(self):
-        """Displays a clean, HTML-formatted About pop-up with your logo"""
-        # 1. Locate your logo relative to your script
-
-        # 2. Design the HTML structure (inline CSS works perfectly here)
-        about_text = """
-        <div style='text-align: center;'>
-            <br>
-            <h2>Lossless Crop Engine</h2>
-            <p><b>Version:</b> 1.0.0</p>
-            <p>A high-performance, cross-platform tool for lossless image manipulation.</p>
-            <hr>
-            <p style='font-size: 11px; color: #888;'>Copyright © 2026. All rights reserved.</p>
-        </div>
         """
-        # 3. Display using the native static about popup
-        QMessageBox.about(self.main_win, "About Lossless Crop", about_text)
+        Displays an advanced HTML About dialog where users can natively
+        highlight, select, and copy text values with their mouse.
+        """
+        # 1. Instantiate an explicit instance instead of using the static shortcut wrapper
+        msg_box = QMessageBox(self.main_win)
+
+        # 2. Assign properties cleanly using native methods
+        msg_box.setWindowTitle("About Lossless Crop")
+        if self.main_win.windowIcon() and not self.main_win.windowIcon().isNull():
+            # Grabs your app icon and scales it to a standard crisp crisp 48x48 layout
+            app_pixmap = self.main_win.windowIcon().pixmap(48, 48)
+            msg_box.setIconPixmap(app_pixmap)
+        else:
+            # Fallback if no window icon is loaded yet in your main app lifecycle
+            msg_box.setIcon(QMessageBox.Icon.NoIcon)
+        # 3. CRUCIAL: Tell the underlying text renderer engine to allow selection highlights
+        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        # 4. Your polished HTML block layout
+        about_html = self.file_mgr.load_asset(TEMPLATE_ABOUT, FOLDER_TEMPLATES)
+        about_html = theme_manager.substitute_tokens(about_html)
+        # 5. Populate and execute the modal popup event loop
+        msg_box.setText(about_html)
+        msg_box.exec()
