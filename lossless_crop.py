@@ -440,6 +440,10 @@ class LossLessCropApp(QMainWindow):
 
         self.status_manager.invalidate_ui_state()
 
+    def crop_and_next(self):
+        self.process_and_execute_crop()
+        self.keyboard_controller.trigger_forward_navigation()
+
     def rotate_current_image(self):
         if not self.image_session.has_active_image:
             return

@@ -5,6 +5,7 @@ FOLDER_ASSETS = "assets"
 FOLDER_STYLES = "styles"
 FOLDER_TEMPLATES = "templates"
 FOLDER_ICONS = "icons"
+FOLDER_SVGS = "svgs"
 # --- Stylesheet File Names ---
 BASE_STYLE_TEMPLATE = "base_template.qss"
 

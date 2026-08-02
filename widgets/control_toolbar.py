@@ -1,11 +1,12 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import (
     QComboBox,
     QFrame,
     QHBoxLayout,
     QPushButton,
     QSpinBox,
+    QToolButton,
 )
 
 from config import ui_constants
@@ -37,8 +38,65 @@ class ControlToolbar(QFrame):
         self.main_app.btn_folder_name.clicked.connect(self.main_app.select_directory)
         self.layout.addWidget(self.main_app.btn_folder_name)
 
-        self.layout.addStretch()
+        # Open folder
+        self.main_app.btn_open_folder = QToolButton(self)
+        self.main_app.btn_open_folder.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.btn_open_folder.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_open_folder.setFixedSize(38, 38)
+        icon_path = self.file_manager.getSVGPathString("open_folder.svg")
+        self.main_app.btn_open_folder.setIcon(QIcon(icon_path))
+        self.main_app.btn_open_folder.setIconSize(QSize(32, 32))
+        self.main_app.btn_open_folder.clicked.connect(self.main_app.select_directory)
+        self.layout.addWidget(self.main_app.btn_open_folder)
 
+        # Open Image
+        self.main_app.btn_open_image = QToolButton(self)
+        self.main_app.btn_open_image.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.btn_open_image.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_open_image.setFixedSize(38, 38)
+        icon_path = self.file_manager.getSVGPathString("open_image.svg")
+        self.main_app.btn_open_image.setIcon(QIcon(icon_path))
+        self.main_app.btn_open_image.setIconSize(QSize(32, 32))
+        self.main_app.btn_open_image.clicked.connect(
+            self.main_app.select_individual_image_file
+        )
+        self.layout.addWidget(self.main_app.btn_open_image)
+        # Crop
+        self.main_app.btn_crop = QToolButton(self)
+        self.main_app.btn_crop.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.btn_crop.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_crop.setFixedSize(38, 38)
+        icon_path = self.file_manager.getSVGPathString("crop.svg")
+        self.main_app.btn_crop.setIcon(QIcon(icon_path))
+        self.main_app.btn_crop.setIconSize(QSize(32, 32))
+        self.main_app.btn_crop.clicked.connect(self.main_app.process_and_execute_crop)
+        self.layout.addWidget(self.main_app.btn_crop)
+
+        # Crop and next
+        self.main_app.btn_crop_next = QToolButton(self)
+        self.main_app.btn_crop_next.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.btn_crop_next.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_crop_next.setFixedSize(38, 38)
+        icon_path = self.file_manager.getSVGPathString("crop_next.svg")
+        self.main_app.btn_crop_next.setIcon(QIcon(icon_path))
+        self.main_app.btn_crop_next.setIconSize(QSize(32, 32))
+        self.main_app.btn_crop_next.clicked.connect(self.main_app.crop_and_next)
+        self.layout.addWidget(self.main_app.btn_crop_next)
+
+        # Rotate
+        self.main_app.btn_rotate = QToolButton(self)
+        self.main_app.btn_rotate.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.main_app.btn_rotate.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_rotate.setFixedSize(38, 38)
+        icon_path = self.file_manager.getSVGPathString("rotate.svg")
+        self.main_app.btn_rotate.setIcon(QIcon(icon_path))
+        self.main_app.btn_rotate.setIconSize(QSize(32, 32))
+        self.main_app.btn_rotate.clicked.connect(self.main_app.rotate_current_image)
+        self.layout.addWidget(self.main_app.btn_rotate)
+
+        self.layout.addStretch()
+        self.layout.addWidget(create_toolbar_divider(self))
+        self.layout.addStretch()
         # Shared Font Profile Configuration
         native_font = QFont("Segoe UI", 10)
 
@@ -116,6 +174,10 @@ class ControlToolbar(QFrame):
 
         self.layout.addWidget(self.main_app.spin_container)
 
+        self.layout.addStretch()
+        self.layout.addWidget(create_toolbar_divider(self))
+        self.layout.addStretch()
+
         # 6. Toolbar Checkboxes
         self.main_app.chk_preserve = SlidingSwitch(
             ui_constants.CHECKBOX_KEEP_SELECTION_TEXT
@@ -133,11 +195,38 @@ class ControlToolbar(QFrame):
         self.main_app.chk_overwrite.setChecked(False)
         self.layout.addWidget(self.main_app.chk_overwrite)
 
+        self.layout.addStretch()
+        self.layout.addWidget(create_toolbar_divider(self))
+        self.layout.addStretch()
+
         # 7. Configuration Gear Toggle Button
-        self.main_app.btn_settings = QPushButton("⚙️")
-        self.main_app.btn_settings.setObjectName("btnSettings")
+        self.main_app.btn_settings = QToolButton(self)
         self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.btn_settings.setToolTip(ui_constants.TOOLTIP_SETTINGS)
         self.main_app.btn_settings.setFixedSize(38, 38)
+        icon_path = self.file_manager.getSVGPathString("gear.svg")
+        self.main_app.btn_settings.setIcon(QIcon(icon_path))
+        self.main_app.btn_settings.setIconSize(QSize(30, 30))
         self.main_app.btn_settings.clicked.connect(self.main_app.toggle_settings_drawer)
         self.layout.addWidget(self.main_app.btn_settings)
+
+
+def create_toolbar_divider(parent_widget=None):
+    """
+    Generates a clean, pixel-perfect vertical divider line
+    pre-mapped to the application layout's token color schema.
+    """
+    divider = QFrame(parent_widget)
+
+    # 1. Force the frame to render as a standalone vertical separator line
+    divider.setFrameShape(QFrame.Shape.VLine)
+    divider.setFrameShadow(QFrame.Shadow.Plain)
+
+    # 2. Prevent the vertical line from squishing out into 0 pixels
+    divider.setLineWidth(1)
+
+    # 3. Explicitly style the color to match your custom theme manager variables
+    # This styles the VLine structure cleanly across dark frame sheets
+    divider.setObjectName("divider")
+
+    return divider
