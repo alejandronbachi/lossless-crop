@@ -106,6 +106,16 @@ class SettingsDrawer(
         )
         self.layout.addWidget(self.main_app.cfg_show_infobar)
 
+        self.main_app.cfg_show_directory = SlidingSwitch(
+            ui_constants.CHECKBOX_IMAGE_DIRECTORY_TEXT
+        )
+        self.main_app.cfg_show_directory.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.main_app.cfg_show_directory.setChecked(True)
+        self.main_app.cfg_show_directory.toggled.connect(
+            self.main_app.status_manager.sync_drawer_visibility_rules
+        )
+        self.layout.addWidget(self.main_app.cfg_show_directory)
+
         self.main_app.cfg_show_filename = SlidingSwitch(
             ui_constants.CHECKBOX_IMAGE_FILENAME_TEXT
         )

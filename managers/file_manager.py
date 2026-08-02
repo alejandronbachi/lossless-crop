@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 
 from config.app_constants import APP_ROOT_DIR, SUPPORTED_IMAGE_EXTENSIONS
-from config.ui_constants import FOLDER_ASSETS
+from config.ui_constants import FOLDER_ASSETS, FOLDER_SVGS
 from managers.settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,12 @@ class FileManager:
         except FileNotFoundError:
             logger.warning("Warning: Asset missing at: %s", file_path)
             return ""
+
+    def getSVGPathString(self, filename: str) -> str:
+        """Dynamically loads layout styling text / HTML / QSS content safely."""
+        svg_path = APP_ROOT_DIR / FOLDER_ASSETS / FOLDER_SVGS / filename
+
+        return str(svg_path)
 
     def load_readme(self) -> str:
         """Dynamically loads layout styling text / HTML / QSS content safely."""

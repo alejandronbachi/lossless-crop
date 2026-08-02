@@ -89,6 +89,16 @@ class StatusManager(QObject):
         # 1. Compile file status tracking elements using live checkbox widget metrics
         current_path = self.main_app.image_session.current_path
         idx_str = self.main_app.image_session.index_string
+
+        directory_string = ""
+        if (
+            self.main_app.cfg_show_directory.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
+            directory_string = (
+                f"Directory: {self.main_app.image_session.folder_path.name}"
+            )
+
         filename_string = ""
         if (
             self.main_app.cfg_show_filename.isChecked()
@@ -111,6 +121,15 @@ class StatusManager(QObject):
         if self.main_app.cfg_show_infobar.isChecked():
             # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
             self.lbl_telemetry_hud.hide()
+
+            if directory_string != "":
+                self.info_bar.lbl_directory.setText(
+                    directory_string if directory_string else ""
+                )
+                self.info_bar.lbl_directory.show()
+            else:
+                self.info_bar.lbl_directory.hide()
+
             if filename_string != "":
                 self.info_bar.lbl_status.setText(
                     filename_string if filename_string else ""
@@ -118,6 +137,7 @@ class StatusManager(QObject):
                 self.info_bar.lbl_status.show()
             else:
                 self.info_bar.lbl_status.hide()
+
             if metrics_string != "":
                 self.info_bar.lbl_metrics.setText(metrics_string)
                 self.info_bar.lbl_metrics.show()
@@ -126,6 +146,7 @@ class StatusManager(QObject):
 
         else:
             # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
+            self.info_bar.lbl_directory.setText("")
             self.info_bar.lbl_status.setText("")
             self.info_bar.lbl_metrics.setText("")
 
@@ -140,7 +161,8 @@ class StatusManager(QObject):
                 hud_lines.append(filename_string)
             if metrics_string:
                 hud_lines.append(metrics_string)
-
+            if directory_string:
+                hud_lines.append(directory_string)
             if hud_lines and not is_user_actively_editing:
                 self.lbl_telemetry_hud.setText("\n".join(hud_lines))
                 self.lbl_telemetry_hud.show()
@@ -218,6 +240,7 @@ class StatusManager(QObject):
             if (
                 self.main_app.cfg_show_imgsize.isChecked()
                 or self.main_app.cfg_show_filename.isChecked()
+                or self.main_app.cfg_show_directory.isChecked()
             ):
                 self.info_bar.show()
             else:

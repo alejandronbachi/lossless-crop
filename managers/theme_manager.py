@@ -38,11 +38,11 @@ THEME_PALETTES = {
         "@LBL_METRICS_TEXT": "#888888",
         "@SECTION_HEAD_TEXT": "#888888",
         # --- Settings Button (btn_settings.qss) ---
-        "@BTN_SETTINGS_COLOR": "#888888",
-        "@BTN_SETTINGS_HOVER_BG": "rgba(255, 255, 255, 0.08)",
+        "@BTN_SETTINGS_COLOR": "#F5EFEB",
+        "@BTN_SETTINGS_HOVER_BG": "rgba(26, 115, 232, 0.15)",
         "@BTN_SETTINGS_HOVER_COLOR": "#ffffff",
-        "@BTN_SETTINGS_PRESSED_BG": "rgba(255, 255, 255, 0.04)",
-        "@BTN_SETTINGS_FOCUS_BG": "rgba(255, 255, 255, 0.08)",
+        "@BTN_SETTINGS_PRESSED_BG": "rgba(26, 115, 232, 0.25)",
+        "@BTN_SETTINGS_FOCUS_BG": "rgba(26, 115, 232, 0.15)",
         "@BTN_SETTINGS_FOCUS_COLOR": "#ffffff",
         # --- Commands Overlay (commands_overlay.qss) ---
         "@COMMANDS_TEXT": "#ffffff",
@@ -106,7 +106,7 @@ THEME_PALETTES = {
         "@LBL_METRICS_TEXT": "#5C4A40",
         "@SECTION_HEAD_TEXT": "#7A6559",
         # --- Settings Button (btn_settings.qss) ---
-        "@BTN_SETTINGS_COLOR": "#5C4A40",
+        "@BTN_SETTINGS_COLOR": "#ffffff",
         "@BTN_SETTINGS_HOVER_BG": "rgba(217, 125, 84, 0.14)",  # Soft terracotta hover highlight hue
         "@BTN_SETTINGS_HOVER_COLOR": "#2E2520",
         "@BTN_SETTINGS_PRESSED_BG": "rgba(217, 125, 84, 0.08)",
