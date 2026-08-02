@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QStandardPaths, Qt, QUrl
 from PyQt6.QtGui import QAction, QDesktopServices
-from PyQt6.QtWidgets import QMenu, QMenuBar, QMessageBox
+from PyQt6.QtWidgets import QMenuBar, QMessageBox
 
 from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
 from managers import theme_manager
@@ -28,7 +28,7 @@ class ApplicationMenuBar(QMenuBar):
         open_folder_act = QAction("Open Folder", self)
         open_image_act = QAction("Open Image", self)
 
-        self.recent_menu = QMenu("Recent...", self)
+        self.recent_menu = self.addMenu("Recent")
         self.recent_menu.aboutToShow.connect(self.populate_recent_menu)
 
         see_logs_act = QAction("See Logs", self)
@@ -41,7 +41,7 @@ class ApplicationMenuBar(QMenuBar):
 
         file_menu.addAction(open_folder_act)
         file_menu.addAction(open_image_act)
-        file_menu.addMenu(self.recent_menu)
+
         file_menu.addAction(see_logs_act)
         file_menu.addSeparator()
         file_menu.addAction(exit_act)
