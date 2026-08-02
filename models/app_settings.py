@@ -29,6 +29,7 @@ class AppSettings:
     show_shortcuts: bool = True
     show_toasts: bool = True
     show_infobar: bool = True
+    show_directory: bool = True
     show_filename: bool = True
     show_imgsize: bool = True
     conserve_selection: bool = False

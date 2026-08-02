@@ -126,6 +126,10 @@ class SettingsManager:
             main_window.cfg_show_infobar, app_constants.SETTING_SHOW_INFOBAR
         )
         binder.bind_checkbox(
+            main_window.cfg_show_directory, app_constants.SETTING_SHOW_DIRECTORY
+        )
+
+        binder.bind_checkbox(
             main_window.cfg_show_filename, app_constants.SETTING_SHOW_FILENAME
         )
         binder.bind_checkbox(

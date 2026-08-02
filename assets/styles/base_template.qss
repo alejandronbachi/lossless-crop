@@ -96,26 +96,18 @@ QCheckBox {
 
 /* --- 4. INDIVIDUAL MODULAR BLOCKS --- */
 /* Settings Gear Icon Button (btn_settings.qss) */
-QPushButton#btnSettings {
-    background-color: transparent;
+QToolButton {
+    background-color: @transparent;
     border: none;
-    border-radius: 6px;
-    font-size: 16px; 
-    color: @BTN_SETTINGS_COLOR;
+    border-radius: 3px;
     padding: 0px;   
     margin: 0px;
 }
-QPushButton#btnSettings:hover {
-    background-color: @BTN_SETTINGS_HOVER_BG;
-    color: @BTN_SETTINGS_HOVER_COLOR;
-}
-QPushButton#btnSettings:pressed {
-    background-color: @BTN_SETTINGS_PRESSED_BG;
-}
-QPushButton#btnSettings:focus {
-    background-color: @BTN_SETTINGS_FOCUS_BG;
+QToolButton:hover {
     border: 1px solid @PRIMARY_ACCENT;
-    color: @BTN_SETTINGS_FOCUS_COLOR;
+}
+QToolButton:focus {
+    border: 1px solid @PRIMARY_ACCENT;
     outline: none;
 }
 
@@ -304,6 +296,7 @@ QLabel#lblMetrics {
 QFrame#divider {
     background-color: @DIVIDER_COLOR; 
     margin-bottom: 5px;
+    color: @MENU_SEPARATOR_BG;
 }
 
 QLabel.sectionHeading {
