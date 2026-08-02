@@ -26,7 +26,7 @@ class ApplicationMenuBar(QMenuBar):
         # --- FILE MENU ---
         file_menu = self.addMenu("File")
 
-        open_folder_act = QAction("Open Folder", self)
+        open_folder_act = QAction("Open Directory", self)
         open_image_act = QAction("Open Image", self)
 
         self.recent_menu = self.addMenu("Recent")

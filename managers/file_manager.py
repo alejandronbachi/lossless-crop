@@ -40,6 +40,15 @@ class FileManager:
             logger.warning("Warning: Asset missing at: %s", file_path)
             return ""
 
+    def load_user_manual(self) -> str:
+        """Dynamically loads layout styling text / HTML / QSS content safely."""
+        file_path = APP_ROOT_DIR / "docs/user_manual.md"
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning("Warning: Asset missing at: %s", file_path)
+            return ""
+
     def generate_unique_crop_path(
         self, parent_folder_str: str, original_filename_str: str
     ) -> Path:
