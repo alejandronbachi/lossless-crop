@@ -163,7 +163,10 @@ class ApplicationMenuBar(QMenuBar):
             # Fallback if no window icon is loaded yet in your main app lifecycle
             msg_box.setIcon(QMessageBox.Icon.NoIcon)
         # 3. CRUCIAL: Tell the underlying text renderer engine to allow selection highlights
-        msg_box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        msg_box.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
 
         # 4. Your polished HTML block layout
         about_html = self.file_mgr.load_asset(TEMPLATE_ABOUT, FOLDER_TEMPLATES)
