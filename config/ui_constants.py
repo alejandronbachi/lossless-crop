@@ -11,7 +11,8 @@ BASE_STYLE_TEMPLATE = "base_template.qss"
 # --- HTML Template File Names ---
 TEMPLATE_SPLASH = "splash_hud.html"
 TEMPLATE_COMMANDS = "commands_overlay.html"
-
+TEMPLATE_ABOUT = "about.html"
+TEMPLATE_USER_MANUAL = "user_manual_format.html"
 
 # --- ICON File Name ---
 if sys.platform == "win32":

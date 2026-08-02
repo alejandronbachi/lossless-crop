@@ -22,7 +22,7 @@ class ImageProcessor:
         else:
             binary_file = app_constants.BINARY_LINUX
         self._binary_path = app_constants.APP_ROOT_DIR / "binaries" / binary_file
-        self._lossless_available = os.path.exists(self.binary_path)
+        self._lossless_available = self.binary_path.exists()
 
     @property
     def binary_path(self) -> Path:

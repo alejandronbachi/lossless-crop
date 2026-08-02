@@ -28,6 +28,7 @@ THEME_PALETTES = {
         "@CANVAS_GRID": "#777777",
         # --- Global Layout Colors ---
         "@PRIMARY_ACCENT": "#007acc",
+        "@PRIMARY_TEXT": "#ffffff",
         "@DIVIDER_COLOR": "rgba(255, 255, 255, 0.1)",
         "@CANVAS_BG": "#000000",
         "@CANVAS_BORDER": "#4a6fa5",
@@ -84,6 +85,10 @@ THEME_PALETTES = {
         "@CHECKBOX_HOVER_BORDER": "#666666",  # Your exact original dark hover border
         "@CHECKBOX_HOVER_BG": "#252525",
         "@CHECKBOX_TEXT_HOVER": "#ffffff",
+        # Menu Bar
+        "@MENUBAR_BG": "#2b2b2b",
+        "@MENU_BORDER": "#3a3a3a",
+        "@MENU_SEPARATOR_BG": "#444444",
     },
     "light": {
         # --- QPainter Grid Canvas ---
@@ -91,6 +96,7 @@ THEME_PALETTES = {
         # --- Global Layout Colors ---
         "@WINDOW_BG": "#F5EFEB",  # Soft Linen Grey-Beige main workspace background
         "@PRIMARY_ACCENT": "#D97D54",  # Beautiful Muted Terracotta Orange highlight accent color
+        "@PRIMARY_TEXT": "#2E2520",
         "@DIVIDER_COLOR": "rgba(46, 37, 32, 0.12)",  # Elegant dark coffee divider line
         "@CANVAS_BG": "#F5EFEB",  # Blends completely with your workspace frame context
         "@CANVAS_BORDER": "#D97D54",  # Terracotta accent framing your central canvas wrapper
@@ -148,6 +154,10 @@ THEME_PALETTES = {
         "@CHECKBOX_HOVER_BORDER": "#BCAFA5",  # Richer clay-taupe to create a sharp visible border
         "@CHECKBOX_HOVER_BG": "#EADED5",
         "@CHECKBOX_TEXT_HOVER": "#000000",
+        # Menu Bar
+        "@MENUBAR_BG": "#ffffff",
+        "@MENU_BORDER": "#DDD1C7",
+        "@MENU_SEPARATOR_BG": "#5C4A40",
     },
 }
 
@@ -165,6 +175,31 @@ def init_theme(file_manager_instance, default_mode: str = "dark"):
     apply_theme(current_theme)
 
 
+def substitute_tokens(raw_payload: str) -> str:
+    """
+    Universal String Compiler. Sanitizes formatting noise and injects
+    theme colors into any text type (QSS, HTML, or Markdown) using the
+    global module scope variables.
+    """
+    if not raw_payload:
+        return ""
+
+    # 1. Universal Sanitation (Now safely protects HTML and MD files)
+    clean_buffer = raw_payload.replace("\r\n", "\n").replace("\ufeff", "").strip()
+
+    # 2. Extract palette map using global variable state
+    global current_palette
+    sorted_tokens = sorted(
+        current_palette.items(), key=lambda item: len(item[0]), reverse=True
+    )
+
+    # 3. Core Replacement Loop
+    for token, hex_color in sorted_tokens:
+        clean_buffer = clean_buffer.replace(token, hex_color)
+
+    return clean_buffer
+
+
 def apply_theme(theme_mode: str):
     """Loads blueprint template assets, swaps variables, and pushes straight to Qt."""
     global current_theme, current_palette, _file_manager
@@ -177,21 +212,13 @@ def apply_theme(theme_mode: str):
 
     current_theme = theme_mode
     current_palette = THEME_PALETTES[theme_mode]
-
-    # --- 1. COMPILE AND APPLY GLOBAL APPLICATION QSS ---
-    raw_payload = _file_manager.load_asset(
+    qss_buffer = _file_manager.load_asset(
         filename=BASE_STYLE_TEMPLATE, folder_name=FOLDER_STYLES
     )
-    if not raw_payload:
+    if not qss_buffer:
         return
 
-    qss_buffer = raw_payload.replace("\r\n", "\n").replace("\ufeff", "").strip()
-    sorted_tokens = sorted(
-        current_palette.items(), key=lambda item: len(item[0]), reverse=True
-    )
-
-    for token, hex_color in sorted_tokens:
-        qss_buffer = qss_buffer.replace(token, hex_color)
+    qss_buffer = substitute_tokens(qss_buffer)
 
     app_instance = QApplication.instance()
     if app_instance:
@@ -202,17 +229,13 @@ def apply_theme(theme_mode: str):
         for window in app_instance.topLevelWidgets():
             if hasattr(window, "findChild"):
                 splash_hud = window.findChild(QWidget, "SplashHUD")
-
-                # If found, load the splash asset, swap tokens, and set it directly!
                 if splash_hud and hasattr(splash_hud, "setText"):
+                    # If found, load the splash asset, swap tokens, and set it directly!
                     raw_html = _file_manager.load_asset(
                         filename=TEMPLATE_SPLASH, folder_name=FOLDER_TEMPLATES
                     )
                     if raw_html:
-                        # Process token string replacements directly on the HTML
-                        for token, hex_color in sorted_tokens:
-                            raw_html = raw_html.replace(token, hex_color)
-
+                        raw_html = substitute_tokens(raw_html)
                         # Direct call on the widget instance inside the theme manager loop
                         splash_hud.setText(raw_html)
     else:

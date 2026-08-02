@@ -25,6 +25,15 @@ class FileManager:
             logger.warning("Warning: Asset missing at: %s", file_path)
             return ""
 
+    def load_readme(self) -> str:
+        """Dynamically loads layout styling text / HTML / QSS content safely."""
+        file_path = APP_ROOT_DIR / "README.md"
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning("Warning: Asset missing at: %s", file_path)
+            return ""
+
     def generate_unique_crop_path(
         self, parent_folder_str: str, original_filename_str: str
     ) -> Path:
@@ -66,7 +75,7 @@ class FileManager:
         ]
         raw_files.sort(key=lambda x: x.name)
 
-        # 🚨 FIX: Save the full Path object, not just file_path.name
+        #  Save the full Path object, not just file_path.name
         valid_paths = []
         for file_path in raw_files:
             try:
@@ -78,7 +87,8 @@ class FileManager:
                     "[SECURITY SHIELD] Discarded fake or corrupted image: %s",
                     file_path.name,
                 )
-
+        if valid_paths:
+            self.settings.add_to_recent(directory.as_posix())
         return valid_paths
 
     def process_path(self, target_str_path: str) -> tuple[str, str | None, list[str]]:

@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from config.logging_setup import initialize_logging
+from widgets.application_menu_bar import ApplicationMenuBar
 
 initialize_logging()
 from PyQt6.QtCore import (
@@ -47,7 +48,6 @@ from widgets.settings_drawer import SettingsDrawer
 # Check for Pillow availability
 try:
     from PIL import Image
-    from PIL.ImageQt import ImageQt
 
     Image.MAX_IMAGE_PIXELS = None
     PILLOW_AVAILABLE = True
@@ -101,6 +101,15 @@ class LossLessCropApp(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
+
+        # -------------------------------------------------------------
+        # TOP  MENU BAR
+        # -------------------------------------------------------------
+        self.custom_menu = ApplicationMenuBar(
+            self, self.settings_manager, self.file_manager
+        )
+        self.setMenuBar(self.custom_menu)
+        self.custom_menu.setVisible(False)
 
         # -------------------------------------------------------------
         # TOP SYSTEM TOOLBAR
