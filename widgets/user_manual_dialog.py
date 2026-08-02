@@ -1,49 +1,67 @@
 from PyQt6.QtWidgets import QDialog, QTextBrowser, QVBoxLayout
 
-# Import your unified substitution engine from your theme manager file
+from config.app_constants import APP_ROOT_DIR
+
+# Import your global scope token replacement helper
 from managers.theme_manager import substitute_tokens
 
 
 class UserManualDialog(QDialog):
     def __init__(self, parent_window, file_manager):
-        """
-        parent_window: The main application window reference.
-        file_manager: Your application file manager instance to read assets.
-        """
         super().__init__(parent_window)
         self.main_win = parent_window
         self.file_mgr = file_manager
 
-        # 1. Structural window configurations
         self.setWindowTitle("User Manual")
         self.resize(750, 550)
 
-        # Anchors layout cleanly inside the center of your main viewport
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        # 2. Instantiate a modern read-only text scrolling pane
         self.viewer = QTextBrowser(self)
-
-        # Essential: Allows clicking links (like GitHub profile items) to launch your browser
         self.viewer.setOpenExternalLinks(True)
 
-        layout.addWidget(self.viewer)
-        self.load_and_theme_manual()
+        # Strip out standard borders on the widget container itself
+        self.viewer.setStyleSheet(
+            "QTextBrowser { border: none; background: transparent; }"
+        )
 
-    def load_and_theme_manual(self):
-        """Loads your repository README, strips noise, themes tokens, and renders it."""
-        # 3. Pull your GitHub README file asset directly using your existing file manager
-        # (Change FOLDER or FILENAME labels below to match your asset configurations)
+        layout.addWidget(self.viewer)
+        self.load_manual()
+
+    def load_manual(self):
+        # 1. Fetch your raw GitHub markdown file from your file manager
         raw_markdown = self.file_mgr.load_readme()
 
         if not raw_markdown:
-            # Fallback if the path target drops out during packaging builds
             self.viewer.setPlainText("Error: README.md documentation asset missing.")
             return
 
-        # 4. Run through your unified sanitation and color substitution loop!
-        themed_markdown = substitute_tokens(raw_markdown)
+        # 2. Fetch the external shell HTML layout template file
+        raw_html_template = self.file_mgr.load_asset(
+            "user_manual_format.html", "templates"
+        )
 
-        # 5. Tell the widget engine to natively compute the markup strings into visible elements
-        self.viewer.setMarkdown(themed_markdown)
+        if not raw_html_template:
+            self.viewer.setPlainText("Error: HTML theme template asset missing.")
+            return
+
+        # 3. PyInstaller Extraction Directory Resolution
+
+        self.viewer.setSearchPaths([str(APP_ROOT_DIR)])
+
+        # 4. Use an isolated hidden QTextBrowser instance to turn Markdown strings into raw HTML content
+        parser = QTextBrowser()
+        parser.setMarkdown(raw_markdown)
+        compiled_body_html = parser.toHtml()
+
+        # Inject the parsed markdown straight into your external template placeholder slot
+        complete_document = raw_html_template.format(
+            user_manual_content=compiled_body_html
+        )
+
+        # 6. Run the whole combined document through your unified token substitution parser
+        themed_html = substitute_tokens(complete_document)
+
+        # 7. Render it directly onto your user manual scroll view panel canvas
+        self.viewer.setHtml(themed_html)

@@ -1,0 +1,31 @@
+<!-- assets/templates/user_manual.html -->
+<html>
+<head>
+    <style>
+        body {{
+            background-color: @WINDOW_BG;
+            color: @PRIMARY_TEXT;
+            font-family: sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 10px;
+        }}
+        h1, h2, h3, h4 {{
+            color: @PRIMARY_ACCENT;
+            font-weight: bold;
+            margin-top: 18px;
+            margin-bottom: 6px;
+        }}
+        h1 {{ 
+            font-size: 18px; 
+            border-bottom: 1px solid @DIVIDER_COLOR; 
+            padding-bottom: 4px;
+        }}
+        
+        /* ... wrap the rest of your CSS blocks in double braces exactly like this ... */
+    </style>
+</head>
+<body>
+    {user_manual_content}  <!-- Keep this as a single brace so Python can find it! -->
+</body>
+</html>
