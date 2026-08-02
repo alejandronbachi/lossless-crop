@@ -32,7 +32,7 @@ class UserManualDialog(QDialog):
 
     def load_manual(self):
         # 1. Fetch your raw GitHub markdown file from your file manager
-        raw_markdown = self.file_mgr.load_readme()
+        raw_markdown = self.file_mgr.load_user_manual()
 
         if not raw_markdown:
             self.viewer.setPlainText("Error: README.md documentation asset missing.")

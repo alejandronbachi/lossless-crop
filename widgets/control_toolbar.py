@@ -34,7 +34,7 @@ class ControlToolbar(QFrame):
         # Open folder
         self.main_app.btn_open_folder = QToolButton(self)
         self.main_app.btn_open_folder.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_open_folder.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_open_folder.setToolTip("Open Folder")
         self.main_app.btn_open_folder.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("open_folder.svg")
         self.main_app.btn_open_folder.setIcon(QIcon(icon_path))
@@ -45,7 +45,7 @@ class ControlToolbar(QFrame):
         # Open Image
         self.main_app.btn_open_image = QToolButton(self)
         self.main_app.btn_open_image.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_open_image.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_open_image.setToolTip("Open Image")
         self.main_app.btn_open_image.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("open_image.svg")
         self.main_app.btn_open_image.setIcon(QIcon(icon_path))
@@ -57,7 +57,7 @@ class ControlToolbar(QFrame):
         # Crop
         self.main_app.btn_crop = QToolButton(self)
         self.main_app.btn_crop.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_crop.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_crop.setToolTip("Crop")
         self.main_app.btn_crop.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("crop.svg")
         self.main_app.btn_crop.setIcon(QIcon(icon_path))
@@ -68,7 +68,7 @@ class ControlToolbar(QFrame):
         # Crop and next
         self.main_app.btn_crop_next = QToolButton(self)
         self.main_app.btn_crop_next.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_crop_next.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_crop_next.setToolTip("Crop and Next")
         self.main_app.btn_crop_next.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("crop_next.svg")
         self.main_app.btn_crop_next.setIcon(QIcon(icon_path))
@@ -79,7 +79,7 @@ class ControlToolbar(QFrame):
         # Rotate
         self.main_app.btn_rotate = QToolButton(self)
         self.main_app.btn_rotate.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_rotate.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_rotate.setToolTip("Rotate")
         self.main_app.btn_rotate.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("rotate.svg")
         self.main_app.btn_rotate.setIcon(QIcon(icon_path))
