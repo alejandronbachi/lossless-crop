@@ -51,6 +51,7 @@ class CanvasPresenter:
         self.viewport_factory = viewport_factory
         self._updating_spinboxes = False
         self._selection_overlay = SelectionOverlayRenderer(selection_manager)
+        self._selection_overlay.blur_changed.connect(self.repaint_selection_overlay)
 
     def load_image_to_viewport(self):
         if not self.image_session.has_active_image:

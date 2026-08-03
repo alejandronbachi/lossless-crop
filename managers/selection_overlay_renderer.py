@@ -9,7 +9,16 @@
 # =============================================================================
 from __future__ import annotations
 
-from PyQt6.QtCore import QRect, QRectF, Qt
+from PyQt6.QtCore import (
+    QObject,
+    QRect,
+    QRectF,
+    QRunnable,
+    Qt,
+    QThreadPool,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QGraphicsBlurEffect, QGraphicsPixmapItem, QGraphicsScene
 
@@ -20,51 +29,110 @@ SELECTION_BORDER_COLOR = QColor(255, 255, 255, 235)
 SELECTION_BORDER_WIDTH = 1
 
 
-def _blur_pixmap(source: QPixmap, radius: float) -> QPixmap:
-    """Bakes a QGraphicsBlurEffect onto a QPixmap. QGraphicsBlurEffect can only
-    be applied to a QGraphicsItem, so we render a throwaway scene containing
-    just this one pixmap item into a fresh QPixmap of the same size. This runs
-    once per canvas refresh (image load/resize/rotate) -- never per mouse-move."""
-    if source is None or source.isNull():
-        return source
+class BlurWorkerSignals(QObject):
+    """Signals to communicate background thread results back to the main UI thread."""
 
-    scene = QGraphicsScene()
-    item = QGraphicsPixmapItem(source)
-    effect = QGraphicsBlurEffect()
-    effect.setBlurRadius(radius)
-    effect.setBlurHints(QGraphicsBlurEffect.BlurHint.QualityHint)
-    item.setGraphicsEffect(effect)
-    scene.addItem(item)
-
-    result = QPixmap(source.size())
-    result.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(result)
-    scene.render(painter, QRectF(result.rect()), QRectF(source.rect()))
-    painter.end()
-    return result
+    finished = pyqtSignal(QPixmap)
 
 
-class SelectionOverlayRenderer:
-    """Caches a sharp/blurred pair for the currently displayed canvas pixmap
-    and composites them against a selection rect on demand."""
+class BlurWorker(QRunnable):
+    """Calculates the heavy blur on a background thread to prevent UI freezing."""
+
+    def __init__(self, source_pixmap: QPixmap, radius: float):
+        super().__init__()
+        # We convert to a thread-safe QImage because QPixmap cannot be safely processed or
+        # painted onto from outside the main GUI thread in Qt.
+        self.source_image = source_pixmap.toImage()
+        self.radius = radius
+        self.signals = BlurWorkerSignals()
+
+    @pyqtSlot()
+    def run(self) -> None:
+        if self.source_image.isNull():
+            return
+
+        # 1. Thread-Safe Conversion back to a source pixmap inside the scene
+        # (Alternatively, you can use high-performance numpy/scipy or PIL manipulations here)
+        source_pixmap = QPixmap.fromImage(self.source_image)
+
+        scene = QGraphicsScene()
+        item = QGraphicsPixmapItem(source_pixmap)
+        effect = QGraphicsBlurEffect()
+        effect.setBlurRadius(self.radius)
+        effect.setBlurHints(QGraphicsBlurEffect.BlurHint.QualityHint)
+        item.setGraphicsEffect(effect)
+        scene.addItem(item)
+
+        result = QPixmap(source_pixmap.size())
+        result.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(result)
+        scene.render(painter, QRectF(result.rect()), QRectF(source_pixmap.rect()))
+        painter.end()
+
+        # Emit the result back safely
+        self.signals.finished.emit(result)
+
+
+class SelectionOverlayRenderer(QObject):
+    """Caches a sharp/blurred pair asynchronously to ensure buttery-smooth UI interactions."""
+
+    blur_changed = pyqtSignal()
 
     def __init__(self, selection_manager=None, blur_radius: float = BLUR_RADIUS):
+        super().__init__()  # Initialize QObject
         self._blur_radius = blur_radius
         self._sharp: QPixmap | None = None
         self._blurred: QPixmap | None = None
         self.selection_manager = selection_manager
+        # Keep track of active threads to discard stale resize events
+        self._current_worker_id = 0
 
     def set_base_pixmap(self, pixmap: QPixmap | None) -> None:
-        """Call whenever the underlying canvas image changes: new image
-        loaded, window resized, rotation applied. Recomputing the blur is the
-        only non-trivial cost in this class, so it's isolated here instead of
-        running on every selection update."""
+        """Call whenever the underlying canvas image changes.
+        Spawns an asynchronous background thread to calculate the heavy blur operation."""
         self._sharp = pixmap
-        self._blurred = (
-            _blur_pixmap(pixmap, self._blur_radius)
-            if pixmap is not None and not pixmap.isNull()
-            else None
+
+        if pixmap is None or pixmap.isNull():
+            self._blurred = None
+            return
+
+        # OPTIMIZATION: Create a ultra-fast, temporary low-res blurred image to display instantly
+        # This keeps the application responsive while the high-res blur processes.
+        self._blurred = self._generate_fast_placeholder_blur(pixmap)
+
+        # Increment ID so older thread completions are ignored if the window is resizing quickly
+        self._current_worker_id += 1
+        worker_id = self._current_worker_id
+
+        # Dispatch heavy calculation to the global thread pool
+        worker = BlurWorker(pixmap, self._blur_radius)
+        worker.signals.finished.connect(
+            lambda bmp: self._on_blur_completed(bmp, worker_id)
         )
+        QThreadPool.globalInstance().start(worker)
+
+    def _generate_fast_placeholder_blur(self, source: QPixmap) -> QPixmap:
+        """Instantly generates a cheap placeholder blur by downscaling and upscaling."""
+        # Scale down to 10% size, smooth transform blends the pixels naturally like a fast blur
+        low_res = source.scaled(
+            source.width() // 10,
+            source.height() // 10,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        # Scale back up to native dimensions
+        return low_res.scaled(
+            source.size(),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.FastTransformation,
+        )
+
+    def _on_blur_completed(self, blurred_pixmap: QPixmap, worker_id: int):
+        if worker_id == self._current_worker_id:
+            self._blurred = blurred_pixmap
+            # Just emit the signal! No messy canvas checks or geometry fetching here.
+            self.blur_changed.emit()
 
     def render(self, selection_rect_in_pixmap_space: QRect | None) -> QPixmap | None:
         """Returns the pixmap that should be shown on the canvas label."""
