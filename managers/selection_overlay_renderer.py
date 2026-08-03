@@ -9,8 +9,17 @@
 # =============================================================================
 from __future__ import annotations
 
-from PyQt6.QtCore import QRect, QRectF, Qt
-from PyQt6.QtGui import QColor, QPainter, QPen, QPixmap
+from PyQt6.QtCore import (
+    QObject,
+    QRect,
+    QRectF,
+    QRunnable,
+    Qt,
+    QThreadPool,
+    pyqtSignal,
+    pyqtSlot,
+)
+from PyQt6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QGraphicsBlurEffect, QGraphicsPixmapItem, QGraphicsScene
 
 # Tunables -- move to config/ui_constants.py if these should be user-facing.
@@ -20,60 +29,113 @@ SELECTION_BORDER_COLOR = QColor(255, 255, 255, 235)
 SELECTION_BORDER_WIDTH = 1
 
 
-def _blur_pixmap(source: QPixmap, radius: float) -> QPixmap:
-    """Bakes a QGraphicsBlurEffect onto a QPixmap. QGraphicsBlurEffect can only
-    be applied to a QGraphicsItem, so we render a throwaway scene containing
-    just this one pixmap item into a fresh QPixmap of the same size. This runs
-    once per canvas refresh (image load/resize/rotate) -- never per mouse-move."""
-    if source is None or source.isNull():
-        return source
+class BlurWorkerSignals(QObject):
+    """Signals to communicate background thread results back to the main UI thread."""
 
-    scene = QGraphicsScene()
-    item = QGraphicsPixmapItem(source)
-    effect = QGraphicsBlurEffect()
-    effect.setBlurRadius(radius)
-    effect.setBlurHints(QGraphicsBlurEffect.BlurHint.QualityHint)
-    item.setGraphicsEffect(effect)
-    scene.addItem(item)
-
-    result = QPixmap(source.size())
-    result.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(result)
-    scene.render(painter, QRectF(result.rect()), QRectF(source.rect()))
-    painter.end()
-    return result
+    finished = pyqtSignal(QPixmap)
 
 
-class SelectionOverlayRenderer:
-    """Caches a sharp/blurred pair for the currently displayed canvas pixmap
-    and composites them against a selection rect on demand."""
+class BlurWorker(QRunnable):
+    """Calculates the heavy blur on a background thread to prevent UI freezing."""
+
+    def __init__(self, source_pixmap: QPixmap, radius: float):
+        super().__init__()
+        # We convert to a thread-safe QImage because QPixmap cannot be safely processed or
+        # painted onto from outside the main GUI thread in Qt.
+        self.source_image = source_pixmap.toImage()
+        self.radius = radius
+        self.signals = BlurWorkerSignals()
+
+    @pyqtSlot()
+    def run(self) -> None:
+        if self.source_image.isNull():
+            return
+
+        # 1. Thread-Safe Conversion back to a source pixmap inside the scene
+        # (Alternatively, you can use high-performance numpy/scipy or PIL manipulations here)
+        source_pixmap = QPixmap.fromImage(self.source_image)
+
+        scene = QGraphicsScene()
+        item = QGraphicsPixmapItem(source_pixmap)
+        effect = QGraphicsBlurEffect()
+        effect.setBlurRadius(self.radius)
+        effect.setBlurHints(QGraphicsBlurEffect.BlurHint.QualityHint)
+        item.setGraphicsEffect(effect)
+        scene.addItem(item)
+
+        result = QPixmap(source_pixmap.size())
+        result.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(result)
+        scene.render(painter, QRectF(result.rect()), QRectF(source_pixmap.rect()))
+        painter.end()
+
+        # Emit the result back safely
+        self.signals.finished.emit(result)
+
+
+class SelectionOverlayRenderer(QObject):
+    """Caches a sharp/blurred pair asynchronously to ensure buttery-smooth UI interactions."""
+
+    blur_changed = pyqtSignal()
 
     def __init__(self, selection_manager=None, blur_radius: float = BLUR_RADIUS):
+        super().__init__()  # Initialize QObject
         self._blur_radius = blur_radius
         self._sharp: QPixmap | None = None
         self._blurred: QPixmap | None = None
         self.selection_manager = selection_manager
+        # Keep track of active threads to discard stale resize events
+        self._current_worker_id = 0
 
     def set_base_pixmap(self, pixmap: QPixmap | None) -> None:
-        """Call whenever the underlying canvas image changes: new image
-        loaded, window resized, rotation applied. Recomputing the blur is the
-        only non-trivial cost in this class, so it's isolated here instead of
-        running on every selection update."""
+        """Call whenever the underlying canvas image changes.
+        Spawns an asynchronous background thread to calculate the heavy blur operation."""
         self._sharp = pixmap
-        self._blurred = (
-            _blur_pixmap(pixmap, self._blur_radius)
-            if pixmap is not None and not pixmap.isNull()
-            else None
+
+        if pixmap is None or pixmap.isNull():
+            self._blurred = None
+            return
+
+        # OPTIMIZATION: Create a ultra-fast, temporary low-res blurred image to display instantly
+        # This keeps the application responsive while the high-res blur processes.
+        self._blurred = self._generate_fast_placeholder_blur(pixmap)
+
+        # Increment ID so older thread completions are ignored if the window is resizing quickly
+        self._current_worker_id += 1
+        worker_id = self._current_worker_id
+
+        # Dispatch heavy calculation to the global thread pool
+        worker = BlurWorker(pixmap, self._blur_radius)
+        worker.signals.finished.connect(
+            lambda bmp: self._on_blur_completed(bmp, worker_id)
+        )
+        QThreadPool.globalInstance().start(worker)
+
+    def _generate_fast_placeholder_blur(self, source: QPixmap) -> QPixmap:
+        """Instantly generates a cheap placeholder blur by downscaling and upscaling."""
+        # Scale down to 10% size, smooth transform blends the pixels naturally like a fast blur
+        low_res = source.scaled(
+            source.width() // 10,
+            source.height() // 10,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        # Scale back up to native dimensions
+        return low_res.scaled(
+            source.size(),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.FastTransformation,
         )
 
-    # 🚀 FIXED: We add `selection_manager=None` directly to the method parameters
+    def _on_blur_completed(self, blurred_pixmap: QPixmap, worker_id: int):
+        if worker_id == self._current_worker_id:
+            self._blurred = blurred_pixmap
+            # Just emit the signal! No messy canvas checks or geometry fetching here.
+            self.blur_changed.emit()
+
     def render(self, selection_rect_in_pixmap_space: QRect | None) -> QPixmap | None:
-        """Returns the pixmap that should be shown on the canvas label.
-        `selection_rect_in_pixmap_space` must already be translated into the
-        base pixmap's own (0,0)-origin coordinate space -- i.e. with the
-        label's centering offset subtracted out, exactly like every other
-        screen<->source conversion in this app. Pass None (or an empty rect)
-        to get the plain sharp image back, unchanged."""
+        """Returns the pixmap that should be shown on the canvas label."""
         if self._sharp is None:
             return None
 
@@ -87,106 +149,121 @@ class SelectionOverlayRenderer:
         if clipped.isEmpty():
             return self._sharp
 
+        # 1. Initialize composite canvas layers
         composite = QPixmap(self._sharp.size())
         composite.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(composite)
-        painter.drawPixmap(
-            0, 0, self._blurred if self._blurred is not None else self._sharp
-        )
+
+        # 2. Composition Pipeline
+        self._paint_base_backdrop(painter)
+        self._paint_sharp_clipped_selection(painter, clipped)
+        self._paint_predictive_ghost_layer(painter)
+        self._paint_asymmetric_gradient_brackets(painter, clipped)
+
+        painter.end()
+        return composite
+
+    # --- Extracted Composition Steps ---
+
+    def _paint_base_backdrop(self, painter: QPainter):
+        """Draws the primary blurred or sharp background frame with dim overlay."""
+        background = self._blurred if self._blurred is not None else self._sharp
+        painter.drawPixmap(0, 0, background)
 
         if DIM_OVERLAY_ALPHA:
-            painter.fillRect(composite.rect(), QColor(0, 0, 0, DIM_OVERLAY_ALPHA))
+            painter.fillRect(self._sharp.rect(), QColor(0, 0, 0, DIM_OVERLAY_ALPHA))
 
+    def _paint_sharp_clipped_selection(self, painter: QPainter, clipped: QRect):
+        """Restores the original sharp image visibility within active bounding box."""
         painter.setClipRect(clipped)
         painter.drawPixmap(0, 0, self._sharp)
         painter.setClipping(False)
 
-        # -----------------------------------------------------------------
-        # 🚀 PART A: PREDICTIVE DUAL-BOX SNAP FEEDBACK LAYER
-        # -----------------------------------------------------------------
-        # Use the passed manager directly instead of guessing with __main__
+    def _paint_predictive_ghost_layer(self, painter: QPainter):
+        """PART A: Projects and draws the neon-teal predictive snap bounds if active."""
         mgr = self.selection_manager
+        if mgr is None:
+            return
 
-        if mgr is not None:
-            ghost_geom = getattr(mgr, "ghost_crop_geometry", None)
+        ghost_geom = getattr(mgr, "ghost_crop_geometry", None)
+        if not ghost_geom or ghost_geom.isEmpty():
+            return
 
-            # If ghosting coordinates are active, map them to pixmap space and paint them
-            if ghost_geom and not ghost_geom.isEmpty():
-                # Extract the centering labels offset matrix parameters natively
-                lbl_w, lbl_h = mgr.canvas.width(), mgr.canvas.height()
-                pix_w, pix_h = self._sharp.width(), self._sharp.height()
-                ox, oy = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
+        # Extract centering label offset matrix parameters natively
+        lbl_w, lbl_h = mgr.canvas.width(), mgr.canvas.height()
+        pix_w, pix_h = self._sharp.width(), self._sharp.height()
+        ox, oy = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
 
-                # Project the screen coordinates directly into raw pixmap space bounds
-                ghost_clipped = ghost_geom.translated(-ox, -oy).intersected(
-                    self._sharp.rect()
-                )
+        # Project coordinates directly into raw pixmap space bounds
+        ghost_clipped = ghost_geom.translated(-ox, -oy).intersected(self._sharp.rect())
+        if ghost_clipped.isEmpty():
+            return
 
-                if not ghost_clipped.isEmpty():
-                    # Draw a subtle, professional dashed neon-teal frame showing the snap landing
-                    snap_pen = QPen(QColor(0, 243, 255, 130), 1, Qt.PenStyle.DashLine)
-                    painter.setPen(snap_pen)
-                    painter.drawRect(ghost_clipped.adjusted(0, 0, -1, -1))
+        snap_pen = QPen(QColor(0, 243, 255, 130), 1, Qt.PenStyle.DashLine)
+        painter.setPen(snap_pen)
+        painter.drawRect(ghost_clipped.adjusted(0, 0, -1, -1))
 
-        # -----------------------------------------------------------------
-        # 🚀 PART B: ASYMMETRIC GRADIENT CROP BRACKETS (Fluid Mouse Position)
-        # -----------------------------------------------------------------
-        from PyQt6.QtGui import QBrush, QLinearGradient
-
-        r = clipped  # The active selection bounding box reference matrix
-
-        # Map out a diagonal gradient line spanning from top-left to bottom-right
-        gradient = QLinearGradient(r.left(), r.top(), r.right(), r.bottom())
-
-        # Configure the color stops to match your app icon layout perfectly
-        gradient.setColorAt(0.0, QColor(255, 255, 255, 240))  # Brilliant white at start
-        gradient.setColorAt(0.5, QColor(140, 235, 255, 200))  # Ice-blue color in middle
-        gradient.setColorAt(1.0, QColor(0, 243, 255, 255))  # Electric teal at end
+    def _paint_asymmetric_gradient_brackets(self, painter: QPainter, clipped: QRect):
+        """PART B: Creates and applies asymmetric corner crop boundaries."""
+        # Build diagonal brush profile mapping
+        gradient = QLinearGradient(
+            clipped.left(), clipped.top(), clipped.right(), clipped.bottom()
+        )
+        gradient.setColorAt(0.0, QColor(255, 255, 255, 240))
+        gradient.setColorAt(0.5, QColor(140, 235, 255, 200))
+        gradient.setColorAt(1.0, QColor(0, 243, 255, 255))
 
         gradient_brush = QBrush(gradient)
         thick_pen = QPen(gradient_brush, 2, Qt.PenStyle.SolidLine)
         thin_pen = QPen(gradient_brush, 1, Qt.PenStyle.SolidLine)
 
-        overflow = 12  # How many pixels lines shoot outward past the corner
-        length = 24  # The total length of each bracket arm
+        overflow, length = 12, 24
 
-        # --- 1. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
+        # 1. Overflowing Thick Corners (Top-Left & Bottom-Right)
         painter.setPen(thick_pen)
 
-        # Top-Left Corner
+        # Top-Left
         painter.drawLine(
-            r.left() - overflow, r.top(), r.left() + (length - overflow), r.top()
+            clipped.left() - overflow,
+            clipped.top(),
+            clipped.left() + (length - overflow),
+            clipped.top(),
         )
         painter.drawLine(
-            r.left(), r.top() - overflow, r.left(), r.top() + (length - overflow)
+            clipped.left(),
+            clipped.top() - overflow,
+            clipped.left(),
+            clipped.top() + (length - overflow),
+        )
+        # Bottom-Right
+        painter.drawLine(
+            clipped.right() + overflow,
+            clipped.bottom(),
+            clipped.right() - (length - overflow),
+            clipped.bottom(),
+        )
+        painter.drawLine(
+            clipped.right(),
+            clipped.bottom() + overflow,
+            clipped.right(),
+            clipped.bottom() - (length - overflow),
         )
 
-        # Bottom-Right Corner
-        painter.drawLine(
-            r.right() + overflow,
-            r.bottom(),
-            r.right() - (length - overflow),
-            r.bottom(),
-        )
-        painter.drawLine(
-            r.right(),
-            r.bottom() + overflow,
-            r.right(),
-            r.bottom() - (length - overflow),
-        )
-
-        # --- 2. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
+        # 2. Clean Closed Thin Corners (Top-Right & Bottom-Left)
         painter.setPen(thin_pen)
 
-        # Top-Right Corner
-        painter.drawLine(r.right(), r.top(), r.right() - length, r.top())
-        painter.drawLine(r.right(), r.top(), r.right(), r.top() + length)
-
-        # Bottom-Left Corner
-        painter.drawLine(r.left(), r.bottom(), r.left() + length, r.bottom())
-        painter.drawLine(r.left(), r.bottom(), r.left(), r.bottom() - length)
-        # -----------------------------------------------------------------
-
-        painter.end()
-        return composite
+        # Top-Right
+        painter.drawLine(
+            clipped.right(), clipped.top(), clipped.right() - length, clipped.top()
+        )
+        painter.drawLine(
+            clipped.right(), clipped.top(), clipped.right(), clipped.top() + length
+        )
+        # Bottom-Left
+        painter.drawLine(
+            clipped.left(), clipped.bottom(), clipped.left() + length, clipped.bottom()
+        )
+        painter.drawLine(
+            clipped.left(), clipped.bottom(), clipped.left(), clipped.bottom() - length
+        )

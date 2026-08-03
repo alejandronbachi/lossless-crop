@@ -15,6 +15,7 @@
 # =============================================================================
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import IntEnum
 
 from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
@@ -22,6 +23,14 @@ from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
 from config import ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from models.crop_model import CropModel
+
+
+class GripZone(IntEnum):
+    NONE = 0
+    TOP_LEFT = 1
+    TOP_RIGHT = 2
+    BOTTOM_LEFT = 3
+    BOTTOM_RIGHT = 4
 
 
 @dataclass(frozen=True)
@@ -206,12 +215,8 @@ class SelectionManager:
         self._notify_changed()
 
     def update_draw(self, current_screen_pos: QPoint) -> QRect | None:
-        """Left-click drag: grow/shrink the box from drag_start_origin,
-        honoring aspect lock and the active snap mode. Returns the current
-        selection projected into source-pixel space (so the caller can push
-        it straight into the width/height spinboxes), or None if there's no
-        active drag or pixmap to draw against.
-        """
+        """Left-click drag: grow/shrink the box from drag_start_origin."""
+        # 1. Guard Clauses
         if self.drag_start_origin.isNull() or not self.image_session.has_active_image:
             return None
 
@@ -219,19 +224,46 @@ class SelectionManager:
         if not pixmap:
             return None
 
+        # 2. Extract Geometry & Viewport Information
+        viewport = self._viewport_factory(pixmap)
+        ratio_label = self._current_ratio_label()
+        use_lossless = self._lossless_check()
+
+        # 3. Calculate the core raw box geometry
+        fluid_rect = self._calculate_fluid_geometry(
+            current_screen_pos, pixmap, viewport, ratio_label
+        )
+        snapped_rect = self._snap_rect(fluid_rect) if use_lossless else fluid_rect
+
+        # 4. Handle UI Display Strategy based on Snap Mode
+        target_source_rect = snapped_rect if use_lossless else fluid_rect
+        self._apply_snap_mode_ui_strategy(fluid_rect, snapped_rect, use_lossless)
+
+        self._notify_changed()
+
+        # 5. Return projected source coordinates
+        return CropGeometryEngine.screen_rect_to_source_rect(
+            target_source_rect,
+            viewport,
+            lossless=use_lossless,
+            ratio_label=ratio_label,
+        )
+
+    # --- Extracted Helper Methods ---
+
+    def _calculate_fluid_geometry(
+        self, current_pos: QPoint, pixmap, viewport, ratio_label: str
+    ) -> QRect:
+        """Handles raw coordinate calculating, aspect locking, and boundary clamping."""
         lbl_w, lbl_h = self.canvas.width(), self.canvas.height()
         pix_w, pix_h = pixmap.width(), pixmap.height()
         offset_x, offset_y = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
-        viewport = self._viewport_factory(pixmap)
 
         x1, y1 = self.drag_start_origin.x(), self.drag_start_origin.y()
-        x2 = max(offset_x, min(current_screen_pos.x(), offset_x + pix_w))
-        y2 = max(offset_y, min(current_screen_pos.y(), offset_y + pix_h))
+        x2 = max(offset_x, min(current_pos.x(), offset_x + pix_w))
+        y2 = max(offset_y, min(current_pos.y(), offset_y + pix_h))
 
-        raw_w = x2 - x1
-        raw_h = y2 - y1
-
-        ratio_label = self._current_ratio_label()
+        raw_w, raw_h = x2 - x1, y2 - y1
         aspect = CropGeometryEngine.resolve_aspect_ratio(
             ratio_label, (viewport.source_width, viewport.source_height)
         )
@@ -240,16 +272,13 @@ class SelectionManager:
             sign_w = 1 if raw_w >= 0 else -1
             sign_h = 1 if raw_h >= 0 else -1
 
-            #  THE DOMINANT AXIS CORRECTION:
-            # Check if the vertical movement is greater than the horizontal movement
+            # Dominant axis correction
             if abs(raw_h) * aspect > abs(raw_w):
-                # Vertical drag is dominant: calculate width (raw_w) from height (raw_h)
                 raw_w = sign_w * abs(int(raw_h * aspect))
             else:
-                # Horizontal drag is dominant: calculate height (raw_h) from width (raw_w)
                 raw_h = sign_h * abs(int(raw_w / aspect))
 
-            # Strictly maintain your original safety boundaries against image edges
+            # Clamp boundaries safety check
             if y1 + raw_h < offset_y:
                 raw_h = offset_y - y1
                 raw_w = sign_w * abs(int(raw_h * aspect))
@@ -257,43 +286,30 @@ class SelectionManager:
                 raw_h = (offset_y + pix_h) - y1
                 raw_w = sign_w * abs(int(raw_h * aspect))
 
-        fluid_rect = QRect(x1, y1, raw_w, raw_h).normalized()
-        snap_mode = self.snap_combo.currentText()
-        use_lossless = self._lossless_check()
+        return QRect(x1, y1, raw_w, raw_h).normalized()
 
-        snapped_rect = self._snap_rect(fluid_rect) if use_lossless else fluid_rect
+    def _apply_snap_mode_ui_strategy(
+        self, fluid_rect: QRect, snapped_rect: QRect, use_lossless: bool
+    ):
+        """Executes layout mutations and overlay visibility rules based on snap configuration."""
+        snap_mode = self.snap_combo.currentText()
+
+        # Pre-configure defaults shared by mostly all modes
+        display_rect = fluid_rect
+        self.ghost_crop_geometry = None
 
         if snap_mode == ui_constants.SNAP_REAL_TIME:
-            active_rect = snapped_rect if use_lossless else fluid_rect
-            self.selector.setGeometry(active_rect)
-            self.last_crop_geometry = active_rect
-            self.selector.show()
-            self.selector.raise_()
-
-        elif snap_mode == ui_constants.SNAP_POST_RELEASE:
-            self.selector.setGeometry(fluid_rect)
-            self.selector.show()
-            self.selector.raise_()
-            self.last_crop_geometry = fluid_rect
+            display_rect = snapped_rect if use_lossless else fluid_rect
 
         elif snap_mode == ui_constants.SNAP_GHOSTING:
-            self.selector.setGeometry(fluid_rect)
-            self.selector.show()
-            self.selector.raise_()
-            self.last_crop_geometry = fluid_rect
-            #  Store lossless bounds during drag
             self.ghost_crop_geometry = snapped_rect if use_lossless else None
 
-        self._notify_changed()
+        # Apply the determined metrics directly to the selector UI
+        self.selector.setGeometry(display_rect)
+        self.last_crop_geometry = display_rect
 
-        # source_rect derivation mirrors calculate_snapped_rect /
-        # update_resolution_metrics_display exactly, so all three stay in sync.
-        return CropGeometryEngine.screen_rect_to_source_rect(
-            snapped_rect if use_lossless else fluid_rect,
-            viewport,
-            lossless=use_lossless,
-            ratio_label=ratio_label,
-        )
+        self.selector.show()
+        self.selector.raise_()
 
     # -----------------------------------------------------------------
     # Mouse-release entry point (called from LossLessCropApp.on_mouse_release)
@@ -523,52 +539,47 @@ class SelectionManager:
         self._notify_changed()  # NEW: previously this fell through silently;
         # now it's needed so crop_model.clear() actually fires.
 
-    def detect_grip_zone(self, mouse_point: QPoint) -> int:
+    def detect_grip_zone(self, mouse_point: QPoint) -> GripZone:
         """Evaluates cursor position and returns a matching grip type identifier."""
         rect = self.last_crop_geometry
         if not rect or rect.isEmpty():
-            return 0  # No selection active, no grip zone possible
+            return GripZone.NONE
 
-        x, y = mouse_point.x(), mouse_point.y()
-        t = 12  # Grip touch hitbox radius in canvas pixels
+        # Mapping points to their respective semantic enum positions
+        corners = {
+            GripZone.TOP_LEFT: rect.topLeft(),
+            GripZone.TOP_RIGHT: rect.topRight(),
+            GripZone.BOTTOM_LEFT: rect.bottomLeft(),
+            GripZone.BOTTOM_RIGHT: rect.bottomRight(),
+        }
 
-        # Check Corners (Returns numeric identifiers 1 through 4)
-        if abs(x - rect.left()) <= t and abs(y - rect.top()) <= t:
-            return 1  # Top-Left
-        if abs(x - rect.right()) <= t and abs(y - rect.top()) <= t:
-            return 2  # Top-Right
-        if abs(x - rect.left()) <= t and abs(y - rect.bottom()) <= t:
-            return 3  # Bottom-Left
-        if abs(x - rect.right()) <= t and abs(y - rect.bottom()) <= t:
-            return 4  # Bottom-Right
+        hitbox_radius = 12  # Grip touch hitbox radius in canvas pixels
 
-        return 0
+        # Iterate through corners to find an active hit zone
+        for zone, corner_point in corners.items():
+            # Using Manhattan length or QPoint delta for clean proximity matching
+            if (mouse_point - corner_point).manhattanLength() <= hitbox_radius * 1.4:
+                return zone
 
-    def get_opposite_corner_anchor(self, grip_zone: int) -> QPoint | None:
+        return GripZone.NONE
+
+    def get_opposite_corner_anchor(self, grip_zone: GripZone) -> QPoint | None:
         """Returns the exact diagonal corner point of the active crop rect to freeze as an anchor."""
         rect = self.last_crop_geometry
-        if not rect or rect.isEmpty():
+        if not rect or rect.isEmpty() or grip_zone == GripZone.NONE:
             return None
 
-        # Map the grabbed corner to its static diagonal anchor point
-        if grip_zone == 1:
-            return QPoint(
-                rect.right(), rect.bottom()
-            )  # Grabbing Top-Left anchors Bottom-Right
-        if grip_zone == 2:
-            return QPoint(
-                rect.left(), rect.bottom()
-            )  # Grabbing Top-Right anchors Bottom-Left
-        if grip_zone == 3:
-            return QPoint(
-                rect.right(), rect.top()
-            )  # Grabbing Bottom-Left anchors Top-Right
-        if grip_zone == 4:
-            return QPoint(
-                rect.left(), rect.top()
-            )  # Grabbing Bottom-Right anchors Top-Left
+        # Maps the grabbed corner directly to its static diagonal anchor point method
+        anchor_mapping = {
+            GripZone.TOP_LEFT: rect.bottomRight,
+            GripZone.TOP_RIGHT: rect.bottomLeft,
+            GripZone.BOTTOM_LEFT: rect.topRight,
+            GripZone.BOTTOM_RIGHT: rect.topLeft,
+        }
 
-        return None
+        # Retrieve and execute the matching geometry function
+        anchor_func = anchor_mapping.get(grip_zone)
+        return anchor_func() if anchor_func else None
 
     # -----------------------------------------------------------------
     # Aspect ratio update on pixel-perfect
