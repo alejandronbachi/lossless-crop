@@ -276,50 +276,75 @@ class CanvasPresenter:
 
     def update_zoom_hud_payload(self):
         """Calculates high-res coordinates and triggers instant GPU-side cropping."""
-        if (
-            not self.cfg_show_preview.isChecked()
-            or self.crop_box_selector.isHidden()
-            or not self.image_session.has_active_image
-        ):
-            if self.zoom_hud is not None:
-                self.zoom_hud.master_pixmap = None
-                self.zoom_hud.lbl_canvas.clear()
+        # 1. Guard: Check if the HUD should be active at all
+        if not self._is_hud_activation_allowed():
+            self._clear_zoom_hud_completely()
             return
 
+        # 2. Guard: Validate UI elements and dimensions
         box_rect = self.crop_box_selector.geometry()
         pixmap = self.image_display_container.pixmap()
+        if not pixmap or box_rect.width() <= 5 or box_rect.height() <= 5:
+            self._clear_zoom_hud_canvas_only()
+            return
 
-        if pixmap and box_rect.width() > 5 and box_rect.height() > 5:
-            src_w, src_h = self.image_session.width, self.image_session.height
-            viewport = self.viewport_factory(pixmap)
+        # 3. Calculate and clamp boundaries
+        pil_coords = self._calculate_clamped_crop_coords(box_rect, pixmap)
 
-            source_rect = CropGeometryEngine.screen_rect_to_source_rect(
-                box_rect,
-                viewport,
-                lossless=False,
-                ratio_label=self.combo_ratio.currentText(),
+        # 4. Final Guard & Execution: Update HUD if coordinates are valid
+        if pil_coords and self.zoom_hud is not None:
+            self.zoom_hud.refresh_scaled_preview_live(
+                self.image_session.master_pixmap,
+                self.cfg_fit_preview.isChecked(),
+                pil_coords,
             )
+        else:
+            self._clear_zoom_hud_canvas_only()
 
-            crop_left = source_rect.x()
-            crop_top = source_rect.y()
-            crop_right = crop_left + source_rect.width()
-            crop_bottom = crop_top + source_rect.height()
+    # --- Extracted Helper Methods ---
 
-            if (crop_right > crop_left) and (crop_bottom > crop_top):
-                crop_left = max(0, min(crop_left, src_w - 1))
-                crop_top = max(0, min(crop_top, src_h - 1))
-                crop_right = max(crop_left + 1, min(crop_right, src_w))
-                crop_bottom = max(crop_top + 1, min(crop_bottom, src_h))
+    def _is_hud_activation_allowed(self) -> bool:
+        """Evaluates the core business rules for HUD visibility."""
+        return (
+            self.cfg_show_preview.isChecked()
+            and not self.crop_box_selector.isHidden()
+            and self.image_session.has_active_image
+        )
 
-                pil_coords = (crop_left, crop_top, crop_right, crop_bottom)
+    def _calculate_clamped_crop_coords(self, box_rect, pixmap) -> tuple | None:
+        """Handles mapping viewport coordinates back to original source pixels."""
+        viewport = self.viewport_factory(pixmap)
+        source_rect = CropGeometryEngine.screen_rect_to_source_rect(
+            box_rect,
+            viewport,
+            lossless=False,
+            ratio_label=self.combo_ratio.currentText(),
+        )
 
-                if self.zoom_hud is not None:
-                    self.zoom_hud.refresh_scaled_preview_live(
-                        self.image_session.master_pixmap,
-                        self.cfg_fit_preview.isChecked(),
-                        pil_coords,
-                    )
-                return
+        crop_left, crop_top = source_rect.x(), source_rect.y()
+        crop_right = crop_left + source_rect.width()
+        crop_bottom = crop_top + source_rect.height()
 
+        if crop_right <= crop_left or crop_bottom <= crop_top:
+            return None
+
+        src_w, src_h = self.image_session.width, self.image_session.height
+
+        # Clamping boundaries safely
+        clamped_left = max(0, min(crop_left, src_w - 1))
+        clamped_top = max(0, min(crop_top, src_h - 1))
+        clamped_right = max(clamped_left + 1, min(crop_right, src_w))
+        clamped_bottom = max(clamped_top + 1, min(crop_bottom, src_h))
+
+        return (clamped_left, clamped_top, clamped_right, clamped_bottom)
+
+    def _clear_zoom_hud_completely(self):
+        """Resets master pixmap and clears the HUD canvas."""
+        if self.zoom_hud is not None:
+            self.zoom_hud.master_pixmap = None
+            self.zoom_hud.lbl_canvas.clear()
+
+    def _clear_zoom_hud_canvas_only(self):
+        """Clears just the visual preview without flushing the master pixmap cache."""
         if self.zoom_hud is not None:
             self.zoom_hud.lbl_canvas.clear()
