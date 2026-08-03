@@ -33,6 +33,7 @@ class CanvasPresenter:
         spin_width,
         spin_height,
         combo_ratio,
+        chk_preserve,
         cfg_show_preview,
         cfg_fit_preview,
         viewport_factory,
@@ -46,6 +47,7 @@ class CanvasPresenter:
         self.spin_width = spin_width
         self.spin_height = spin_height
         self.combo_ratio = combo_ratio
+        self.chk_preserve = chk_preserve
         self.cfg_show_preview = cfg_show_preview
         self.cfg_fit_preview = cfg_fit_preview
         self.viewport_factory = viewport_factory
@@ -64,6 +66,20 @@ class CanvasPresenter:
     def sync_workspace_after_loading_image(self):
         if self.zoom_hud is not None:
             self.zoom_hud.master_pixmap = self.image_session.master_pixmap
+
+            # Ensure the selection box stays inside the new canvas, otherwise move it to the center of the image
+            if (
+                self.chk_preserve.isChecked()
+                and self.selection_manager.selector.geometry()
+            ):
+                adjusted_rect = CropGeometryEngine.constrain_and_slide_rect_to_pixmap(
+                    self.selection_manager.selector.geometry(),
+                    self.selection_manager._current_viewport(),
+                )
+
+                # Apply it to your selector UI element
+                self.selection_manager.selector.setGeometry(adjusted_rect)
+                self.selection_manager.last_crop_geometry = adjusted_rect
 
         self.selection_manager.sync_view_from_model()
 
