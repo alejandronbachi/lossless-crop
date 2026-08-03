@@ -15,6 +15,7 @@
 # =============================================================================
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import IntEnum
 
 from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
@@ -22,6 +23,14 @@ from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
 from config import ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from models.crop_model import CropModel
+
+
+class GripZone(IntEnum):
+    NONE = 0
+    TOP_LEFT = 1
+    TOP_RIGHT = 2
+    BOTTOM_LEFT = 3
+    BOTTOM_RIGHT = 4
 
 
 @dataclass(frozen=True)
@@ -530,52 +539,47 @@ class SelectionManager:
         self._notify_changed()  # NEW: previously this fell through silently;
         # now it's needed so crop_model.clear() actually fires.
 
-    def detect_grip_zone(self, mouse_point: QPoint) -> int:
+    def detect_grip_zone(self, mouse_point: QPoint) -> GripZone:
         """Evaluates cursor position and returns a matching grip type identifier."""
         rect = self.last_crop_geometry
         if not rect or rect.isEmpty():
-            return 0  # No selection active, no grip zone possible
+            return GripZone.NONE
 
-        x, y = mouse_point.x(), mouse_point.y()
-        t = 12  # Grip touch hitbox radius in canvas pixels
+        # Mapping points to their respective semantic enum positions
+        corners = {
+            GripZone.TOP_LEFT: rect.topLeft(),
+            GripZone.TOP_RIGHT: rect.topRight(),
+            GripZone.BOTTOM_LEFT: rect.bottomLeft(),
+            GripZone.BOTTOM_RIGHT: rect.bottomRight(),
+        }
 
-        # Check Corners (Returns numeric identifiers 1 through 4)
-        if abs(x - rect.left()) <= t and abs(y - rect.top()) <= t:
-            return 1  # Top-Left
-        if abs(x - rect.right()) <= t and abs(y - rect.top()) <= t:
-            return 2  # Top-Right
-        if abs(x - rect.left()) <= t and abs(y - rect.bottom()) <= t:
-            return 3  # Bottom-Left
-        if abs(x - rect.right()) <= t and abs(y - rect.bottom()) <= t:
-            return 4  # Bottom-Right
+        hitbox_radius = 12  # Grip touch hitbox radius in canvas pixels
 
-        return 0
+        # Iterate through corners to find an active hit zone
+        for zone, corner_point in corners.items():
+            # Using Manhattan length or QPoint delta for clean proximity matching
+            if (mouse_point - corner_point).manhattanLength() <= hitbox_radius * 1.4:
+                return zone
 
-    def get_opposite_corner_anchor(self, grip_zone: int) -> QPoint | None:
+        return GripZone.NONE
+
+    def get_opposite_corner_anchor(self, grip_zone: GripZone) -> QPoint | None:
         """Returns the exact diagonal corner point of the active crop rect to freeze as an anchor."""
         rect = self.last_crop_geometry
-        if not rect or rect.isEmpty():
+        if not rect or rect.isEmpty() or grip_zone == GripZone.NONE:
             return None
 
-        # Map the grabbed corner to its static diagonal anchor point
-        if grip_zone == 1:
-            return QPoint(
-                rect.right(), rect.bottom()
-            )  # Grabbing Top-Left anchors Bottom-Right
-        if grip_zone == 2:
-            return QPoint(
-                rect.left(), rect.bottom()
-            )  # Grabbing Top-Right anchors Bottom-Left
-        if grip_zone == 3:
-            return QPoint(
-                rect.right(), rect.top()
-            )  # Grabbing Bottom-Left anchors Top-Right
-        if grip_zone == 4:
-            return QPoint(
-                rect.left(), rect.top()
-            )  # Grabbing Bottom-Right anchors Top-Left
+        # Maps the grabbed corner directly to its static diagonal anchor point method
+        anchor_mapping = {
+            GripZone.TOP_LEFT: rect.bottomRight,
+            GripZone.TOP_RIGHT: rect.bottomLeft,
+            GripZone.BOTTOM_LEFT: rect.topRight,
+            GripZone.BOTTOM_RIGHT: rect.topLeft,
+        }
 
-        return None
+        # Retrieve and execute the matching geometry function
+        anchor_func = anchor_mapping.get(grip_zone)
+        return anchor_func() if anchor_func else None
 
     # -----------------------------------------------------------------
     # Aspect ratio update on pixel-perfect
