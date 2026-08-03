@@ -1,4 +1,5 @@
 import dataclasses
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, get_origin
 
@@ -102,6 +103,13 @@ class SettingsManager:
         self.max_recent_items = 10  # Strict ceiling constraint
         self.current_settings = AppSettings()
         self.binder = SettingsBinder(self.current_settings)
+        # 1. Type-Mapping Registry Strategy
+        # Maps Python types to safe, standalone normalizing parsers
+        self._type_parsers: dict[Any, Callable[[Any, Any], Any]] = {
+            bool: lambda raw, default: self._safe_bool(raw, default),
+            int: lambda raw, _: int(raw) if raw is not None else None,
+            list: self._parse_list_type,
+        }
 
     def bind_ui(self, main_window) -> None:
         """Registers all main window UI controls with SettingsBinder."""
@@ -187,57 +195,6 @@ class SettingsManager:
             ):
                 continue
             q_settings.setValue(key, value)
-
-    def load(self) -> AppSettings:
-        """Reads registry records, populates, and returns the AppSettings object."""
-        q_settings = QSettings(self.org, self.app)
-        model = AppSettings()
-
-        remember_settings_val = model.remember_settings
-        if q_settings.contains(app_constants.SETTING_REMEMBER_SETTINGS):
-            remember_settings_val = self._safe_bool(
-                q_settings.value(app_constants.SETTING_REMEMBER_SETTINGS),
-                model.remember_settings,
-            )
-
-        for field in dataclasses.fields(AppSettings):
-            if (
-                not remember_settings_val
-                and field.name not in self.ALWAYS_PERSISTED_FIELDS
-            ):
-                continue
-
-            if q_settings.contains(field.name):
-                raw_value = q_settings.value(field.name)
-
-                # 1. Safely extract the base type (handles both 'list' and 'list[str]')
-                field_base_type = get_origin(field.type) or field.type
-
-                if field_base_type is bool:
-                    setattr(
-                        model, field.name, self._safe_bool(raw_value, field.default)
-                    )
-
-                elif field_base_type is int and raw_value is not None:
-                    setattr(model, field.name, int(raw_value))
-
-                elif field_base_type is list:
-                    # 2. Force data normalization. QSettings may return None or a single string
-                    if isinstance(raw_value, list):
-                        setattr(model, field.name, raw_value)
-                    elif isinstance(raw_value, str) and raw_value:
-                        setattr(
-                            model, field.name, [raw_value]
-                        )  # Wrap single item strings safely
-                    else:
-                        setattr(model, field.name, [])  # Fallback to empty list default
-
-                else:
-                    setattr(model, field.name, raw_value)
-
-        self.current_settings = model
-        self.binder.model = model  # Re-link binder to newly loaded instance
-        return self.current_settings
 
     def capture_window_geometry(self, main_window, hud_window=None) -> None:
         """Captures window and HUD geometry states directly into current AppSettings model."""
@@ -327,3 +284,52 @@ class SettingsManager:
             self.current_settings.recent_items_history = valid_paths
 
         return valid_paths
+
+    def load(self) -> AppSettings:
+        """Reads registry records, populates, and returns the AppSettings object."""
+        q_settings = QSettings(self.org, self.app)
+        model = AppSettings()
+
+        # 2. Guard against missing initial remember rule state safely
+        remember_settings_val = model.remember_settings
+        if q_settings.contains(app_constants.SETTING_REMEMBER_SETTINGS):
+            remember_settings_val = self._safe_bool(
+                q_settings.value(app_constants.SETTING_REMEMBER_SETTINGS),
+                model.remember_settings,
+            )
+
+        for field in dataclasses.fields(AppSettings):
+            # 3. Guard Clause: Skip field parsing evaluation immediately if retention limits apply
+            if (
+                not remember_settings_val
+                and field.name not in self.ALWAYS_PERSISTED_FIELDS
+            ):
+                continue
+
+            if not q_settings.contains(field.name):
+                continue
+
+            raw_value = q_settings.value(field.name)
+            field_base_type = get_origin(field.type) or field.type
+
+            # 4. Route type extraction dynamically through the strategic parser map
+            parser = self._type_parsers.get(field_base_type)
+            if parser:
+                parsed_value = parser(raw_value, field.default)
+                setattr(model, field.name, parsed_value)
+            else:
+                setattr(model, field.name, raw_value)
+
+        self.current_settings = model
+        self.binder.model = model  # Re-link binder to newly loaded instance
+        return self.current_settings
+
+    # --- Extracted Specialized Normalizing Helpers ---
+
+    def _parse_list_type(self, raw_value: Any, _: Any) -> list:
+        """Forces normalization because QSettings can return string arrays or strings."""
+        if isinstance(raw_value, list):
+            return raw_value
+        if isinstance(raw_value, str) and raw_value:
+            return [raw_value]
+        return []
