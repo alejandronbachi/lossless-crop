@@ -131,100 +131,6 @@ class ImageProcessor:
             logger.error("❌ [ERROR] Binary not found for jpegtran: %s", e)
             return False
 
-    @staticmethod
-    def execute_lossy_pillow_crop(
-        src: Path,
-        dest: str,
-        bounding_box: tuple,
-        rotation_angle: int = 0,
-        is_true_jpeg: bool = False,
-    ) -> bool:
-        """🎨 ENGINE B: Standard fallback or pixel-perfect CPU image re-compression."""
-        left, top, right, bottom = bounding_box
-        try:
-            with Image.open(src) as img:
-                save_kwargs = {}
-                img_format = img.format  # Cache format before transformations
-
-                # 1. Preserve ICC Profile
-                icc_profile = img.info.get("icc_profile")
-                if icc_profile:
-                    save_kwargs["icc_profile"] = icc_profile
-
-                # 2. Preserve and adjust EXIF Metadata correctly
-                exif_data = None
-                try:
-                    exif_obj = img.getexif()
-                    if exif_obj:
-                        # Reset Orientation tag (0x0112) to Normal (1) if physical rotation was applied
-                        if rotation_angle % 360 != 0:
-                            exif_obj[0x0112] = 1
-                        # Secure compilation into valid raw bytes
-                        exif_data = exif_obj.tobytes()
-                except Exception as ex_err:
-                    logger.warning("Could not process EXIF tags: %s", ex_err)
-                    exif_data = img.info.get("exif")
-
-                if exif_data:
-                    save_kwargs["exif"] = exif_data
-
-                # 3. YOUR ORIGINAL SEQUENCE: Rotate first
-                if rotation_angle % 360 != 0:
-                    cw_angle = rotation_angle % 360
-                    img = img.rotate(cw_angle, expand=True)
-
-                # YOUR ORIGINAL SEQUENCE: Crop second using your existing coordinate math
-                cropped_image = img.crop((left, top, right, bottom))
-
-                # 4. Format-Specific Save Blocks (Prevents WebP / PNG parameter crashes)
-                is_webp = img_format == "WEBP" or Path(src).suffix.lower() == ".webp"
-
-                # JPEG-specific 'keep' logic
-                if is_true_jpeg:
-                    has_qtables = hasattr(img, "quantization") and img.quantization
-                    if has_qtables:
-                        try:
-                            cropped_image.save(
-                                dest,
-                                format="JPEG",
-                                quality="keep",
-                                subsampling="keep",
-                                qtables=img.quantization,
-                                **save_kwargs,
-                            )
-                            logger.info(
-                                "[SUCCESS] JPEG saved successfully with quality='keep'."
-                            )
-                            return True
-                        except Exception as keep_err:
-                            logger.debug(
-                                "JPEG quality='keep' failed: %s. Falling back.",
-                                keep_err,
-                            )
-
-                    # JPEG Fallback
-                    cropped_image.save(
-                        dest, format="JPEG", quality=95, subsampling=0, **save_kwargs
-                    )
-                    return True
-
-                # WebP-specific logic (Filters out 'keep' and 'qtables' to avoid errors)
-                if is_webp:
-                    cropped_image.save(
-                        dest, format="WEBP", quality=95, method=6, **save_kwargs
-                    )
-                    logger.info("[SUCCESS] WebP saved successfully.")
-                    return True
-
-                # Generic fallback for PNG, BMP, etc.
-                cropped_image.save(dest, format=img_format, **save_kwargs)
-                logger.info("[SUCCESS] Image saved successfully using format fallback.")
-                return True
-
-        except Exception as err:
-            logger.error("Pillow crop execution failed: %s", err)
-            return False
-
     # IMAGE PROCESSOR ROUTER METHOD
 
     def process_and_route_crop(
@@ -303,3 +209,118 @@ class ImageProcessor:
                 rotation_angle=rotation_angle,
                 is_true_jpeg=is_true_jpeg,
             )
+
+    def execute_lossy_pillow_crop(
+        self,
+        src: Path,
+        dest: str,
+        bounding_box: tuple,
+        rotation_angle: int = 0,
+        is_true_jpeg: bool = False,
+    ) -> bool:
+        """ENGINE B: Standard fallback or pixel-perfect CPU image re-compression."""
+        left, top, right, bottom = bounding_box
+        try:
+            with Image.open(src) as img:
+                img_format = img.format  # Cache format before transformations
+
+                # 1. Isolate metadata building using self
+                save_kwargs = self._extract_pillow_metadata(img, rotation_angle)
+
+                # 2. Apply chronological transformations
+                if rotation_angle % 360 != 0:
+                    img = img.rotate(rotation_angle % 360, expand=True)
+
+                cropped_image = img.crop((left, top, right, bottom))
+
+                # 3. Use clean instance methods for format routing
+                is_webp = img_format == "WEBP" or Path(src).suffix.lower() == ".webp"
+
+                if is_true_jpeg:
+                    return self._save_pillow_jpeg(img, cropped_image, dest, save_kwargs)
+                if is_webp:
+                    return self._save_pillow_webp(cropped_image, dest, save_kwargs)
+
+                return self._save_pillow_generic_fallback(
+                    cropped_image, dest, img_format, save_kwargs
+                )
+
+        except Exception as err:
+            logger.error("Pillow crop execution failed: %s", err)
+            return False
+
+    # --- Extracted Private Instance Helpers ---
+
+    def _extract_pillow_metadata(self, img: Image.Image, rotation_angle: int) -> dict:
+        """Extracts and safely processes incoming image EXIF and ICC profile layers."""
+        save_kwargs = {}
+
+        icc_profile = img.info.get("icc_profile")
+        if icc_profile:
+            save_kwargs["icc_profile"] = icc_profile
+
+        try:
+            exif_obj = img.getexif()
+            if exif_obj:
+                # Reset Orientation tag (0x0112) to Normal (1) if physical rotation was applied
+                if rotation_angle % 360 != 0:
+                    exif_obj[0x0112] = 1
+                save_kwargs["exif"] = exif_obj.tobytes()
+        except Exception as ex_err:
+            logger.warning("Could not process EXIF tags: %s", ex_err)
+            exif_data = img.info.get("exif")
+            if exif_data:
+                save_kwargs["exif"] = exif_data
+
+        return save_kwargs
+
+    def _save_pillow_jpeg(
+        self,
+        original_img: Image.Image,
+        cropped_img: Image.Image,
+        dest: str,
+        save_kwargs: dict,
+    ) -> bool:
+        """Handles quantization 'keep' verification or falls back to basic high-quality JPEG compression."""
+        has_qtables = (
+            hasattr(original_img, "quantization") and original_img.quantization
+        )
+        if has_qtables:
+            try:
+                cropped_img.save(
+                    dest,
+                    format="JPEG",
+                    quality="keep",
+                    subsampling="keep",
+                    qtables=original_img.quantization,
+                    **save_kwargs,
+                )
+                logger.info("[SUCCESS] JPEG saved successfully with quality='keep'.")
+                return True
+            except Exception as keep_err:
+                logger.debug("JPEG quality='keep' failed: %s. Falling back.", keep_err)
+
+        # Standard JPEG Fallback
+        cropped_img.save(dest, format="JPEG", quality=95, subsampling=0, **save_kwargs)
+        logger.info("[SUCCESS] JPEG saved via premium fallback profile.")
+        return True
+
+    def _save_pillow_webp(
+        self, cropped_img: Image.Image, dest: str, save_kwargs: dict
+    ) -> bool:
+        """Applies explicit performance parameters required by WebP schemas."""
+        cropped_img.save(dest, format="WEBP", quality=95, method=6, **save_kwargs)
+        logger.info("[SUCCESS] WebP saved successfully.")
+        return True
+
+    def _save_pillow_generic_fallback(
+        self,
+        cropped_img: Image.Image,
+        dest: str,
+        img_format: str | None,
+        save_kwargs: dict,
+    ) -> bool:
+        """Saves any remaining non-specialized formats like PNG, BMP, or TIFF."""
+        cropped_img.save(dest, format=img_format, **save_kwargs)
+        logger.info("[SUCCESS] Image saved successfully using format fallback.")
+        return True
