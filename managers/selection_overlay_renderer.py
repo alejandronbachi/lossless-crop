@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QRect, QRectF, Qt
-from PyQt6.QtGui import QColor, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QGraphicsBlurEffect, QGraphicsPixmapItem, QGraphicsScene
 
 # Tunables -- move to config/ui_constants.py if these should be user-facing.
@@ -66,14 +66,8 @@ class SelectionOverlayRenderer:
             else None
         )
 
-    # 🚀 FIXED: We add `selection_manager=None` directly to the method parameters
     def render(self, selection_rect_in_pixmap_space: QRect | None) -> QPixmap | None:
-        """Returns the pixmap that should be shown on the canvas label.
-        `selection_rect_in_pixmap_space` must already be translated into the
-        base pixmap's own (0,0)-origin coordinate space -- i.e. with the
-        label's centering offset subtracted out, exactly like every other
-        screen<->source conversion in this app. Pass None (or an empty rect)
-        to get the plain sharp image back, unchanged."""
+        """Returns the pixmap that should be shown on the canvas label."""
         if self._sharp is None:
             return None
 
@@ -87,106 +81,121 @@ class SelectionOverlayRenderer:
         if clipped.isEmpty():
             return self._sharp
 
+        # 1. Initialize composite canvas layers
         composite = QPixmap(self._sharp.size())
         composite.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(composite)
-        painter.drawPixmap(
-            0, 0, self._blurred if self._blurred is not None else self._sharp
-        )
+
+        # 2. Composition Pipeline
+        self._paint_base_backdrop(painter)
+        self._paint_sharp_clipped_selection(painter, clipped)
+        self._paint_predictive_ghost_layer(painter)
+        self._paint_asymmetric_gradient_brackets(painter, clipped)
+
+        painter.end()
+        return composite
+
+    # --- Extracted Composition Steps ---
+
+    def _paint_base_backdrop(self, painter: QPainter):
+        """Draws the primary blurred or sharp background frame with dim overlay."""
+        background = self._blurred if self._blurred is not None else self._sharp
+        painter.drawPixmap(0, 0, background)
 
         if DIM_OVERLAY_ALPHA:
-            painter.fillRect(composite.rect(), QColor(0, 0, 0, DIM_OVERLAY_ALPHA))
+            painter.fillRect(self._sharp.rect(), QColor(0, 0, 0, DIM_OVERLAY_ALPHA))
 
+    def _paint_sharp_clipped_selection(self, painter: QPainter, clipped: QRect):
+        """Restores the original sharp image visibility within active bounding box."""
         painter.setClipRect(clipped)
         painter.drawPixmap(0, 0, self._sharp)
         painter.setClipping(False)
 
-        # -----------------------------------------------------------------
-        # 🚀 PART A: PREDICTIVE DUAL-BOX SNAP FEEDBACK LAYER
-        # -----------------------------------------------------------------
-        # Use the passed manager directly instead of guessing with __main__
+    def _paint_predictive_ghost_layer(self, painter: QPainter):
+        """PART A: Projects and draws the neon-teal predictive snap bounds if active."""
         mgr = self.selection_manager
+        if mgr is None:
+            return
 
-        if mgr is not None:
-            ghost_geom = getattr(mgr, "ghost_crop_geometry", None)
+        ghost_geom = getattr(mgr, "ghost_crop_geometry", None)
+        if not ghost_geom or ghost_geom.isEmpty():
+            return
 
-            # If ghosting coordinates are active, map them to pixmap space and paint them
-            if ghost_geom and not ghost_geom.isEmpty():
-                # Extract the centering labels offset matrix parameters natively
-                lbl_w, lbl_h = mgr.canvas.width(), mgr.canvas.height()
-                pix_w, pix_h = self._sharp.width(), self._sharp.height()
-                ox, oy = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
+        # Extract centering label offset matrix parameters natively
+        lbl_w, lbl_h = mgr.canvas.width(), mgr.canvas.height()
+        pix_w, pix_h = self._sharp.width(), self._sharp.height()
+        ox, oy = (lbl_w - pix_w) // 2, (lbl_h - pix_h) // 2
 
-                # Project the screen coordinates directly into raw pixmap space bounds
-                ghost_clipped = ghost_geom.translated(-ox, -oy).intersected(
-                    self._sharp.rect()
-                )
+        # Project coordinates directly into raw pixmap space bounds
+        ghost_clipped = ghost_geom.translated(-ox, -oy).intersected(self._sharp.rect())
+        if ghost_clipped.isEmpty():
+            return
 
-                if not ghost_clipped.isEmpty():
-                    # Draw a subtle, professional dashed neon-teal frame showing the snap landing
-                    snap_pen = QPen(QColor(0, 243, 255, 130), 1, Qt.PenStyle.DashLine)
-                    painter.setPen(snap_pen)
-                    painter.drawRect(ghost_clipped.adjusted(0, 0, -1, -1))
+        snap_pen = QPen(QColor(0, 243, 255, 130), 1, Qt.PenStyle.DashLine)
+        painter.setPen(snap_pen)
+        painter.drawRect(ghost_clipped.adjusted(0, 0, -1, -1))
 
-        # -----------------------------------------------------------------
-        # 🚀 PART B: ASYMMETRIC GRADIENT CROP BRACKETS (Fluid Mouse Position)
-        # -----------------------------------------------------------------
-        from PyQt6.QtGui import QBrush, QLinearGradient
-
-        r = clipped  # The active selection bounding box reference matrix
-
-        # Map out a diagonal gradient line spanning from top-left to bottom-right
-        gradient = QLinearGradient(r.left(), r.top(), r.right(), r.bottom())
-
-        # Configure the color stops to match your app icon layout perfectly
-        gradient.setColorAt(0.0, QColor(255, 255, 255, 240))  # Brilliant white at start
-        gradient.setColorAt(0.5, QColor(140, 235, 255, 200))  # Ice-blue color in middle
-        gradient.setColorAt(1.0, QColor(0, 243, 255, 255))  # Electric teal at end
+    def _paint_asymmetric_gradient_brackets(self, painter: QPainter, clipped: QRect):
+        """PART B: Creates and applies asymmetric corner crop boundaries."""
+        # Build diagonal brush profile mapping
+        gradient = QLinearGradient(
+            clipped.left(), clipped.top(), clipped.right(), clipped.bottom()
+        )
+        gradient.setColorAt(0.0, QColor(255, 255, 255, 240))
+        gradient.setColorAt(0.5, QColor(140, 235, 255, 200))
+        gradient.setColorAt(1.0, QColor(0, 243, 255, 255))
 
         gradient_brush = QBrush(gradient)
         thick_pen = QPen(gradient_brush, 2, Qt.PenStyle.SolidLine)
         thin_pen = QPen(gradient_brush, 1, Qt.PenStyle.SolidLine)
 
-        overflow = 12  # How many pixels lines shoot outward past the corner
-        length = 24  # The total length of each bracket arm
+        overflow, length = 12, 24
 
-        # --- 1. OVERFLOWING CORNERS (Top-Left and Bottom-Right: Uses THICK pen) ---
+        # 1. Overflowing Thick Corners (Top-Left & Bottom-Right)
         painter.setPen(thick_pen)
 
-        # Top-Left Corner
+        # Top-Left
         painter.drawLine(
-            r.left() - overflow, r.top(), r.left() + (length - overflow), r.top()
+            clipped.left() - overflow,
+            clipped.top(),
+            clipped.left() + (length - overflow),
+            clipped.top(),
         )
         painter.drawLine(
-            r.left(), r.top() - overflow, r.left(), r.top() + (length - overflow)
+            clipped.left(),
+            clipped.top() - overflow,
+            clipped.left(),
+            clipped.top() + (length - overflow),
+        )
+        # Bottom-Right
+        painter.drawLine(
+            clipped.right() + overflow,
+            clipped.bottom(),
+            clipped.right() - (length - overflow),
+            clipped.bottom(),
+        )
+        painter.drawLine(
+            clipped.right(),
+            clipped.bottom() + overflow,
+            clipped.right(),
+            clipped.bottom() - (length - overflow),
         )
 
-        # Bottom-Right Corner
-        painter.drawLine(
-            r.right() + overflow,
-            r.bottom(),
-            r.right() - (length - overflow),
-            r.bottom(),
-        )
-        painter.drawLine(
-            r.right(),
-            r.bottom() + overflow,
-            r.right(),
-            r.bottom() - (length - overflow),
-        )
-
-        # --- 2. CLEAN CLOSED CORNERS (Top-Right and Bottom-Left: Uses THIN pen) ---
+        # 2. Clean Closed Thin Corners (Top-Right & Bottom-Left)
         painter.setPen(thin_pen)
 
-        # Top-Right Corner
-        painter.drawLine(r.right(), r.top(), r.right() - length, r.top())
-        painter.drawLine(r.right(), r.top(), r.right(), r.top() + length)
-
-        # Bottom-Left Corner
-        painter.drawLine(r.left(), r.bottom(), r.left() + length, r.bottom())
-        painter.drawLine(r.left(), r.bottom(), r.left(), r.bottom() - length)
-        # -----------------------------------------------------------------
-
-        painter.end()
-        return composite
+        # Top-Right
+        painter.drawLine(
+            clipped.right(), clipped.top(), clipped.right() - length, clipped.top()
+        )
+        painter.drawLine(
+            clipped.right(), clipped.top(), clipped.right(), clipped.top() + length
+        )
+        # Bottom-Left
+        painter.drawLine(
+            clipped.left(), clipped.bottom(), clipped.left() + length, clipped.bottom()
+        )
+        painter.drawLine(
+            clipped.left(), clipped.bottom(), clipped.left(), clipped.bottom() - length
+        )
