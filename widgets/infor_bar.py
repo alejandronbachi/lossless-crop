@@ -16,7 +16,7 @@ class InfoBar(QFrame):
 
     def _build_ui(self):
         # Left directory name label
-        self.lbl_directory = QLabel(ui_constants.TEXT_READY_STATUS)
+        self.lbl_directory = QLabel("")
         self.lbl_directory.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.lbl_directory.setObjectName("lbl_directory")
         self.layout.addWidget(self.lbl_directory)
