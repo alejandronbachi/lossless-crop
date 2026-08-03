@@ -77,100 +77,6 @@ class StatusManager(QObject):
         self.lbl_notification.raise_()
         self.notification_timer.start()
 
-    def update_status_and_telemetry(self):
-        """Synchronize the status bar and floating HUD text labels based on configuration."""
-        if not self.main_app.image_session.has_active_image:
-            self.set_empty_workspace_state()
-            return
-
-        # Explicitly hide the splash screen since an active image is present
-        self.lbl_splash_hud.hide()
-
-        # 1. Compile file status tracking elements using live checkbox widget metrics
-        current_path = self.main_app.image_session.current_path
-        idx_str = self.main_app.image_session.index_string
-
-        directory_string = ""
-        if (
-            self.main_app.cfg_show_directory.isChecked()
-            and self.main_app.image_session.has_active_image
-        ):
-            directory_string = (
-                f"Directory: {self.main_app.image_session.folder_path.name}"
-            )
-
-        filename_string = ""
-        if (
-            self.main_app.cfg_show_filename.isChecked()
-            and self.main_app.image_session.has_active_image
-        ):
-            filename_string = f"{idx_str} {current_path.name}"
-
-        metrics_string = ""
-        if (
-            self.main_app.cfg_show_imgsize.isChecked()
-            and self.main_app.image_session.has_active_image
-        ):
-            src_w, src_h = (
-                self.main_app.image_session.width,
-                self.main_app.image_session.height,
-            )
-            metrics_string = f"IMG: {src_w}x{src_h}"
-
-        # 2. Check the live checkbox state instead of static settings!
-        if self.main_app.cfg_show_infobar.isChecked():
-            # PIPELINE A: Info bar is active. Populate layouts cleanly and hide floating HUD
-            self.lbl_telemetry_hud.hide()
-
-            if directory_string != "":
-                self.info_bar.lbl_directory.setText(
-                    directory_string if directory_string else ""
-                )
-                self.info_bar.lbl_directory.show()
-            else:
-                self.info_bar.lbl_directory.hide()
-
-            if filename_string != "":
-                self.info_bar.lbl_status.setText(
-                    filename_string if filename_string else ""
-                )
-                self.info_bar.lbl_status.show()
-            else:
-                self.info_bar.lbl_status.hide()
-
-            if metrics_string != "":
-                self.info_bar.lbl_metrics.setText(metrics_string)
-                self.info_bar.lbl_metrics.show()
-            else:
-                self.info_bar.lbl_metrics.hide()
-
-        else:
-            # PIPELINE B: Info bar is collapsed! Divert elements onto floating HUD overlay card
-            self.info_bar.lbl_directory.setText("")
-            self.info_bar.lbl_status.setText("")
-            self.info_bar.lbl_metrics.setText("")
-
-            # Check user interaction states dynamically to see if they are actively drawing/dragging
-            sm = self.main_app.selection_manager
-            is_user_actively_editing = (
-                sm.is_moving_box or not sm.drag_start_origin.isNull()
-            )
-
-            hud_lines = []
-            if filename_string:
-                hud_lines.append(filename_string)
-            if metrics_string:
-                hud_lines.append(metrics_string)
-            if directory_string:
-                hud_lines.append(directory_string)
-            if hud_lines and not is_user_actively_editing:
-                self.lbl_telemetry_hud.setText("\n".join(hud_lines))
-                self.lbl_telemetry_hud.show()
-                self.lbl_telemetry_hud.raise_()
-                self.reposition_telemetry_hud()
-            else:
-                self.lbl_telemetry_hud.hide()
-
     def set_empty_workspace_state(self):
         """Resets layout labels back to startup splash configurations."""
         self.info_bar.lbl_status.setText(self.ui_constants.TEXT_READY_STATUS)
@@ -299,3 +205,94 @@ class StatusManager(QObject):
             self.reposition_commands_overlay()
         if self.lbl_telemetry_hud.isVisible():
             self.reposition_telemetry_hud()
+
+    def update_status_and_telemetry(self):
+        """Synchronize the status bar and floating HUD text labels based on configuration."""
+        # 1. Guard Clause: Fast fallback to baseline empty state
+        if not self.main_app.image_session.has_active_image:
+            self.set_empty_workspace_state()
+            return
+
+        self.lbl_splash_hud.hide()
+
+        # 2. Extract Data Aggregation Phase
+        dir_str = self._compile_directory_string()
+        file_str = self._compile_filename_string()
+        metrics_str = self._compile_metrics_string()
+
+        # 3. Separate Execution Pathways (Pipeline A vs Pipeline B)
+        if self.main_app.cfg_show_infobar.isChecked():
+            self._update_infobar_pipeline(dir_str, file_str, metrics_str)
+        else:
+            self._update_floating_hud_pipeline(dir_str, file_str, metrics_str)
+
+    # --- Extracted Helper Methods ---
+
+    def _compile_directory_string(self) -> str:
+        """Evaluates session metrics and structural config flags to frame active directory strings."""
+        if (
+            self.main_app.cfg_show_directory.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
+            return f"Directory: {self.main_app.image_session.folder_path.name}"
+        return ""
+
+    def _compile_filename_string(self) -> str:
+        """Evaluates tracking parameters and checkboxes to generate structural file headings."""
+        if (
+            self.main_app.cfg_show_filename.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
+            idx_str = self.main_app.image_session.index_string
+            current_path = self.main_app.image_session.current_path
+            return f"{idx_str} {current_path.name}"
+        return ""
+
+    def _compile_metrics_string(self) -> str:
+        """Compiles physical pixel coordinates and configuration markers cleanly."""
+        if (
+            self.main_app.cfg_show_imgsize.isChecked()
+            and self.main_app.image_session.has_active_image
+        ):
+            src_w = self.main_app.image_session.width
+            src_h = self.main_app.image_session.height
+            return f"IMG: {src_w}x{src_h}"
+        return ""
+
+    def _update_infobar_pipeline(self, dir_str: str, file_str: str, metrics_str: str):
+        """PIPELINE A: Populates the integrated infobar widgets and completely masks floating text."""
+        self.lbl_telemetry_hud.hide()
+
+        # Fast inline ternary mapping reduces complex multi-line nested if visibility sets
+        self.info_bar.lbl_directory.setText(dir_str)
+        self.info_bar.lbl_directory.setVisible(bool(dir_str))
+
+        self.info_bar.lbl_status.setText(file_str)
+        self.info_bar.lbl_status.setVisible(bool(file_str))
+
+        self.info_bar.lbl_metrics.setText(metrics_str)
+        self.info_bar.lbl_metrics.setVisible(bool(metrics_str))
+
+    def _update_floating_hud_pipeline(
+        self, dir_str: str, file_str: str, metrics_str: str
+    ):
+        """PIPELINE B: Flushes inline status bars and routes strings to floating overlay panels."""
+        # Reset embedded widgets seamlessly
+        self.info_bar.lbl_directory.setText("")
+        self.info_bar.lbl_status.setText("")
+        self.info_bar.lbl_metrics.setText("")
+
+        # Determine user mouse interactions state dynamically
+        sm = self.main_app.selection_manager
+        is_user_actively_editing = sm.is_moving_box or not sm.drag_start_origin.isNull()
+
+        # Filter out empty entries automatically
+        hud_lines = [text for text in (file_str, metrics_str, dir_str) if text]
+
+        if hud_lines and not is_user_actively_editing:
+            self.lbl_telemetry_hud.setText("\n".join(hud_lines))
+            self.lbl_telemetry_hud.show()
+            self.lbl_telemetry_hud.raise_()
+            self.reposition_telemetry_hud()
+        else:
+            self.lbl_telemetry_hud.hide()
