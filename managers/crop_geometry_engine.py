@@ -210,3 +210,42 @@ class CropGeometryEngine:
             screen_rect, viewport, lossless, ratio_label
         )
         return cls.source_rect_to_screen_rect(source_rect, viewport, ratio_label)
+
+    @staticmethod
+    def constrain_and_slide_rect_to_pixmap(
+        screen_rect: QRect, viewport: ViewportGeometry
+    ) -> QRect:
+        """Ensures the selection box fits entirely on the current image canvas.
+        Slides the box to stay on screen if it spills over an edge, and centers
+        it only if it physically cannot fit the new portrait/landscape shape.
+        """
+        if screen_rect.isEmpty():
+            return QRect()
+
+        # 1. Grab original dimensions
+        w = screen_rect.width()
+        h = screen_rect.height()
+
+        # 2. Safety Valve: If the box is too big for the new image size,
+        # contract it or center it entirely to prevent massive spillover.
+        if w > viewport.pixmap_width or h > viewport.pixmap_height:
+            w = min(w, viewport.pixmap_width)
+            h = min(h, viewport.pixmap_height)
+            # Center completely since it's an incompatible size jump
+            new_x = viewport.offset_x + (viewport.pixmap_width - w) // 2
+            new_y = viewport.offset_y + (viewport.pixmap_height - h) // 2
+            return QRect(new_x, new_y, w, h)
+
+        # 3. Calculate local bounds relative to the new image offset matrix
+        min_x = viewport.offset_x
+        max_x = viewport.offset_x + viewport.pixmap_width - w
+        min_y = viewport.offset_y
+        max_y = viewport.offset_y + viewport.pixmap_height - h
+
+        # 4. SMART SLIDE: Use clamp mechanics on the origin positions.
+        # If x or y is outside, it slides the origin just enough to stay on screen,
+        # leaving your original width and height completely untouched!
+        new_x = max(min_x, min(screen_rect.x(), max_x))
+        new_y = max(min_y, min(screen_rect.y(), max_y))
+
+        return QRect(new_x, new_y, w, h)

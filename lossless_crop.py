@@ -190,6 +190,7 @@ class LossLessCropApp(QMainWindow):
             spin_width=self.spin_width,
             spin_height=self.spin_height,
             combo_ratio=self.combo_ratio,
+            chk_preserve=self.chk_preserve,
             cfg_show_preview=self.cfg_show_preview,
             cfg_fit_preview=self.cfg_fit_preview,
             viewport_factory=self._build_viewport_geometry,
