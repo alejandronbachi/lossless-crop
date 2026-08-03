@@ -149,7 +149,7 @@ THEME_PALETTES = {
         "@SPIN_DOWN_ARROW": "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMkUyNTIwIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBvbHlsaW5lIHBvaW50cz0iNiA5IDEyIDE1IDE4IDkiLz48L3N2Zz4=)",
         # splash hud
         "@SPLASH_TEXT_MAIN": "#2E2520",
-        "@SPLASH_TEXT_MUTED": "#5C4A40",
+        "@SPLASH_TEXT_MUTED": "#151515",
         "@SPLASH_OR_DIVIDER": "#9C8A7F",
         "@CHECKBOX_HOVER_BORDER": "#BCAFA5",  # Richer clay-taupe to create a sharp visible border
         "@CHECKBOX_HOVER_BG": "#EADED5",

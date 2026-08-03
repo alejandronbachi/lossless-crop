@@ -35,7 +35,9 @@ class UserManualDialog(QDialog):
         raw_markdown = self.file_mgr.load_user_manual()
 
         if not raw_markdown:
-            self.viewer.setPlainText("Error: README.md documentation asset missing.")
+            self.viewer.setPlainText(
+                "Error: user_manual.md documentation asset missing."
+            )
             return
 
         # 2. Fetch the external shell HTML layout template file

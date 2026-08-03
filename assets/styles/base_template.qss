@@ -276,6 +276,16 @@ QLabel#lblCanvas {
     border: 2px solid @CANVAS_BORDER;
 }
 
+
+QLabel#lblDirectory { 
+    color: @LBL_STATUS_TEXT; 
+    font-size: 15px; 
+    font-weight: normal;
+    background-color: transparent;
+    border: none;
+}
+
+
 QLabel#lblStatus { 
     color: @LBL_STATUS_TEXT; 
     font-size: 15px; 
