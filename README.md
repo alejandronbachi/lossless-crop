@@ -107,3 +107,14 @@ Depending on available time, application usage and user requests.
 ## License
 This project is licensed under the GNU GPL 3 License - see the [LICENSE](LICENSE) file for details.
 <a href="https://github.com/alejandronbachi/lossless-crop/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/alejandronbachi/lossless-crop?color=green" alt="License"></a>
+
+
+##  Support My Work
+
+If you find this project useful, you can support its development via Binance Pay!
+
+**My Binance Pay ID:** `1228818247`
+
+*Scan the QR code below using your Binance Mobile App to donate instantly with 0% network gas fees (Supports USDT, BTC, ETH, and BNB).*
+
+<img src="assets/screenshots/binance_qr.jpg" width="220" alt="Binance Pay QR Code">
