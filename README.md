@@ -106,4 +106,4 @@ Depending on available time, application usage and user requests.
 
 ## License
 This project is licensed under the GNU GPL 3 License - see the [LICENSE](LICENSE) file for details.
-
+<a href="https://github.com/alejandronbachi/lossless-crop/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/alejandronbachi/lossless-crop?color=green" alt="License"></a>
