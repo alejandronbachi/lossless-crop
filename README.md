@@ -1,29 +1,39 @@
-# Lossless Crop
 
-A PyQt6-based lossless image cropping and management application supporting Windows, Linux, and macOS.
+<p align="center">
+  <img src="assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
+</p>
 
-## Building Executables Locally
+A cross-platform lossless image cropping application with many features and configuration options.
 
-To build standalone executables locally using PyInstaller:
+## Use case
+Useful to quickly crop several images in a directory one after the other.
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt pyinstaller
-   ```
-2. Run PyInstaller with the spec file:
-   ```bash
-   pyinstaller lossless_crop.spec
-   ```
-   The output executable will be available in the `dist/LosslessCrop` directory.
+## Features
 
-## CI/CD Pipeline & GitHub Actions
+- Fast cropping workflow
+- Floating configurable zoom preview
+- Lossless cropping support for JPEG, PNG and BMP image format
+- Lossy cropping support for JPEG and WebP format
+- Exif data and ICC profiles conservation
+- Crop area aspect ratio enforcing, conservation and re-sizing
+- Crossplatform: Windows, Linux and macOS compatible
+- Dark and Light Themes
+- Global keyboard shorcuts
+- Drag and drop support
+- Recent directories menu
+- Configurable user interface
+- Optional settings persistence
 
-The repository includes a GitHub Actions workflow at [`.github/workflows/build.yml`](.github/workflows/build.yml:1) which automatically builds executables for:
-- **Windows** (`LosslessCrop-Windows.zip`)
-- **Linux** (`LosslessCrop-Linux.tar.gz`)
-- **macOS** (`LosslessCrop-macOS.tar.gz`)
+## Demo
+<p align="center">
+  <img src="assets/screenshots/demo.gif" alt="Demo">
+</p>
 
-## Key Architecture & Packaging Details
 
-- **Resource Paths & PyInstaller**: [`config/app_constants.py`](config/app_constants.py:1) checks `sys.frozen` and `sys._MEIPASS` to ensure assets (`styles/`, `templates/`, `config/`, `icon.png`) and platform-specific `jpegtran` binaries (`binaries/`) are correctly resolved at runtime.
-- **Lossless Binaries**: [`managers/image_manager.py`](managers/image_manager.py:14) dynamically locates `jpegtran.exe` (Windows), `jpegtran_linux` (Linux), or `jpegtran_mac` (macOS).
+
+
+
+## Roadmap
+- Internationalization
+- Lossless resize
+- Batch operations
