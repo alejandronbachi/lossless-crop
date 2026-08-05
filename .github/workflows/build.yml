@@ -59,7 +59,7 @@ jobs:
       run: |
         python -c "
         import os
-        filename = 'app_constants.py'
+        filename = 'config/app_constants.py'
         if not os.path.exists(filename):
             print(f'Error: {filename} not found.')
             exit(1)
