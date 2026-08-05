@@ -21,6 +21,18 @@ That is the reason that when you select engine lossless on a JPEG picture the se
 2. Draw selection over the image
 3. Crop and move to the next image
 
+## Zooming with the floating zoom hud preview
+You can activate the floating preview by pressing `P` or `Q` and from the Settings Drawer.
+This preview can be resized by dragging on the edges with left click and move around while holding right click, consistent with the selection area.
+If `Preview HUD` is checked under 'Layout Memory' the size and position of the current preview hud will be save and restored the next time you open the application.
+
+### "I dont like the floating zoom" Workflow A
+An easy way to get another zoom is to work with `Overwrite` active and pressing `S` to crop around the area you want to zoom into, everytime you crop the current image will change and reload showing only the cropped part.
+Be mindfuld that this overwrite your source files.
+
+### "I dont like the floating zoom" Workflow B
+What if you need to crop different small parts from a big picture? Then you can deactive `Overwrite`, crop around all the parts you need from all the pictures you desire, then open the 'cropped' subfolder where this smaller parts would be and re-crop them with more precision.
+
 ## Toolbar Options
 ### Engine
 - **Lossless**: Uses jpegtran engine to perform lossless cropping of JPEG images, if image its not a valid *JPEG* this option is ignored.
@@ -79,26 +91,20 @@ Regular commands are explained in the commands section, here only the special ac
 - Help -> User Manual: shows you this user manual.
 - Help -> About: Displays about window.
 
-## Keyboard Global Shortcuts
+## Keyboard Global Shorcuts & Mouse Controls
 
-- **Space** : Crop & Next
-- **S**: Crop & Stay
-- **O** : Open Directory
-- **I** : Open Image
-- **F/D** : Skip Forward
-- **B/A**: Skip Backward
-- **R** : Rotate Clockwise
-- **P/Q** : Toggle Preview
-- **Alt**  : Toggle Menu Bar
-- **Esc**: Exit App
-
-## Mouse actions
-
-**Left-Click Drag**: Draw Box
-**Right-Click Drag**: Move Box
-**Middle-Click**: Crop
-**Scroll**: Navigate
-
+| Keyboard Actions | Keys | Mouse Actions | Control |
+| :--- | :--- | :--- | :--- |
+| **Crop & Next** | <kbd>Space</kbd> | **Draw Box** | <kbd>Left-Click</kbd> + Drag |
+| **Crop** | <kbd>S</kbd> or <kbd>Middle-Click</kbd> | **Move Box** | <kbd>Right-Click</kbd> + Drag |
+| **Open Directory** | <kbd>O</kbd> | **Navigate** | <kbd>Scroll Wheel</kbd> |
+| **Open Image** | <kbd>I</kbd> | **Crop** | <kbd>Middle-Click</kbd> |
+| **Skip Forward** | <kbd>F</kbd> or <kbd>D</kbd> | | |
+| **Skip Backward** | <kbd>B</kbd> or <kbd>A</kbd> | | |
+| **Rotate Clockwise** | <kbd>R</kbd> | | |
+| **Toggle Preview** | <kbd>P</kbd> or <kbd>Q</kbd> | | |
+| **Toggle Menu** | <kbd>Alt</kbd> | | |
+| **Exit App** | <kbd>Esc</kbd> | | |
 
 ## Commands
 There several ways to perform the same actions in the application, choose whichever suits you best
