@@ -60,7 +60,7 @@ def get_application_version():
             pass
 
     # 2. Local development fallback identifier
-    return "v1.0.0-dev"
+    return "App"
 
 
 # Global constant ready to be imported by any PyQt window handle
