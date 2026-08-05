@@ -34,7 +34,7 @@ Useful to quickly crop several images in a directory one after the other.
 
 ## Demo
 <p align="center">
-  <img src="assets/screenshots/demo.gif" alt="Demo">
+  <img src="assets/screenshots/demo.webp" width="850" alt="Demo">
 </p>
 
 ## Supported Formats
@@ -79,7 +79,7 @@ Please read the [User Manual](/docs/user_manual.md) for more instructions, speci
 | **Exit App** | <kbd>Esc</kbd> | | |
 
 
-## Shortcuts, light theme and options showcase
+## Showcase: light theme, commands, zoom hud, options and a capybara
   <br>
   <p align="center">
     <img src="assets/screenshots/showcase_1.webp" alt="First Screen" width="70%">

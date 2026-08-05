@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QMenuBar, QMessageBox
 from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
 from managers import theme_manager
 from managers.file_manager import FileManager
+from widgets.email_feedback_dialog import EmailFeedbackDialog
 from widgets.user_manual_dialog import UserManualDialog
 
 logger = logging.getLogger(__name__)
@@ -51,11 +52,14 @@ class ApplicationMenuBar(QMenuBar):
         help_menu = self.addMenu("Help")
         user_manual_act = QAction("User Manual", self)
         about_act = QAction("About", self)
+        feedback_act = QAction("Send Feedback", self)
 
         user_manual_act.triggered.connect(self.handle_user_manual)
         about_act.triggered.connect(self.handle_about)
+        feedback_act.triggered.connect(self.handle_feedback)
 
         help_menu.addAction(user_manual_act)
+        help_menu.addAction(feedback_act)
         help_menu.addAction(about_act)
 
     def populate_recent_menu(self):
@@ -182,3 +186,8 @@ class ApplicationMenuBar(QMenuBar):
         # open on a second monitor while actively cropping items in the main window
         self.manual_win = UserManualDialog(self.main_win, self.file_mgr)
         self.manual_win.show()
+
+    def handle_feedback(self):
+        self.setVisible(False)
+        emailFeedback = EmailFeedbackDialog(self.main_win)
+        emailFeedback.exec()
