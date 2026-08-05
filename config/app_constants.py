@@ -14,6 +14,9 @@ BINARY_WINDOWS = "jpegtran.exe"
 BINARY_MAC = "jpegtran_mac"
 BINARY_LINUX = "jpegtran_linux"
 
+# This placeholder gets overwritten completely during the GitHub Actions build process
+FORMSUBMIT_TOKEN = "DEV_PLACEHOLDER_TOKEN"
+
 # --- Settings Attribute Names ---
 SETTING_REMEMBER_SETTINGS = "remember_settings"
 SETTING_LAST_USED_FOLDER = "last_used_folder"

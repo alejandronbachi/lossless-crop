@@ -2,6 +2,8 @@ from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import QApplication, QSpinBox
 
+from widgets.email_feedback_dialog import EmailFeedbackDialog
+
 
 class KeyboardController(QObject):
     def __init__(self, main_window):
@@ -79,6 +81,14 @@ class KeyboardController(QObject):
             return super().eventFilter(watched_obj, event)
 
         key = event.key()
+
+        # INTERCEPTION GUARD: Check if the text cursor is active inside the feedback form
+        active_widget = QApplication.focusWidget()
+        if active_widget is not None:
+            # Check if the root window parent of the active typing field is our dialog
+            if isinstance(active_widget.window(), EmailFeedbackDialog):
+                # Return False tells Qt: "Bypass shortcuts and let the text type normally."
+                return False
 
         # Step 1: Direct Lookup Strategy
         action = self.hotkeys.get(key)
