@@ -36,7 +36,7 @@ from managers.file_manager import FileManager
 from managers.image_manager import ImageProcessor
 from managers.image_session import ImageSession
 from managers.keyboard_controller import KeyboardController
-from managers.selection_manager import SelectionManager
+from managers.selection_manager import GripZone, SelectionManager
 from managers.settings_manager import SettingsManager
 from managers.status_manager import StatusManager
 from models.app_settings import AppSettings
@@ -246,7 +246,11 @@ class LossLessCropApp(QMainWindow):
                 self.selection_manager.begin_draw(click_point)
 
         elif event.button() == Qt.MouseButton.RightButton:
-            self.selection_manager.begin_move(click_point)
+            move_started = self.selection_manager.begin_move(click_point)
+            if move_started:
+                self.image_display_container.setCursor(Qt.CursorShape.ClosedHandCursor)
+            else:
+                self.image_display_container.setCursor(Qt.CursorShape.ArrowCursor)
 
         self.update_zoom_hud_payload()
 
@@ -254,14 +258,30 @@ class LossLessCropApp(QMainWindow):
         current_point = event.position().toPoint()
         #  HOVER EFFECT: Track and swap the mouse cursor shapes when hovering over grips
         if event.buttons() == Qt.MouseButton.NoButton:
-            grip = self.selection_manager.detect_grip_zone(current_point)
-            if grip in (1, 4):  # Top-Left or Bottom-Right corner grips
-                self.image_display_container.setCursor(Qt.CursorShape.SizeFDiagCursor)
-            elif grip in (2, 3):  # Top-Right or Bottom-Left corner grips
-                self.image_display_container.setCursor(Qt.CursorShape.SizeBDiagCursor)
+            # Check if a box even exists right now
+            rect = self.selection_manager.last_crop_geometry
+            if not rect or rect.isEmpty():
+                # No selection box on screen -> Reset to standard system pointer arrow
+                self.image_display_container.setCursor(Qt.CursorShape.ArrowCursor)
             else:
-                # Default back to standard crosshair when floating in open space
-                self.image_display_container.setCursor(Qt.CursorShape.CrossCursor)
+                grip = self.selection_manager.detect_grip_zone(current_point)
+                if grip in (
+                    GripZone.TOP_LEFT,
+                    GripZone.BOTTOM_RIGHT,
+                ):  # Top-Left or Bottom-Right corner grips
+                    self.image_display_container.setCursor(
+                        Qt.CursorShape.SizeFDiagCursor
+                    )
+                elif grip in (
+                    GripZone.TOP_RIGHT,
+                    GripZone.BOTTOM_LEFT,
+                ):  # Top-Right or Bottom-Left corner grips
+                    self.image_display_container.setCursor(
+                        Qt.CursorShape.SizeBDiagCursor
+                    )
+                else:
+                    # Default back to standard crosshair when floating in open space
+                    self.image_display_container.setCursor(Qt.CursorShape.CrossCursor)
 
         # Safety baseline protection block guard (Kept exactly intact)
         if self.selection_manager.drag_start_origin.isNull():
@@ -835,6 +855,7 @@ class LossLessCropApp(QMainWindow):
     def build_main_canvas(self):
 
         self.image_display_container = QLabel()
+        self.image_display_container.setMouseTracking(True)
         self.image_display_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_display_container.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.image_display_container.setSizePolicy(
