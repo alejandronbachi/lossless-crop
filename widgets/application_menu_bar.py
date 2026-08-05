@@ -5,6 +5,7 @@ from PyQt6.QtCore import QStandardPaths, Qt, QUrl
 from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtWidgets import QMenuBar, QMessageBox
 
+from config.app_constants import APP_VERSION
 from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
 from managers import theme_manager
 from managers.file_manager import FileManager
@@ -174,7 +175,9 @@ class ApplicationMenuBar(QMenuBar):
 
         # 4. Your polished HTML block layout
         about_html = self.file_mgr.load_asset(TEMPLATE_ABOUT, FOLDER_TEMPLATES)
+        about_html = about_html.replace("@APP_VERSION", APP_VERSION)
         about_html = theme_manager.substitute_tokens(about_html)
+
         # 5. Populate and execute the modal popup event loop
         msg_box.setText(about_html)
         msg_box.exec()
