@@ -55,6 +55,27 @@ jobs:
       run: |
         echo "${{ github.ref_name }}" > version.txt
 
+    - name: Inject Production FormSubmit Token
+      run: |
+        python -c "
+        import os
+        filename = 'app_constants.py'
+        if not os.path.exists(filename):
+            print(f'Error: {filename} not found.')
+            exit(1)
+            
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Precision swap of your dev token key for your GitHub production secret
+        updated_content = content.replace('DEV_PLACEHOLDER_TOKEN', '${{ secrets.FORMSUBMIT_TOKEN }}')
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(updated_content)
+        print('Production feedback security token injected successfully.')
+        "
+      shell: bash
+
     - name: Build with PyInstaller
       run: |
         pyinstaller lossless_crop.spec
