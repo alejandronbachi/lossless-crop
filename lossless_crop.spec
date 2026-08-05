@@ -24,6 +24,7 @@ a = Analysis(
         ('assets', 'assets'), # Maps your consolidated assets tree
         ('config', 'config'), # Keeps your custom config bundle intact
         ('version.txt', '.'),  # Adds version for the app to grab and show
+        ('docs/user_manual.md', 'docs'),  # Adds user manual
     ],
     hiddenimports=[
         'PyQt6.QtCore',
