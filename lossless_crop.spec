@@ -33,6 +33,7 @@ a = Analysis(
         'PIL',
         'PIL.Image',
         'PIL.ImageQt',
+        'requests',
     ],
     hookspath=[],
     hooksconfig={},
