@@ -228,4 +228,5 @@ class ApplicationMenuBar(QMenuBar):
                 shortcut.save()
                 return True  # Let the UI know it succeeded
             except Exception:
+                logger.error("Failed to create desktop shortcut.", exc_info=True)
                 return False  # Let the UI know it failed (e.g. permissions issue)
