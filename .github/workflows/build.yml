@@ -133,10 +133,20 @@ jobs:
         name: staging-windows-store-folder
         path: LosslessCropAppFolder
 
+    - name: Repair and Standardize Layout
+      shell: powershell
+      run: |
+        # Flatten structure if the download step double-nested the target folder
+        if (Test-Path "LosslessCropAppFolder\LosslessCropAppFolder") {
+            Move-Item -Path "LosslessCropAppFolder\LosslessCropAppFolder\*" -Destination "LosslessCropAppFolder\" -Force
+            Remove-Item -Path "LosslessCropAppFolder\LosslessCropAppFolder" -Recurse -Force
+        }
+        
+        # Explicit copy ensuring the file sits directly in the root distribution path
+        Copy-Item -Path "uwp_metadata\AppxManifest.xml" -Destination "LosslessCropAppFolder\AppxManifest.xml" -Force
+
     - name: Prepare MSIX Assets Environment Layout
       run: |
-        cp uwp_metadata/AppxManifest.xml LosslessCropAppFolder/
-        
         TARGET_ICON_DIR="LosslessCropAppFolder/_internal/assets/icons"
         mkdir -p "$TARGET_ICON_DIR"
         
@@ -147,7 +157,6 @@ jobs:
         cp assets/icons/icon.png "$TARGET_ICON_DIR/SplashScreen.png"
       shell: bash
 
-    # DYNAMIC ENGINE: Automatically locates and extracts the active Windows SDK compiler binary paths
     - name: Compile Folder directory into MSIX Container Package
       run: |
         $SdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\10.*" | 
@@ -162,17 +171,18 @@ jobs:
         $MakeAppxExe = Join-Path $SdkPath.FullName "x64\makeappx.exe"
         Write-Host "Found MakeAppx at: $MakeAppxExe"
         
+        # Explicitly targets the clean, verified path location
         & $MakeAppxExe pack /d LosslessCropAppFolder /p LosslessCrop.msix
       shell: powershell
 
     - name: Generate Local Developer Self-Signed Code Certificate
       run: |
+        # Note: Subject string CN matches the AppxManifest identity block
         New-SelfSignedCertificate -Type Custom -Subject "CN=AlejandroNBachi" -KeyUsage DigitalSignature -FriendlyName "LosslessCropDevCert" -CertStoreLocation "Cert:\CurrentUser\My"
         $password = ConvertTo-SecureString "LosslessCropPass123!" -AsPlainText -Force
         Export-PfxCertificate -Cert Cert:\CurrentUser\My\* -FilePath dev_cert.pfx -Password $password
       shell: powershell
 
-    # DYNAMIC ENGINE: Applies the same automated location tracker layout to target signtool.exe safely
     - name: Sign MSIX Installer Package Binary
       run: |
         $SdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\10.*" | 
@@ -190,4 +200,3 @@ jobs:
       with:
         name: staging-windows-msix
         path: LosslessCrop.msix
-
