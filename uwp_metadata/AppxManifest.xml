@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://microsoft.com"
+  xmlns:uap="http://microsoft.com"
+  xmlns:rescap="http://microsoft.com/restrictedcapabilities">
+
+  
+
+  <Properties>
+    <DisplayName>Lossless Crop</DisplayName>
+    <PublisherDisplayName>Alejandro N. Bachi</PublisherDisplayName>
+    <!-- ✨🚀 ATTACHMENT / MODIFICATION TRIGGER 🚀✨ -->
+    <Logo>_internal\assets\icons\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="LosslessCropStoreLauncher.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Lossless Crop"
+        Description="A cross-platform lossless image cropping application."
+        BackgroundColor="transparent"
+        Square150x150Logo="_internal\assets\icons\Square150x150Logo.png"
+        Square44x44Logo="_internal\assets\icons\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="_internal\assets\icons\Wide310x150Logo.png"/>
+        <uap:SplashScreen Image="_internal\assets\icons\SplashScreen.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
