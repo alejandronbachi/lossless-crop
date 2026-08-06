@@ -119,7 +119,7 @@ jobs:
         path: LosslessCrop-macOS.tar.gz
 
   build_msix:
-    name: Package MSIX Installer for Windows Store
+    name: Package Signed MSIX Installer for Local Testing
     needs: build 
     runs-on: windows-latest
     
@@ -133,7 +133,7 @@ jobs:
         name: staging-windows-store-folder
         path: LosslessCropAppFolder
 
-    - name: Repair and Standardize Layout
+    - name: Repair Layout and Inject Dynamic Release Version
       shell: powershell
       run: |
         # Flatten structure if the download step double-nested the target folder
@@ -145,16 +145,32 @@ jobs:
         # Explicit copy ensuring the file sits directly in the root distribution path
         Copy-Item -Path "uwp_metadata\AppxManifest.xml" -Destination "LosslessCropAppFolder\AppxManifest.xml" -Force
 
+        # Parse GitHub Tag (e.g., v1.4.2 -> 1.4.2.0)
+        $TagVersion = "${{ github.ref_name }}"
+        if ($TagVersion -match "^v?(\d+\.\d+\.\d+)") {
+            $CleanVersion = $Matches + ".0"
+        } else {
+            $CleanVersion = "1.0.0.0" # Fallback if manual workflow run without a tag
+        }
+        Write-Host "Setting package version to: $CleanVersion"
+
+        # Dynamically inject the new version into the manifest file
+        $ManifestPath = "LosslessCropAppFolder\AppxManifest.xml"
+        $Content = Get-Content $ManifestPath
+        $Content = $Content -replace 'Version="1.0.0.0"', "Version=`"$CleanVersion`""
+        Set-Content -Path $ManifestPath -Value $Content -Encoding UTF8
+
     - name: Prepare MSIX Assets Environment Layout
       run: |
         TARGET_ICON_DIR="LosslessCropAppFolder/_internal/assets/icons"
         mkdir -p "$TARGET_ICON_DIR"
         
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/Square150x150Logo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/Square44x44Logo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/StoreLogo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/Wide310x150Logo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/SplashScreen.png"
+        # Pulls the clean assets compiled by your local script pipeline
+        cp assets/uwp/Square150x150Logo.png "$TARGET_ICON_DIR/Square150x150Logo.png"
+        cp assets/uwp/Square44x44Logo.png   "$TARGET_ICON_DIR/Square44x44Logo.png"
+        cp assets/uwp/StoreLogo.png         "$TARGET_ICON_DIR/StoreLogo.png"
+        cp assets/uwp/Wide310x150Logo.png   "$TARGET_ICON_DIR/Wide310x150Logo.png"
+        cp assets/uwp/SplashScreen.png      "$TARGET_ICON_DIR/SplashScreen.png"
       shell: bash
 
     - name: Compile Folder directory into MSIX Container Package
@@ -171,13 +187,12 @@ jobs:
         $MakeAppxExe = Join-Path $SdkPath.FullName "x64\makeappx.exe"
         Write-Host "Found MakeAppx at: $MakeAppxExe"
         
-        # Explicitly targets the clean, verified path location
         & $MakeAppxExe pack /d LosslessCropAppFolder /p LosslessCrop.msix
       shell: powershell
 
     - name: Generate Local Developer Self-Signed Code Certificate
       run: |
-        # Note: Subject string CN matches your current official Store Identity block exactly
+        # Subject string CN explicitly matches your updated Store AppxManifest block
         New-SelfSignedCertificate -Type Custom -Subject "CN=E208A485-92BA-47FB-BA7E-57F54261772A" -KeyUsage DigitalSignature -FriendlyName "LosslessCropDevCert" -CertStoreLocation "Cert:\CurrentUser\My"
         $password = ConvertTo-SecureString "LosslessCropPass123!" -AsPlainText -Force
         Export-PfxCertificate -Cert Cert:\CurrentUser\My\* -FilePath dev_cert.pfx -Password $password
@@ -195,9 +210,10 @@ jobs:
         & $SignToolExe sign /fd SHA256 /a /f dev_cert.pfx /p "LosslessCropPass123!" LosslessCrop.msix
       shell: powershell
 
-    - name: Upload Signed MSIX Package Artifact
+    - name: Upload Signed Local Testing MSIX Artifact
       uses: actions/upload-artifact@v4
       with:
         name: staging-windows-msix
         path: LosslessCrop.msix
+
 
