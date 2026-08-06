@@ -82,12 +82,22 @@ jobs:
       run: |
         pyinstaller lossless_crop.spec
 
-    - name: Upload Windows Artifact
+    # Upload Target A: Portable Independent Single Executable File
+    - name: Upload Windows Standalone EXE Artifact
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
         name: staging-windows
         path: dist/LosslessCrop.exe
+
+    # Upload Target B: Uncompressed Side Directory Folder (For MSIX Building)
+    - name: Upload Windows App Directory Artifact
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: staging-windows-store-folder
+        path: dist/LosslessCropAppFolder/
+
 
     - name: Upload Linux Artifact
       if: matrix.os == 'ubuntu-latest'
