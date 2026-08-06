@@ -177,8 +177,8 @@ jobs:
 
     - name: Generate Local Developer Self-Signed Code Certificate
       run: |
-        # Note: Subject string CN matches the AppxManifest identity block
-        New-SelfSignedCertificate -Type Custom -Subject "CN=AlejandroNBachi" -KeyUsage DigitalSignature -FriendlyName "LosslessCropDevCert" -CertStoreLocation "Cert:\CurrentUser\My"
+        # Note: Subject string CN matches your current official Store Identity block exactly
+        New-SelfSignedCertificate -Type Custom -Subject "CN=E208A485-92BA-47FB-BA7E-57F54261772A" -KeyUsage DigitalSignature -FriendlyName "LosslessCropDevCert" -CertStoreLocation "Cert:\CurrentUser\My"
         $password = ConvertTo-SecureString "LosslessCropPass123!" -AsPlainText -Force
         Export-PfxCertificate -Cert Cert:\CurrentUser\My\* -FilePath dev_cert.pfx -Password $password
       shell: powershell
