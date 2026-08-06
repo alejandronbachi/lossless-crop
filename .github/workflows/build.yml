@@ -176,11 +176,12 @@ jobs:
         TARGET_ICON_DIR="LosslessCropAppFolder/_internal/assets/icons"
         mkdir -p "$TARGET_ICON_DIR"
         
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/Square150x150Logo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/Square44x44Logo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/StoreLogo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/Wide310x150Logo.png"
-        cp assets/icons/icon.png "$TARGET_ICON_DIR/SplashScreen.png"
+        # Pulls the clean assets compiled by your local script pipeline
+        cp assets/uwp/Square150x150Logo.png "$TARGET_ICON_DIR/Square150x150Logo.png"
+        cp assets/uwp/Square44x44Logo.png   "$TARGET_ICON_DIR/Square44x44Logo.png"
+        cp assets/uwp/StoreLogo.png         "$TARGET_ICON_DIR/StoreLogo.png"
+        cp assets/uwp/Wide310x150Logo.png   "$TARGET_ICON_DIR/Wide310x150Logo.png"
+        cp assets/uwp/SplashScreen.png      "$TARGET_ICON_DIR/SplashScreen.png"
       shell: bash
 
     - name: Compile and Bundle Unsigned App Bundle (.msixupload)
@@ -197,7 +198,7 @@ jobs:
         $MakeAppxExe = Join-Path $SdkPath.FullName "x64\makeappx.exe"
         Write-Host "Found MakeAppx at: $MakeAppxExe"
         
-        # Swapped target file extension to .msixupload for the Windows Store
+        # Swapped target file extension to .msixupload for official storefront submission
         & $MakeAppxExe pack /d LosslessCropAppFolder /p LosslessCrop.msixupload
       shell: powershell
 
@@ -206,6 +207,4 @@ jobs:
       with:
         name: production-store-bundle
         path: LosslessCrop.msixupload
-
-
-
+        
