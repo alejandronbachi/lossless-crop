@@ -2,7 +2,7 @@
 <Package
   xmlns="http://microsoft.com"
   xmlns:uap="http://microsoft.com"
-  xmlns:rescap="http://microsoft.com/restrictedcapabilities"
+  xmlns:rescap="http://microsoft.com"
   IgnorableNamespaces="uap rescap">
 
   
@@ -18,7 +18,7 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="x-generate" />
+    <Resource Language="en-US" />
   </Resources>
 
   <Applications>
