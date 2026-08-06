@@ -1,6 +1,7 @@
 PyQt6==6.7.1
 Pillow==10.4.0
 requests==2.32.3
-winshell>=0.6
-pywin32>=306
+winshell>=0.6; sys_platform == 'win32'
+pywin32>=306; sys_platform == 'win32'
+
 
