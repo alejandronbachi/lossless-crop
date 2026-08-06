@@ -5,16 +5,31 @@ from pathlib import Path
 
 block_cipher = None
 
+# Base imports shared across Windows, macOS, and Linux
+base_hidden_imports = [
+    'PyQt6.QtCore',
+    'PyQt6.QtGui',
+    'PyQt6.QtWidgets',
+    'PIL',
+    'PIL.Image',
+    'PIL.ImageQt',
+    'requests',
+]
+
 # 1. Dynamically target ONLY the assets that exist on the active OS runner
 if sys.platform == "win32":
     current_icon = "assets/icons/icon.ico"            # Native Windows container metadata
     active_binaries = [("binaries/jpegtran.exe", "binaries")]
+    # Force PyInstaller to bundle the shortcut plumbing on Windows runners
+    active_hidden_imports = base_hidden_imports + ['winshell', 'win32com', 'win32com.client']
 elif sys.platform == "darwin":
     current_icon = "assets/icons/icon.icns"           # Native Apple Retina matrix container
     active_binaries = [("binaries/jpegtran_mac", "binaries")]
+    active_hidden_imports = base_hidden_imports
 else:
     current_icon = "assets/icons/icon.png"            # Standard Linux high-res PNG fallback
     active_binaries = [("binaries/jpegtran_linux", "binaries")]
+    active_hidden_imports = base_hidden_imports
 
 a = Analysis(
     ['lossless_crop.py'],
@@ -26,15 +41,7 @@ a = Analysis(
         ('version.txt', '.'),  # Adds version for the app to grab and show
         ('docs/user_manual.md', 'docs'),  # Adds user manual
     ],
-    hiddenimports=[
-        'PyQt6.QtCore',
-        'PyQt6.QtGui',
-        'PyQt6.QtWidgets',
-        'PIL',
-        'PIL.Image',
-        'PIL.ImageQt',
-        'requests',
-    ],
+    hiddenimports=active_hidden_imports, # Uses the platform-safe dynamic list
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
