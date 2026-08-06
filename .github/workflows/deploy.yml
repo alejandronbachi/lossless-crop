@@ -22,7 +22,22 @@ jobs:
 
     # Dynamically injects the runtime branch or tag name into the filename
     - name: Label Windows Binary
-      run: mv ./artifacts/LosslessCrop.exe ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows.exe || true
+      run: mv ./artifacts/LosslessCrop.exe ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows-Portable.exe || true
+
+    # TARGET 2: DOWNLOAD AND COMPRESS THE WINDOWS STORE FOLDER STRUCTURE
+    - name: Download Windows App Folder Directory
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: build.yml
+        name: staging-windows-store-folder
+        path: ./artifacts/LosslessCropAppFolder
+
+    # Compresses the thin directory structure into a distribution ZIP package
+    - name: Compress Thinner Binaries Directory to Distribution Zip Archive
+      run: |
+        cd ./artifacts
+        zip -r LosslessCrop-${{ github.ref_name }}-Windows-Files.zip LosslessCropAppFolder/
+        rm -rf LosslessCropAppFolder/
 
     - name: Download Staged Linux Binaries
       uses: dawidd6/action-download-artifact@v6
