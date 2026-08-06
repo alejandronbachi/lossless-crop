@@ -1,0 +1,32 @@
+name: Debug MSIX Manifest
+
+on:
+  workflow_dispatch: # Allows you to trigger this manually from the GitHub Actions tab
+
+jobs:
+  debug:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # IMPORTANT: If your main workflow runs a build command (like 'dotnet publish' or 'msbuild') 
+      # to generate the "LosslessCropAppFolder", paste that exact step here first.
+
+      - name: Check if Manifest Exists and Print Content
+        shell: powershell
+        run: |
+          # Target path from your error log
+          $ManifestPath = "D:\a\lossless-crop\lossless-crop\LosslessCropAppFolder\AppxManifest.xml"
+          
+          if (Test-Path $ManifestPath) {
+              Write-Host "--- Manifest Found! Printing Contents ---" -ForegroundColor Green
+              Get-Content $ManifestPath
+          } else {
+              Write-Host "--- Manifest NOT found at target path. Searching repository... ---" -ForegroundColor Yellow
+              Get-ChildItem -Path . -Filter "AppxManifest.xml" -Recurse | ForEach-Object {
+                  Write-Host "Found at: $($_.FullName)" -ForegroundColor Cyan
+                  Get-Content $_.FullName
+              }
+          }
