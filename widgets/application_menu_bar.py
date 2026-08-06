@@ -107,7 +107,7 @@ class ApplicationMenuBar(QMenuBar):
 
     def handle_load_recent(self, path_str):
         self.setVisible(False)
-        self.main_win.automate_folder_loading(path_str)
+        self.main_win.open_recent_dir(path_str)
 
     def handle_see_logs(self):
         """

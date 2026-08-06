@@ -791,6 +791,15 @@ class LossLessCropApp(QMainWindow):
             error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
         )
 
+    def open_recent_dir(self, target_folder_str: str):
+        _, _, valid_files = self.file_manager.process_path(target_folder_str)
+
+        self.update_ui_after_loadin_folder(
+            folder_path=target_folder_str,
+            valid_files=valid_files,
+            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+        )
+
     def dropEvent(self, event):
         urls = event.mimeData().urls()
         if not urls:
