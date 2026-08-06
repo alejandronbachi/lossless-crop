@@ -39,16 +39,17 @@ jobs:
         zip -r LosslessCrop-${{ github.ref_name }}-Windows-Files.zip LosslessCropAppFolder/
         rm -rf LosslessCropAppFolder/
 
-    # TARGET 5: DOWNLOAD AND DEPLOY SIGNED MSIX MICROSOFT STORE INSTALLER
-    - name: Download Windows Signed MSIX Installer Package
+    # TARGET 5: DOWNLOAD AND DEPLOY STORE READY MSIX BUNDLE
+    - name: Download Windows Unsigned MSIX Store Bundle
       uses: dawidd6/action-download-artifact@v6
       with:
         workflow: build.yml
-        name: staging-windows-msix
+        name: production-store-bundle
         path: ./artifacts
 
     - name: Label Windows MSIX Installer Binary Package
-      run: mv ./artifacts/LosslessCrop.msix ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows-Store-Installer.msix || true
+      run: mv ./artifacts/LosslessCrop.msixupload ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows-Store-Bundle.msixupload || true
+
 
     - name: Download Staged Linux Binaries
       uses: dawidd6/action-download-artifact@v6
