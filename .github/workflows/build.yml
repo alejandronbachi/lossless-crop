@@ -118,10 +118,9 @@ jobs:
         name: staging-macos
         path: LosslessCrop-macOS.tar.gz
 
-          # Place this new job block at the very bottom of your compilation workflow file
   build_msix:
     name: Package MSIX Installer for Windows Store
-    needs: build # Waits for your PyInstaller compilation to finish running
+    needs: build 
     runs-on: windows-latest
     
     steps:
@@ -136,16 +135,11 @@ jobs:
 
     - name: Prepare MSIX Assets Environment Layout
       run: |
-        # 1. Place the AppxManifest file in the root folder alongside the main launcher .exe
         cp uwp_metadata/AppxManifest.xml LosslessCropAppFolder/
         
-        # 2. Target the true assets tree location nested inside PyInstaller's _internal folder
         TARGET_ICON_DIR="LosslessCropAppFolder/_internal/assets/icons"
-        
-        # 3. Create the icons folder inside _internal if it doesn't automatically exist
         mkdir -p "$TARGET_ICON_DIR"
         
-        # 4. Copy and map your high-res repository icon into the mandatory manifest square logo slots
         cp assets/icons/icon.png "$TARGET_ICON_DIR/Square150x150Logo.png"
         cp assets/icons/icon.png "$TARGET_ICON_DIR/Square44x44Logo.png"
         cp assets/icons/icon.png "$TARGET_ICON_DIR/StoreLogo.png"
@@ -153,10 +147,22 @@ jobs:
         cp assets/icons/icon.png "$TARGET_ICON_DIR/SplashScreen.png"
       shell: bash
 
+    # DYNAMIC ENGINE: Automatically locates and extracts the active Windows SDK compiler binary paths
     - name: Compile Folder directory into MSIX Container Package
       run: |
-        # Microsoft's compiler takes the prepared folder layout and packages it
-        & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" pack /d LosslessCropAppFolder /p LosslessCrop.msix
+        $SdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\10.*" | 
+                    Sort-Object Name -Descending | 
+                    Select-Object -First 1
+        
+        if (-not $SdkPath) {
+            Write-Error "Windows SDK binary paths could not be located on this runner."
+            exit 1
+        }
+        
+        $MakeAppxExe = Join-Path $SdkPath.FullName "x64\makeappx.exe"
+        Write-Host "Found MakeAppx at: $MakeAppxExe"
+        
+        & $MakeAppxExe pack /d LosslessCropAppFolder /p LosslessCrop.msix
       shell: powershell
 
     - name: Generate Local Developer Self-Signed Code Certificate
@@ -166,9 +172,17 @@ jobs:
         Export-PfxCertificate -Cert Cert:\CurrentUser\My\* -FilePath dev_cert.pfx -Password $password
       shell: powershell
 
+    # DYNAMIC ENGINE: Applies the same automated location tracker layout to target signtool.exe safely
     - name: Sign MSIX Installer Package Binary
       run: |
-        & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd SHA256 /a /f dev_cert.pfx /p "LosslessCropPass123!" LosslessCrop.msix
+        $SdkPath = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin\10.*" | 
+                    Sort-Object Name -Descending | 
+                    Select-Object -First 1
+                    
+        $SignToolExe = Join-Path $SdkPath.FullName "x64\signtool.exe"
+        Write-Host "Found SignTool at: $SignToolExe"
+        
+        & $SignToolExe sign /fd SHA256 /a /f dev_cert.pfx /p "LosslessCropPass123!" LosslessCrop.msix
       shell: powershell
 
     - name: Upload Signed MSIX Package Artifact
@@ -176,3 +190,4 @@ jobs:
       with:
         name: staging-windows-msix
         path: LosslessCrop.msix
+
