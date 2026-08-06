@@ -6,8 +6,12 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
  
-  <Identity Name="LosslessCrop" Publisher="CN=AlejandroNBachi" Version="1.0.0.0" ProcessorArchitecture="x64"/>
-
+  <Identity
+  Name="aelsbach.LosslessCrop"
+  Publisher="CN=E208A485-92BA-47FB-BA7E-57F54261772A"
+  Version="1.0.0.0"
+  ProcessorArchitecture="x64" />
+  
   <Properties>
     <DisplayName>Lossless Crop</DisplayName>
     <PublisherDisplayName>Alejandro N. Bachi</PublisherDisplayName>
