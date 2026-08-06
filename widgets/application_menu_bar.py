@@ -36,18 +36,22 @@ class ApplicationMenuBar(QMenuBar):
         self.recent_menu.aboutToShow.connect(self.populate_recent_menu)
 
         see_logs_act = QAction("See Logs", self)
-        create_shortcut = QAction("Create Desktop Shortcut", self)
+
         exit_act = QAction("Exit", self)
 
         open_folder_act.triggered.connect(self.handle_open_folder)
         open_image_act.triggered.connect(self.handle_open_image)
-        create_shortcut.triggered.connect(self.handle_desktop_shortcut)
+
         see_logs_act.triggered.connect(self.handle_see_logs)
         exit_act.triggered.connect(self.main_win.close)
 
         file_menu.addAction(open_folder_act)
         file_menu.addAction(open_image_act)
-        file_menu.addAction(create_shortcut)
+        file_menu.addSeparator()
+        if sys.platform == "win32":
+            create_shortcut = QAction("Create Desktop Shortcut", self)
+            create_shortcut.triggered.connect(self.handle_desktop_shortcut)
+            file_menu.addAction(create_shortcut)
         file_menu.addAction(see_logs_act)
         file_menu.addSeparator()
         file_menu.addAction(exit_act)
