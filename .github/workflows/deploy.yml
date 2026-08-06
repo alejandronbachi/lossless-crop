@@ -69,7 +69,7 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: ./artifacts/*
-        # Dynamically targets the release page matching your active run tag
-        tag: ${{ github.ref_name }}
+        # If running on main, it uploads to a safe 'v-test' draft page instead of breaking your release targets
+        tag: ${{ github.ref_name == 'main' && 'v-test' || github.ref_name }}
         overwrite: true
         file_glob: true
