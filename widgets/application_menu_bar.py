@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QStandardPaths, Qt, QUrl
@@ -35,16 +36,18 @@ class ApplicationMenuBar(QMenuBar):
         self.recent_menu.aboutToShow.connect(self.populate_recent_menu)
 
         see_logs_act = QAction("See Logs", self)
+        create_shortcut = QAction("Create Desktop Shortcut", self)
         exit_act = QAction("Exit", self)
 
         open_folder_act.triggered.connect(self.handle_open_folder)
         open_image_act.triggered.connect(self.handle_open_image)
+        create_shortcut.triggered.connect(self.handle_desktop_shortcut)
         see_logs_act.triggered.connect(self.handle_see_logs)
         exit_act.triggered.connect(self.main_win.close)
 
         file_menu.addAction(open_folder_act)
         file_menu.addAction(open_image_act)
-
+        file_menu.addAction(create_shortcut)
         file_menu.addAction(see_logs_act)
         file_menu.addSeparator()
         file_menu.addAction(exit_act)
@@ -194,3 +197,35 @@ class ApplicationMenuBar(QMenuBar):
         self.setVisible(False)
         emailFeedback = EmailFeedbackDialog(self.main_win)
         emailFeedback.exec()
+
+    def handle_desktop_shortcut(self):
+        success = self.create_desktop_shortcut()
+        if success:
+            self.main_win.status_manager.show_center_notification("Shortcut Created")
+        else:
+            self.main_win.status_manager.show_center_notification(
+                "Failed to create shortcut"
+            )
+
+    def create_desktop_shortcut(self):
+        if sys.platform == "win32":
+            try:
+                import winshell
+                from win32com.client import Dispatch
+
+                desktop = Path(winshell.desktop())
+                shortcut_path = desktop / "Lossless Crop.lnk"
+
+                # Cast the executable string path to a clean Path object
+                exe_path = Path(sys.executable)
+
+                shell = Dispatch("WScript.Shell")
+                shortcut = shell.CreateShortCut(str(shortcut_path))
+
+                shortcut.Targetpath = str(exe_path)
+                shortcut.WorkingDirectory = str(exe_path.parent)
+                shortcut.IconLocation = str(exe_path)
+                shortcut.save()
+                return True  # Let the UI know it succeeded
+            except Exception:
+                return False  # Let the UI know it failed (e.g. permissions issue)
