@@ -40,7 +40,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pyinstaller
+        python -m pip install --upgrade --force-reinstall pyinstaller
 
     - name: Prepare jpegtran binary (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -91,7 +91,7 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        pyinstaller lossless_crop.spec
+        python -m PyInstaller lossless_crop.spec
 
     # Upload Target A: Portable Independent Single Executable File
     - name: Upload Windows Standalone EXE Artifact
