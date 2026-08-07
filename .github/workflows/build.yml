@@ -144,7 +144,7 @@ jobs:
         cp assets/icons/icon.png AppDir/lossless_crop.png
         
         # 6. Download the official AppImage packaging tool
-        wget -q https://github.com
+        curl -Lo appimagetool-x86_64.AppImage https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool-x86_64.AppImage
         
         # 7. Compress the AppDir folder into a single executable binary

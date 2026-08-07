@@ -61,13 +61,6 @@ jobs:
     - name: Label Linux Binary
       run: mv ./artifacts/LosslessCrop ./artifacts/LosslessCrop-${{ github.ref_name }}-Linux || true
 
-    - name: Download Staged macOS Binaries
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        workflow: build.yml
-        name: staging-macos
-        path: ./artifacts
-
     # TARGET 6: DOWNLOAD AND DEPLOY USER-FRIENDLY LINUX APPIMAGE
     - name: Download Staged Linux AppImage
       uses: dawidd6/action-download-artifact@v6
@@ -78,6 +71,13 @@ jobs:
 
     - name: Label Linux AppImage Binary
       run: mv ./artifacts/LosslessCrop-x86_64.AppImage ./artifacts/LosslessCrop-${{ github.ref_name }}-Linux.AppImage || true
+
+    - name: Download Staged macOS Binaries
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: build.yml
+        name: staging-macos
+        path: ./artifacts
 
     # Dynamically rename the mac archive file to include the release tag
     - name: Label macOS Binary
