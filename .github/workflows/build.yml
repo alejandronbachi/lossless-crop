@@ -110,12 +110,61 @@ jobs:
         path: dist/LosslessCropAppFolder/
 
 
-    - name: Upload Linux Artifact
+    # ---------------------------------------------------------------------
+    # LINUX TARGET: RETAIN TERMINAL BINARY AND COMPILE APPIMAGE
+    # ---------------------------------------------------------------------
+    - name: Package Linux Terminal Binary and AppImage
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        # 1. Preserve the raw terminal binary artifact just like before
+        mkdir -p dist/LinuxTerminal/
+        cp dist/LosslessCrop dist/LinuxTerminal/LosslessCrop
+        
+        # 2. Create the AppDir root layout directory for the AppImage
+        mkdir -p AppDir
+        cp dist/LosslessCrop AppDir/LosslessCrop
+        
+        # 3. Create the required AppRun launch orchestrator script
+        echo '#!/bin/sh' > AppDir/AppRun
+        echo 'HERE="$(dirname "$(readlink -f "${0}")")"' >> AppDir/AppRun
+        echo 'EXEC="${HERE}/LosslessCrop"' >> AppDir/AppRun
+        echo 'exec "${EXEC}" "$@"' >> AppDir/AppRun
+        chmod +x AppDir/AppRun
+        
+        # 4. Create the standard Linux .desktop metadata file
+        echo '[Desktop Entry]' > AppDir/lossless_crop.desktop
+        echo 'Type=Application' >> AppDir/lossless_crop.desktop
+        echo 'Name=Lossless Crop' >> AppDir/lossless_crop.desktop
+        echo 'Comment=A cross-platform lossless image cropping application' >> AppDir/lossless_crop.desktop
+        echo 'Exec=LosslessCrop' >> AppDir/lossless_crop.desktop
+        echo 'Icon=lossless_crop' >> AppDir/lossless_crop.desktop
+        echo 'Categories=Graphics;' >> AppDir/lossless_crop.desktop
+        
+        # 5. Place your application icon at the root level
+        cp assets/icons/icon.png AppDir/lossless_crop.png
+        
+        # 6. Download the official AppImage packaging tool
+        wget -q https://github.com
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # 7. Compress the AppDir folder into a single executable binary
+        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir LosslessCrop-x86_64.AppImage
+
+    # TARGET A: Upload raw terminal binary
+    - name: Upload Linux Terminal Artifact
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
         name: staging-linux
-        path: dist/LosslessCrop
+        path: dist/LinuxTerminal/LosslessCrop
+
+    # TARGET B: Upload user-friendly AppImage
+    - name: Upload Linux AppImage Artifact
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: staging-linux-appimage
+        path: LosslessCrop-x86_64.AppImage
 
     - name: Compress macOS Binary for Permissions Protection
       if: matrix.os == 'macos-latest'
