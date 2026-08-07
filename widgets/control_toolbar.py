@@ -96,16 +96,24 @@ class ControlToolbar(QFrame):
         # 2. Engine Options Dropdown
         self.main_app.combo_engine = QComboBox()
         self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.combo_engine.setToolTip(ui_constants.TOOLTIP_ENGINE)
+        self.main_app.combo_engine.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_ENGINE)
+        )
         self.main_app.combo_engine.setFont(native_font)
         self.main_app.combo_engine.view().setFont(native_font)
 
         if self.image_manager.is_lossless_available:
-            self.main_app.combo_engine.addItem(ui_constants.ENGINE_LOSSLESS)
+            self.main_app.combo_engine.addItem(
+                ui_constants.translate_constant(ui_constants.ENGINE_LOSSLESS)
+            )
         if pillow_available:
-            self.main_app.combo_engine.addItem(ui_constants.ENGINE_PIXEL_PERFECT)
+            self.main_app.combo_engine.addItem(
+                ui_constants.translate_constant(ui_constants.ENGINE_PIXEL_PERFECT)
+            )
         if not self.image_manager.is_lossless_available and pillow_available:
-            self.main_app.combo_engine.setCurrentText(ui_constants.ENGINE_PIXEL_PERFECT)
+            self.main_app.combo_engine.setCurrentText(
+                ui_constants.translate_constant(ui_constants.ENGINE_PIXEL_PERFECT)
+            )
         self.main_app.combo_engine.currentIndexChanged.connect(
             self.main_app.on_engine_changed
         )
@@ -115,10 +123,14 @@ class ControlToolbar(QFrame):
         # 3. Aspect Ratio Dropdown
         self.main_app.combo_ratio = QComboBox()
         self.main_app.combo_ratio.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.combo_ratio.setToolTip(ui_constants.TOOLTIP_RATIO)
+        self.main_app.combo_ratio.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_RATIO)
+        )
         self.main_app.combo_ratio.setFont(native_font)
         self.main_app.combo_ratio.view().setFont(native_font)
-        self.main_app.combo_ratio.addItems(ui_constants.RATIO_ITEMS)
+        self.main_app.combo_ratio.addItems(
+            [ui_constants.translate_constant(item) for item in ui_constants.RATIO_ITEMS]
+        )
         self.main_app.combo_ratio.currentIndexChanged.connect(
             self.main_app.on_ratio_changed
         )
@@ -128,10 +140,14 @@ class ControlToolbar(QFrame):
         # 4. Snap Feedback Dropdown
         self.main_app.combo_snap = QComboBox()
         self.main_app.combo_snap.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.combo_snap.setToolTip(ui_constants.TOOLTIP_SNAP)
+        self.main_app.combo_snap.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_SNAP)
+        )
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
-        self.main_app.combo_snap.addItems(ui_constants.SNAP_ITEMS)
+        self.main_app.combo_snap.addItems(
+            [ui_constants.translate_constant(item) for item in ui_constants.SNAP_ITEMS]
+        )
         self.main_app.combo_snap.setMinimumWidth(18)
         self.layout.addWidget(self.main_app.combo_snap)
 
@@ -148,8 +164,12 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width = QSpinBox()
         self.main_app.spin_width.setRange(10, 10000)
         self.main_app.spin_width.setValue(0)
-        self.main_app.spin_width.setPrefix(ui_constants.SPIN_WIDTH_PREFIX)
-        self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
+        self.main_app.spin_width.setPrefix(
+            ui_constants.translate_constant(ui_constants.SPIN_WIDTH_PREFIX)
+        )
+        self.main_app.spin_width.setSuffix(
+            ui_constants.translate_constant(ui_constants.SPIN_WIDTH_SUFFIX)
+        )
         self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_width.setFixedWidth(22)
         self.main_app.spin_width.editingFinished.connect(
@@ -161,8 +181,12 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height = QSpinBox()
         self.main_app.spin_height.setRange(10, 10000)
         self.main_app.spin_height.setValue(0)
-        self.main_app.spin_height.setPrefix(ui_constants.SPIN_HEIGHT_PREFIX)
-        self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
+        self.main_app.spin_height.setPrefix(
+            ui_constants.translate_constant(ui_constants.SPIN_HEIGHT_PREFIX)
+        )
+        self.main_app.spin_height.setSuffix(
+            ui_constants.translate_constant(ui_constants.SPIN_HEIGHT_SUFFIX)
+        )
         self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_height.setFixedWidth(22)
         self.main_app.spin_height.editingFinished.connect(
@@ -178,18 +202,22 @@ class ControlToolbar(QFrame):
 
         # 6. Toolbar Checkboxes
         self.main_app.chk_preserve = SlidingSwitch(
-            ui_constants.CHECKBOX_KEEP_SELECTION_TEXT
+            ui_constants.translate_constant(ui_constants.CHECKBOX_KEEP_SELECTION_TEXT)
         )
         self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.chk_preserve.setToolTip(ui_constants.TOOLTIP_PRESERVE)
+        self.main_app.chk_preserve.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_PRESERVE)
+        )
         self.main_app.chk_preserve.setChecked(True)
         self.layout.addWidget(self.main_app.chk_preserve)
 
         self.main_app.chk_overwrite = SlidingSwitch(
-            ui_constants.CHECKBOX_OVERWRITE_TEXT
+            ui_constants.translate_constant(ui_constants.CHECKBOX_OVERWRITE_TEXT)
         )
         self.main_app.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.chk_overwrite.setToolTip(ui_constants.TOOLTIP_OVERWRITE)
+        self.main_app.chk_overwrite.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_OVERWRITE)
+        )
         self.main_app.chk_overwrite.setChecked(False)
         self.layout.addWidget(self.main_app.chk_overwrite)
 
@@ -200,7 +228,9 @@ class ControlToolbar(QFrame):
         # 7. Configuration Gear Toggle Button
         self.main_app.btn_settings = QToolButton(self)
         self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_settings.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_settings.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_SETTINGS)
+        )
         self.main_app.btn_settings.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("gear.svg")
         self.main_app.btn_settings.setIcon(QIcon(icon_path))

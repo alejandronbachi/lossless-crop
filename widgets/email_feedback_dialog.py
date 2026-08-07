@@ -29,7 +29,9 @@ class FormSubmitWorker(QObject):
         # FormSubmit's AJAX endpoint syntax layout
         self.target_email = target_email
         self.user_email = (
-            user_email if user_email else ui_constants.FEEDBACK_ANONYMOUS_USER
+            user_email
+            if user_email
+            else ui_constants.translate_constant(ui_constants.FEEDBACK_ANONYMOUS_USER)
         )
         self.category = category
         self.message = message
@@ -40,7 +42,9 @@ class FormSubmitWorker(QObject):
             "Category": self.category,
             "Message": self.message,
             "_captcha": ui_constants.FEEDBACK_CAPTCHA_FALSE,
-            "_subject": ui_constants.FEEDBACK_SUBJECT_TEMPLATE.format(self.category),
+            "_subject": ui_constants.translate_constant(
+                ui_constants.FEEDBACK_SUBJECT_TEMPLATE
+            ).format(self.category),
         }
 
         headers = {
@@ -65,11 +69,14 @@ class FormSubmitWorker(QObject):
             )
 
             if response.status_code == 200:
-                self.finished.emit(True, ui_constants.FEEDBACK_SUCCESS_STR)
+                self.finished.emit(
+                    True,
+                    ui_constants.translate_constant(ui_constants.FEEDBACK_SUCCESS_STR),
+                )
             else:
                 self.finished.emit(
                     False,
-                    f"{ui_constants.FEEDBACK_SERVER_ERROR_PREFIX}{response.status_code}",
+                    f"{ui_constants.translate_constant(ui_constants.FEEDBACK_SERVER_ERROR_PREFIX)}{response.status_code}",
                 )
         except Exception as error_msg:
             self.finished.emit(False, str(error_msg))
@@ -81,7 +88,9 @@ class FormSubmitWorker(QObject):
 class EmailFeedbackDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(ui_constants.FEEDBACK_WINDOW_TITLE)
+        self.setWindowTitle(
+            ui_constants.translate_constant(ui_constants.FEEDBACK_WINDOW_TITLE)
+        )
         self.setMinimumSize(
             ui_constants.FEEDBACK_MIN_WIDTH, ui_constants.FEEDBACK_MIN_HEIGHT
         )
@@ -100,29 +109,52 @@ class EmailFeedbackDialog(QDialog):
         layout.setSpacing(14)
 
         # Contact Identification
-        layout.addWidget(QLabel(ui_constants.FEEDBACK_LABEL_EMAIL))
+        layout.addWidget(
+            QLabel(ui_constants.translate_constant(ui_constants.FEEDBACK_LABEL_EMAIL))
+        )
         self.email_field = QLineEdit()
-        self.email_field.setPlaceholderText(ui_constants.FEEDBACK_PLACEHOLDER_EMAIL)
+        self.email_field.setPlaceholderText(
+            ui_constants.translate_constant(ui_constants.FEEDBACK_PLACEHOLDER_EMAIL)
+        )
         layout.addWidget(self.email_field)
 
         # Context Category Classification
-        layout.addWidget(QLabel(ui_constants.FEEDBACK_LABEL_CATEGORY))
+        layout.addWidget(
+            QLabel(
+                ui_constants.translate_constant(ui_constants.FEEDBACK_LABEL_CATEGORY)
+            )
+        )
         self.category_select = QComboBox()
-        self.category_select.addItems(ui_constants.FEEDBACK_CATEGORIES_ITEMS)
+        self.category_select.addItems(
+            [
+                ui_constants.translate_constant(item)
+                for item in ui_constants.FEEDBACK_CATEGORIES_ITEMS
+            ]
+        )
         layout.addWidget(self.category_select)
 
         # Text Body Payload Description
-        layout.addWidget(QLabel(ui_constants.FEEDBACK_LABEL_DESCRIPTION))
+        layout.addWidget(
+            QLabel(
+                ui_constants.translate_constant(ui_constants.FEEDBACK_LABEL_DESCRIPTION)
+            )
+        )
         self.body_field = QTextEdit()
         self.body_field.setPlaceholderText(
-            ui_constants.FEEDBACK_PLACEHOLDER_DESCRIPTION
+            ui_constants.translate_constant(
+                ui_constants.FEEDBACK_PLACEHOLDER_DESCRIPTION
+            )
         )
         layout.addWidget(self.body_field)
 
         # User Submission Controls Block
         actions_bar = QHBoxLayout()
-        self.btn_cancel = QPushButton(ui_constants.FEEDBACK_BTN_CANCEL)
-        self.btn_submit = QPushButton(ui_constants.FEEDBACK_BTN_SUBMIT)
+        self.btn_cancel = QPushButton(
+            ui_constants.translate_constant(ui_constants.FEEDBACK_BTN_CANCEL)
+        )
+        self.btn_submit = QPushButton(
+            ui_constants.translate_constant(ui_constants.FEEDBACK_BTN_SUBMIT)
+        )
         self.btn_submit.setDefault(True)  # Triggers when hitting 'Enter' key
 
         actions_bar.addWidget(self.btn_cancel)
@@ -138,14 +170,16 @@ class EmailFeedbackDialog(QDialog):
         if not feedback_text:
             QMessageBox.warning(
                 self,
-                ui_constants.FEEDBACK_VALIDATION_TITLE,
-                ui_constants.FEEDBACK_VALIDATION_MSG,
+                ui_constants.translate_constant(ui_constants.FEEDBACK_VALIDATION_TITLE),
+                ui_constants.translate_constant(ui_constants.FEEDBACK_VALIDATION_MSG),
             )
             return
 
         # Interface lockout to ensure double clicks do not trigger duplicate transmissions
         self.btn_submit.setEnabled(False)
-        self.btn_submit.setText(ui_constants.FEEDBACK_BTN_TRANSMITTING)
+        self.btn_submit.setText(
+            ui_constants.translate_constant(ui_constants.FEEDBACK_BTN_TRANSMITTING)
+        )
 
         # Construct safe multi-threaded runtime lifecycle
         self.runtime_thread = QThread()
@@ -169,18 +203,22 @@ class EmailFeedbackDialog(QDialog):
     def handle_callback_ui(self, is_successful, system_msg):
         # Restore button control state
         self.btn_submit.setEnabled(True)
-        self.btn_submit.setText(ui_constants.FEEDBACK_BTN_SUBMIT)
+        self.btn_submit.setText(
+            ui_constants.translate_constant(ui_constants.FEEDBACK_BTN_SUBMIT)
+        )
 
         if is_successful:
             QMessageBox.information(
                 self,
-                ui_constants.FEEDBACK_THANKYOU_TITLE,
-                ui_constants.FEEDBACK_THANKYOU_MSG,
+                ui_constants.translate_constant(ui_constants.FEEDBACK_THANKYOU_TITLE),
+                ui_constants.translate_constant(ui_constants.FEEDBACK_THANKYOU_MSG),
             )
             self.accept()  # Close window cleanly
         else:
             QMessageBox.critical(
                 self,
-                ui_constants.FEEDBACK_FAILURE_TITLE,
-                ui_constants.FEEDBACK_FAILURE_TEMPLATE.format(system_msg),
+                ui_constants.translate_constant(ui_constants.FEEDBACK_FAILURE_TITLE),
+                ui_constants.translate_constant(
+                    ui_constants.FEEDBACK_FAILURE_TEMPLATE
+                ).format(system_msg),
             )

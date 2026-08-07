@@ -9,11 +9,13 @@ from widgets.application_menu_bar import ApplicationMenuBar
 initialize_logging()
 from PyQt6.QtCore import (
     QEasingCurve,
+    QLocale,
     QPoint,
     QPropertyAnimation,
     QRect,
     Qt,
     QTimer,
+    QTranslator,
 )
 from PyQt6.QtGui import QIcon, QPixmap, QResizeEvent, QWheelEvent
 from PyQt6.QtWidgets import (
@@ -894,6 +896,22 @@ if __name__ == "__main__":
     except Exception:
         pass
     app = QApplication(sys.argv)
+
+    # --- Internationalization Setup ---
+    translator = QTranslator()
+    translations_dir = app_constants.APP_ROOT_DIR / "translations"
+    if translations_dir.exists():
+        locale = QLocale.system().name()
+        qm_path = translations_dir / f"lossless_crop_{locale}.qm"
+        if qm_path.exists():
+            translator.load(str(qm_path))
+            app.installTranslator(translator)
+        else:
+            qm_files = list(translations_dir.glob("*.qm"))
+            if qm_files:
+                translator.load(str(qm_files[0]))
+                app.installTranslator(translator)
+
     window = LossLessCropApp()
     window.show()
     sys.exit(app.exec())
