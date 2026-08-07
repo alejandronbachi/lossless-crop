@@ -1,0 +1,40 @@
+<!-- assets/templates/user_manual.html -->
+<html>
+<head>
+    <style>
+        body {{
+            background-color: @WINDOW_BG;
+            color: @PRIMARY_TEXT;
+            font-family: sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 10px;
+        }}
+        h1, h2, h3, h4 {{
+            color: @PRIMARY_ACCENT;
+            font-weight: bold;
+            margin-top: 18px;
+            margin-bottom: 6px;
+        }}
+        h1 {{ 
+            font-size: 18px; 
+            border-bottom: 1px solid @DIVIDER_COLOR; 
+            padding-bottom: 4px;
+        }}
+        a {{
+            color: @PRIMARY_ACCENT;
+            text-decoration: none;
+        }}
+        a:hover {{
+            text-decoration: underline;
+        }}
+    </style>
+</head>
+<body>
+
+    {user_manual_content}  <!-- Keep this as a single brace so Python can find it! -->
+
+    <p>¿Necesita más ayuda? Visite nuestra <a href="https://github.com/alejandronbachi/lossless-crop">página del proyecto en GitHub</a>.</p>
+    <hr style="border: 0; border-top: 1px solid @DIVIDER_COLOR; margin: 15px 0;">
+</body>
+</html>
