@@ -9,7 +9,20 @@ def QT_TRANSLATE_NOOP(context: str, text: str) -> str:
 
 
 def translate_constant(text: str) -> str:
-    return QCoreApplication.translate("UIConstants", text)
+    app = QCoreApplication.instance()
+
+    # Verify if an application context exists and checks our persistent tracking property
+    if not app or not hasattr(app, "translator"):
+        return text
+
+    # Perform the dictionary lookup
+    result = QCoreApplication.translate("UIConstants", text)
+
+    # Optional debugging for foreign languages (e.g., Spanish)
+    if result == text:
+        print(f"[MISSING TRANSLATION] Context: UIConstants | String: '{text}'")
+
+    return result
 
 
 # --- Front End Assets Directory Names ---

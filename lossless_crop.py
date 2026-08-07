@@ -887,30 +887,52 @@ class LossLessCropApp(QMainWindow):
 
 
 if __name__ == "__main__":
-    myappid = (
-        "losslesscropteam.losslesscrop.editor.1.0"  # Arbitrary unique ID string names
-    )
+    myappid = "losslesscropteam.losslesscrop.editor.1.0"
 
     try:
+        import ctypes
+
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except Exception:
         pass
+
     app = QApplication(sys.argv)
 
-    # --- Internationalization Setup ---
-    translator = QTranslator()
+    # --- Production-Ready Internationalization Setup ---
     translations_dir = app_constants.APP_ROOT_DIR / "translations"
-    if translations_dir.exists():
-        locale = QLocale.system().name()
-        qm_path = translations_dir / f"lossless_crop_{locale}.qm"
+
+    # 1. Grab system locale text code (e.g., 'en_US' or 'es_ES')
+    locale_name = QLocale.system().name()
+    base_lang = locale_name.split("_")[
+        0
+    ]  # Safely extracts the pure string code: 'en' or 'es'
+
+    # 2. ONLY initialize translator machinery if the system language is NOT English
+    if base_lang != "en" and translations_dir.exists():
+        # Check full absolute string file first (e.g. lossless_crop_es_ES.qm)
+        qm_path = translations_dir / f"lossless_crop_{locale_name}.qm"
+
+        # Fallback check to generic base language (e.g. lossless_crop_es.qm)
+        if not qm_path.exists():
+            qm_path = translations_dir / f"lossless_crop_{base_lang}.qm"
+
         if qm_path.exists():
-            translator.load(str(qm_path))
-            app.installTranslator(translator)
-        else:
-            qm_files = list(translations_dir.glob("*.qm"))
-            if qm_files:
-                translator.load(str(qm_files[0]))
-                app.installTranslator(translator)
+            # Assign property directly onto app context to survive garbage collection
+            app.translator = QTranslator()
+
+            # Load into system memory array structure first
+            if app.translator.load(str(qm_path)):
+                # Mount translation engine onto runtime core loop second
+                app.installTranslator(app.translator)
+                print(f"Loaded interface localized module: {qm_path.name}")
+            else:
+                print(
+                    f"Warning: Failed to map memory dictionary structure for {qm_path.name}"
+                )
+    else:
+        print(
+            "System language matches source code base (English). Bypassing translator initialization."
+        )
 
     window = LossLessCropApp()
     window.show()
