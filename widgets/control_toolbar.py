@@ -34,7 +34,8 @@ class ControlToolbar(QFrame):
         # Open folder
         self.main_app.btn_open_folder = QToolButton(self)
         self.main_app.btn_open_folder.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_open_folder.setToolTip("Open Folder")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_OPEN_FOLDER)
+        self.main_app.btn_open_folder.setToolTip(tooltip)
         self.main_app.btn_open_folder.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("open_folder.svg")
         self.main_app.btn_open_folder.setIcon(QIcon(icon_path))
@@ -45,7 +46,8 @@ class ControlToolbar(QFrame):
         # Open Image
         self.main_app.btn_open_image = QToolButton(self)
         self.main_app.btn_open_image.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_open_image.setToolTip("Open Image")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_OPEN_IMAGE)
+        self.main_app.btn_open_image.setToolTip(tooltip)
         self.main_app.btn_open_image.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("open_image.svg")
         self.main_app.btn_open_image.setIcon(QIcon(icon_path))
@@ -57,7 +59,8 @@ class ControlToolbar(QFrame):
         # Crop
         self.main_app.btn_crop = QToolButton(self)
         self.main_app.btn_crop.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_crop.setToolTip("Crop")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_CROP)
+        self.main_app.btn_crop.setToolTip(tooltip)
         self.main_app.btn_crop.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("crop.svg")
         self.main_app.btn_crop.setIcon(QIcon(icon_path))
@@ -68,7 +71,8 @@ class ControlToolbar(QFrame):
         # Crop and next
         self.main_app.btn_crop_next = QToolButton(self)
         self.main_app.btn_crop_next.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_crop_next.setToolTip("Crop and Next")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_CROP_NEXT)
+        self.main_app.btn_crop_next.setToolTip(tooltip)
         self.main_app.btn_crop_next.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("crop_next.svg")
         self.main_app.btn_crop_next.setIcon(QIcon(icon_path))
@@ -79,7 +83,8 @@ class ControlToolbar(QFrame):
         # Rotate
         self.main_app.btn_rotate = QToolButton(self)
         self.main_app.btn_rotate.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_rotate.setToolTip("Rotate")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_ROTATE)
+        self.main_app.btn_rotate.setToolTip(tooltip)
         self.main_app.btn_rotate.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("rotate.svg")
         self.main_app.btn_rotate.setIcon(QIcon(icon_path))

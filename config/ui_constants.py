@@ -114,6 +114,12 @@ CHECKBOX_KEEP_SELECTION_TEXT = QT_TRANSLATE_NOOP("UIConstants", "Keep selection"
 CHECKBOX_OVERWRITE_TEXT = QT_TRANSLATE_NOOP("UIConstants", "Overwrite")
 CHECKBOX_DARK_THEME = QT_TRANSLATE_NOOP("UIConstants", "Dark Theme")
 
+TOOLTIP_OPEN_FOLDER = QT_TRANSLATE_NOOP("UIConstants", "Open Folder")
+TOOLTIP_OPEN_IMAGE = QT_TRANSLATE_NOOP("UIConstants", "Open Image")
+TOOLTIP_CROP = QT_TRANSLATE_NOOP("UIConstants", "Crop")
+TOOLTIP_CROP_NEXT = QT_TRANSLATE_NOOP("UIConstants", "Crop & Next")
+TOOLTIP_ROTATE = QT_TRANSLATE_NOOP("UIConstants", "Rotate")
+
 TOOLTIP_PREVIEW = QT_TRANSLATE_NOOP("UIConstants", "Display Zoom Preview HUD")
 TOOLTIP_ENGINE = QT_TRANSLATE_NOOP(
     "UIConstants", "Choose processing engine mode for saving operations."
