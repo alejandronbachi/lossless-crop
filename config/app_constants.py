@@ -1,4 +1,5 @@
 import sys
+from enum import IntEnum
 from pathlib import Path
 
 if getattr(sys, "frozen", False):
@@ -16,6 +17,13 @@ BINARY_LINUX = "jpegtran_linux"
 
 # This placeholder gets overwritten completely during the GitHub Actions build process
 FORMSUBMIT_TOKEN = "DEV_PLACEHOLDER_TOKEN"
+
+
+# Engine
+class EngineMode(IntEnum):
+    LOSSLESS = 0
+    PIXEL_PERFECT = 1
+
 
 # --- Settings Attribute Names ---
 SETTING_REMEMBER_SETTINGS = "remember_settings"

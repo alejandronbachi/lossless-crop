@@ -182,7 +182,7 @@
     <message>
         <location filename="..\config\ui_constants.py" line="121" />
         <source>Rotate</source>
-        <translation>Rotar</translation>
+        <translation>Girar</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="123" />

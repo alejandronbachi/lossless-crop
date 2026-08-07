@@ -356,7 +356,7 @@ class LossLessCropApp(QMainWindow):
 
         # 1. Quick setting check
         if (
-            self.combo_engine.currentText() != ui_constants.ENGINE_LOSSLESS
+            self.combo_engine.currentText() != app_constants.EngineMode.LOSSLESS
             or not self.image_manager.is_lossless_available
         ):
             return False

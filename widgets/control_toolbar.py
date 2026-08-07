@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QToolButton,
 )
 
-from config import ui_constants
+from config import app_constants, ui_constants
 from widgets.sliding_switch import SlidingSwitch
 
 
@@ -109,16 +109,25 @@ class ControlToolbar(QFrame):
 
         if self.image_manager.is_lossless_available:
             self.main_app.combo_engine.addItem(
-                ui_constants.translate_constant(ui_constants.ENGINE_LOSSLESS)
+                ui_constants.translate_constant(ui_constants.ENGINE_LOSSLESS),
+                app_constants.EngineMode.LOSSLESS,
             )
+
         if pillow_available:
             self.main_app.combo_engine.addItem(
-                ui_constants.translate_constant(ui_constants.ENGINE_PIXEL_PERFECT)
+                ui_constants.translate_constant(ui_constants.ENGINE_PIXEL_PERFECT),
+                app_constants.EngineMode.PIXEL_PERFECT,
             )
+
+        # Clean Fallback logic using internal Data instead of UI strings
         if not self.image_manager.is_lossless_available and pillow_available:
-            self.main_app.combo_engine.setCurrentText(
-                ui_constants.translate_constant(ui_constants.ENGINE_PIXEL_PERFECT)
+            # Dynamically locate where PIXEL_PERFECT sits, regardless of what index it landed on
+            target_index = self.main_app.combo_engine.findData(
+                app_constants.EngineMode.PIXEL_PERFECT
             )
+            if target_index != -1:
+                self.main_app.combo_engine.setCurrentIndex(target_index)
+
         self.main_app.combo_engine.currentIndexChanged.connect(
             self.main_app.on_engine_changed
         )
