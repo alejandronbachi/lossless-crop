@@ -48,8 +48,7 @@ jobs:
         path: ./artifacts
 
     - name: Label Windows MSIX Installer Binary Package
-      run: mv ./artifacts/LosslessCrop.msixupload ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows-Store-Bundle.msixupload || true
-
+      run: mv ./artifacts/LosslessCrop.msix ./artifacts/LosslessCrop-${{ github.ref_name }}-Windows-Store-Installer.msix || true
 
     - name: Download Staged Linux Binaries
       uses: dawidd6/action-download-artifact@v6
