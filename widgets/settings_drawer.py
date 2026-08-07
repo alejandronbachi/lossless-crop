@@ -8,7 +8,7 @@ from widgets.sliding_switch import SlidingSwitch
 
 class SettingsDrawer(
     QFrame
-):  # 🚀 Modernized: Switched to QFrame to handle background QSS natively
+):  #  Modernized: Switched to QFrame to handle background QSS natively
     def __init__(self, parent, file_manager):
         # We explicitly pass the central widget as the parent to keep the floating canvas layout intact
         super().__init__(parent.central_widget)

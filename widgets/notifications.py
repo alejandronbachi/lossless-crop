@@ -61,7 +61,7 @@ class SplashHUD(QLabel):
 
 class TelemetryHUD(QLabel):
     def __init__(self, parent_container, file_manager, ui_constants):
-        # 🚀 Pass the canvas/central container directly
+        #  Pass the canvas/central container directly
         super().__init__(parent_container)
         self.setObjectName(ui_constants.WIDGET_TELEMETRY_HUD)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)

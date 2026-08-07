@@ -73,7 +73,7 @@ class ImageProcessor:
     def execute_lossless_jpegtran_crop(
         self, src: Path, dest: str, crop_box: tuple, rotation_angle: int = 0
     ) -> bool:
-        """🚀 ENGINE A: Executes raw binary block manipulations inside VRAM via jpegtran."""
+        """ENGINE A: Executes raw binary block manipulations inside VRAM via jpegtran."""
         c_w, c_h, c_x, c_y = crop_box
         crop_argument = f"{c_w}x{c_h}+{c_x}+{c_y}"
 

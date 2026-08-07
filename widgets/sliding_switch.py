@@ -1,4 +1,4 @@
-# 🔥🚀 [START OF MODIFICATION: Animated Sliding Switch Subclass] 🚀🔥
+# 🔥 [START OF MODIFICATION: Animated Sliding Switch Subclass] 🔥
 from PyQt6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QVariantAnimation
 from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import QAbstractButton

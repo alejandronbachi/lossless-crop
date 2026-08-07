@@ -44,11 +44,11 @@ class StatusManager(QObject):
         self.lazy_timer.start()
 
     def invalidate_ui_state(self):
-        """🚀 Mark the view state as dirty. High-frequency mouse events call this!"""
+        """Mark the view state as dirty. High-frequency mouse events call this!"""
         self._is_dirty = True
 
     def _on_lazy_heartbeat_tick(self):
-        """🚀 The Frame-Rate Gatekeeper: Executes heavy updates ONLY if a change actually occurred."""
+        """The Frame-Rate Gatekeeper: Executes heavy updates ONLY if a change actually occurred."""
         if not self._is_dirty:
             return  # The mouse hasn't moved; drop out immediately to save CPU cycles!
 
