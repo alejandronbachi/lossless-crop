@@ -3,9 +3,10 @@ import logging
 from pathlib import Path
 
 from PIL import Image
+from PyQt6.QtWidgets import QApplication
 
 from config.app_constants import APP_ROOT_DIR, SUPPORTED_IMAGE_EXTENSIONS
-from config.ui_constants import FOLDER_ASSETS, FOLDER_SVGS
+from config.ui_constants import FOLDER_ASSETS, FOLDER_SVGS, FOLDER_TEMPLATES
 from managers.settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,23 @@ class FileManager:
             return file_path.read_text(encoding="utf-8")
         except FileNotFoundError:
             logger.warning("Warning: Asset missing at: %s", file_path)
+            return ""
+
+    def load_localized_template(self, filename: str) -> str:
+        """
+        Loads localized html templates dynamically.
+        Falls back to English if the localized file doesn't exist.
+        """
+        # 1. Grab current runtime app instance base language context
+        app = QApplication.instance()
+        lang = getattr(app, "base_lang", "en")  # Defaults to English
+
+        template_dir = APP_ROOT_DIR / FOLDER_ASSETS / FOLDER_TEMPLATES
+        template_path = template_dir / f"{filename}_{lang}.html"
+        try:
+            return template_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning("Warning: Asset missing at: %s", template_path)
             return ""
 
     def getSVGPathString(self, filename: str) -> str:
@@ -43,8 +61,16 @@ class FileManager:
     def load_user_manual(self) -> str:
         """Dynamically loads layout styling text / HTML / QSS content safely."""
         file_path = APP_ROOT_DIR / "docs/user_manual.md"
+
+        # 1. Grab current runtime app instance base language context
+        app = QApplication.instance()
+        lang = getattr(app, "base_lang", "en")  # Defaults to English
+
+        user_manual_dir = APP_ROOT_DIR / "docs"
+        user_manual_path = user_manual_dir / f"user_manual_{lang}.md"
+
         try:
-            return file_path.read_text(encoding="utf-8")
+            return user_manual_path.read_text(encoding="utf-8")
         except FileNotFoundError:
             logger.warning("Warning: Asset missing at: %s", file_path)
             return ""

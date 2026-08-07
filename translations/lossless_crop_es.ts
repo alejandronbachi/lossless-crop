@@ -82,7 +82,7 @@
     <message>
         <location filename="..\config\ui_constants.py" line="88" />
         <source>Layout Memory</source>
-        <translation>Memoria del diseño</translation>
+        <translation>Guardar tamaño</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="90" />

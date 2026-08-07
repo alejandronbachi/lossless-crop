@@ -756,7 +756,10 @@ class LossLessCropApp(QMainWindow):
             self.image_session.close_session()
             self.crop_box_selector.hide()
             self.status_manager.set_empty_workspace_state()
-            alert_text = error_msg if error_msg else ui_constants.TEXT_NO_VALID_IMAGES
+            default_text = ui_constants.translate_constant(
+                ui_constants.TEXT_NO_VALID_IMAGES
+            )
+            alert_text = error_msg if error_msg else default_text
             self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
@@ -786,20 +789,24 @@ class LossLessCropApp(QMainWindow):
             return
 
         _, _, valid_files = self.file_manager.process_path(directory)
-
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DIR
+        )
         self.update_ui_after_loadin_folder(
             folder_path=directory,
             valid_files=valid_files,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+            error_msg=error_msg,
         )
 
     def open_recent_dir(self, target_folder_str: str):
         _, _, valid_files = self.file_manager.process_path(target_folder_str)
-
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DIR
+        )
         self.update_ui_after_loadin_folder(
             folder_path=target_folder_str,
             valid_files=valid_files,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+            error_msg=error_msg,
         )
 
     def dropEvent(self, event):
@@ -815,11 +822,14 @@ class LossLessCropApp(QMainWindow):
             dropped_path
         )
 
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DROP
+        )
         self.update_ui_after_loadin_folder(
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DROP,
+            error_msg=error_msg,
         )
 
     def select_individual_image_file(self):
@@ -835,12 +845,14 @@ class LossLessCropApp(QMainWindow):
         folder, starting_file, valid_files = self.file_manager.process_path(
             selected_file_path
         )
-
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DIR
+        )
         self.update_ui_after_loadin_folder(
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+            error_msg=error_msg,
         )
 
     def reload_directory(self):
@@ -903,18 +915,23 @@ if __name__ == "__main__":
 
     # 1. Grab system locale text code (e.g., 'en_US' or 'es_ES')
     locale_name = QLocale.system().name()
-    base_lang = locale_name.split("_")[
-        0
-    ]  # Safely extracts the pure string code: 'en' or 'es'
+    # Safely extracts the pure string code: 'en' or 'es'
+    base_lang = locale_name.split("_")[0]
+
+    # 2. Match against your whitelist. If supported, store it; otherwise default to English
+    if base_lang in ui_constants.SUPPORTED_LANGUAGES:
+        app.base_lang = base_lang
+    else:
+        app.base_lang = "en"
 
     # 2. ONLY initialize translator machinery if the system language is NOT English
-    if base_lang != "en" and translations_dir.exists():
+    if app.base_lang != "en" and translations_dir.exists():
         # Check full absolute string file first (e.g. lossless_crop_es_ES.qm)
         qm_path = translations_dir / f"lossless_crop_{locale_name}.qm"
 
         # Fallback check to generic base language (e.g. lossless_crop_es.qm)
         if not qm_path.exists():
-            qm_path = translations_dir / f"lossless_crop_{base_lang}.qm"
+            qm_path = translations_dir / f"lossless_crop_{app.base_lang}.qm"
 
         if qm_path.exists():
             # Assign property directly onto app context to survive garbage collection
@@ -931,7 +948,7 @@ if __name__ == "__main__":
                 )
     else:
         print(
-            "System language matches source code base (English). Bypassing translator initialization."
+            f"Using app default language context ({app.base_lang}). Bypassing translator initialization."
         )
 
     window = LossLessCropApp()

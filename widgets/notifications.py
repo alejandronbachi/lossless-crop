@@ -34,9 +34,7 @@ class CommandsOverlay(QLabel):
 
         self.setObjectName("CommandsOverlay")
         self.setText(
-            file_manager.load_asset(
-                ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
-            )
+            file_manager.load_localized_template(ui_constants.TEMPLATE_COMMANDS)
         )
 
         shadow = QGraphicsDropShadowEffect(self)
@@ -53,9 +51,7 @@ class SplashHUD(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hide()  # Maintained hidden by default until evaluated on launch
         self.setObjectName("SplashHUD")
-        splash_text = file_manager.load_asset(
-            ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
-        )
+        splash_text = file_manager.load_localized_template(ui_constants.TEMPLATE_SPLASH)
         self.setText(splash_text)
 
 

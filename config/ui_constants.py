@@ -25,6 +25,8 @@ def translate_constant(text: str) -> str:
     return result
 
 
+SUPPORTED_LANGUAGES = ["en", "es"]
+
 # --- Front End Assets Directory Names ---
 FOLDER_ASSETS = "assets"
 FOLDER_STYLES = "styles"
@@ -35,10 +37,10 @@ FOLDER_SVGS = "svgs"
 BASE_STYLE_TEMPLATE = "base_template.qss"
 
 # --- HTML Template File Names ---
-TEMPLATE_SPLASH = "splash_hud.html"
-TEMPLATE_COMMANDS = "commands_overlay.html"
-TEMPLATE_ABOUT = "about.html"
-TEMPLATE_USER_MANUAL = "user_manual_format.html"
+TEMPLATE_SPLASH = "splash_hud"
+TEMPLATE_COMMANDS = "commands_overlay"
+TEMPLATE_ABOUT = "about"
+TEMPLATE_USER_MANUAL = "user_manual_format"
 
 # --- ICON File Name ---
 if sys.platform == "win32":

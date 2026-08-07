@@ -7,7 +7,7 @@ from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtWidgets import QMenuBar, QMessageBox
 
 from config.app_constants import APP_VERSION
-from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
+from config.ui_constants import TEMPLATE_ABOUT
 from managers import theme_manager
 from managers.file_manager import FileManager
 from widgets.email_feedback_dialog import EmailFeedbackDialog
@@ -181,7 +181,7 @@ class ApplicationMenuBar(QMenuBar):
         )
 
         # 4. Your polished HTML block layout
-        about_html = self.file_mgr.load_asset(TEMPLATE_ABOUT, FOLDER_TEMPLATES)
+        about_html = self.file_mgr.load_localized_template(TEMPLATE_ABOUT)
         about_html = about_html.replace("@APP_VERSION", APP_VERSION)
         about_html = theme_manager.substitute_tokens(about_html)
 
