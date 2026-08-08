@@ -266,8 +266,8 @@
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="165" />
-        <source>Directory: </source>
-        <translation>Dossier : </translation>
+        <source>Directory</source>
+        <translation>Dossier</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="168" />
@@ -457,5 +457,9 @@ Erreur : {}</translation>
         <location filename="..\config\ui_constants.py" line="251" />
         <source>Failed to create shortcut</source>
         <translation>Échec de création du raccourci</translation>
+    </message>
+    <message>
+        <source>Directory: </source>
+        <translation type="vanished">Dossier : </translation>
     </message>
 </context></TS>

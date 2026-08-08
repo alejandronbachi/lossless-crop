@@ -266,8 +266,8 @@
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="165" />
-        <source>Directory: </source>
-        <translation>Diretório: </translation>
+        <source>Directory</source>
+        <translation>Diretório</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="168" />
