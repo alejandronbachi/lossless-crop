@@ -6,7 +6,7 @@ from typing import Any, get_origin
 from PyQt6.QtCore import QObject, QSettings, QSignalBlocker
 from PyQt6.QtWidgets import QAbstractButton, QComboBox, QWidget
 
-from config import app_constants
+from config import app_constants, ui_constants
 from models.app_settings import AppSettings
 
 
@@ -63,10 +63,26 @@ class SettingsBinder(QObject):
                 if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                     widget.setChecked(bool(value))
                 elif widget_type == "combobox" and isinstance(widget, QComboBox):
-                    # Clean Query: search by internal integer/Enum payload instead of localized string characters
-                    index = widget.findData(value)
+                    # 1. Handle unexpected dictionaries (extract data if possible, or fall back)
+                    if isinstance(value, dict):
+                        # Extract the inner value if it matches your new system's structure
+                        # e.g., value.get("current_selection") or value.get("value")
+                        value = value.get("current_selection", None)
+
+                    # 2. Guard against invalid, unhashable, or missing data types
+                    if value is None or isinstance(value, (list, set)):
+                        index = 0  # Default to first item
+                    else:
+                        try:
+                            index = widget.findData(value)
+                        except TypeError:
+                            index = 0  # Catch-all for incompatible custom types
+
+                    # 3. Apply index, defaulting to safety if the value wasn't found in choices
                     if index != -1:
                         widget.setCurrentIndex(index)
+                    else:
+                        widget.setCurrentIndex(0)
             finally:
                 del blocker
 
@@ -111,7 +127,9 @@ class SettingsManager:
         # Maps Python types to safe, standalone normalizing parsers
         self._type_parsers: dict[Any, Callable[[Any, Any], Any]] = {
             bool: lambda raw, default: self._safe_bool(raw, default),
-            int: lambda raw, _: int(raw) if raw is not None else None,
+            int: lambda raw, default: self._safe_int(raw, default),
+            str: lambda raw, default: self._safe_str(raw, default),
+            bytes: lambda raw, default: self._safe_bytes(raw, default),
             list: self._parse_list_type,
         }
 
@@ -242,6 +260,48 @@ class SettingsManager:
             return bool(val)
         return str(val).lower() in ("true", "1", "yes")
 
+    def _safe_int(self, val: Any, default: int) -> int:
+        """Helper to translate raw registry values safely into Python integers."""
+        if val is None:
+            return default
+        if isinstance(val, int) and not isinstance(val, bool):
+            return val
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
+    def _safe_str(self, val: Any, default: str) -> str:
+        """Helper to translate raw registry values safely into Python strings."""
+        if val is None:
+            return default
+        if isinstance(val, str):
+            return val
+        try:
+            return str(val)
+        except (ValueError, TypeError):
+            return default
+
+    def _safe_bytes(self, val: Any, default: bytes) -> bytes:
+        """Helper to translate raw registry values safely into Python bytes."""
+        if val is None:
+            return default
+        if isinstance(val, bytes):
+            return val
+        if hasattr(val, "data") and callable(val.data):
+            try:
+                return bytes(val.data())
+            except Exception:
+                pass
+        if isinstance(val, bytearray):
+            return bytes(val)
+        if isinstance(val, str):
+            try:
+                return val.encode("utf-8")
+            except Exception:
+                pass
+        return default
+
     def save_last_used_folder(self, folder_path: str | Path) -> None:
         """Updates the folder target on our data model instantly."""
         self.current_settings.last_used_folder = str(folder_path)
@@ -315,20 +375,115 @@ class SettingsManager:
 
             raw_value = q_settings.value(field.name)
             field_base_type = get_origin(field.type) or field.type
+            field_default = (
+                field.default
+                if field.default is not dataclasses.MISSING
+                else (
+                    field.default_factory()
+                    if field.default_factory is not dataclasses.MISSING
+                    else None
+                )
+            )
 
-            # 4. Route type extraction dynamically through the strategic parser map
-            parser = self._type_parsers.get(field_base_type)
-            if parser:
-                parsed_value = parser(raw_value, field.default)
-                setattr(model, field.name, parsed_value)
+            # 4. Route type extraction dynamically through the strategic parser map or field name
+            if field.name == app_constants.SETTING_RATIO_PREFERENCE:
+                parsed_value = self._parse_ratio_preference(raw_value, field_default)
+            elif field.name == app_constants.SETTING_ENGINE_PREFERENCE:
+                parsed_value = self._parse_engine_preference(raw_value, field_default)
+            elif field.name == app_constants.SETTING_SNAP_PREFERENCE:
+                parsed_value = self._parse_snap_preference(raw_value, field_default)
             else:
-                setattr(model, field.name, raw_value)
+                parser = self._type_parsers.get(field_base_type)
+                if parser:
+                    parsed_value = parser(raw_value, field_default)
+                else:
+                    if raw_value is not None and isinstance(raw_value, field_base_type):
+                        parsed_value = raw_value
+                    else:
+                        parsed_value = field_default
+
+            # 5. Final type verification safeguard to prevent type mismatches (e.g. string vs enum/data)
+            if parsed_value is not None and not isinstance(
+                parsed_value, field_base_type
+            ):
+                try:
+                    if field_base_type == int:
+                        parsed_value = int(parsed_value)
+                    elif field_base_type == bool:
+                        parsed_value = bool(parsed_value)
+                    elif field_base_type == str:
+                        parsed_value = str(parsed_value)
+                    else:
+                        parsed_value = field_default
+                except Exception:
+                    parsed_value = field_default
+
+            setattr(model, field.name, parsed_value)
 
         self.current_settings = model
         self.binder.model = model  # Re-link binder to newly loaded instance
         return self.current_settings
 
     # --- Extracted Specialized Normalizing Helpers ---
+
+    def _parse_ratio_preference(self, raw: Any, default: Any) -> int:
+        """Parses ratio preference handling both IntEnum/int and legacy string literals."""
+        if isinstance(raw, int) and not isinstance(raw, bool):
+            try:
+                return app_constants.CropRatioMode(raw)
+            except ValueError:
+                return default
+        if isinstance(raw, str):
+            mapping = {
+                ui_constants.RATIO_FREEFORM: app_constants.CropRatioMode.FREEFORM,
+                ui_constants.RATIO_SQUARE: app_constants.CropRatioMode.SQUARE_1_1,
+                ui_constants.RATIO_WIDESCREEN: app_constants.CropRatioMode.WIDESCREEN_16_9,
+                ui_constants.RATIO_STANDARD: app_constants.CropRatioMode.STANDARD_4_3,
+                ui_constants.RATIO_SOURCE: app_constants.CropRatioMode.SOURCE_RATIO,
+                "Freeform": app_constants.CropRatioMode.FREEFORM,
+                "1:1 Square": app_constants.CropRatioMode.SQUARE_1_1,
+                "16:9 Widescreen": app_constants.CropRatioMode.WIDESCREEN_16_9,
+                "4:3 Standard": app_constants.CropRatioMode.STANDARD_4_3,
+                "Source Ratio": app_constants.CropRatioMode.SOURCE_RATIO,
+            }
+            return mapping.get(raw, default)
+        return default
+
+    def _parse_engine_preference(self, raw: Any, default: Any) -> int:
+        """Parses engine preference handling both IntEnum/int and legacy string literals."""
+        if isinstance(raw, int) and not isinstance(raw, bool):
+            try:
+                return app_constants.EngineMode(raw)
+            except ValueError:
+                return default
+        if isinstance(raw, str):
+            mapping = {
+                ui_constants.ENGINE_LOSSLESS: app_constants.EngineMode.LOSSLESS,
+                ui_constants.ENGINE_PIXEL_PERFECT: app_constants.EngineMode.PIXEL_PERFECT,
+                "Lossless": app_constants.EngineMode.LOSSLESS,
+                "Pixel-Perfect": app_constants.EngineMode.PIXEL_PERFECT,
+            }
+            return mapping.get(raw, default)
+        return default
+
+    def _parse_snap_preference(self, raw: Any, default: Any) -> int:
+        """Parses snap preference handling both IntEnum/int and legacy string literals."""
+        if isinstance(raw, int) and not isinstance(raw, bool):
+            try:
+                return app_constants.SnapMode(raw)
+            except ValueError:
+                return default
+        if isinstance(raw, str):
+            mapping = {
+                ui_constants.SNAP_REAL_TIME: app_constants.SnapMode.REAL_TIME,
+                ui_constants.SNAP_POST_RELEASE: app_constants.SnapMode.POST_RELEASE,
+                ui_constants.SNAP_GHOSTING: app_constants.SnapMode.GHOSTING,
+                "Real-time snap": app_constants.SnapMode.REAL_TIME,
+                "Post-release snap": app_constants.SnapMode.POST_RELEASE,
+                "Ghosting": app_constants.SnapMode.GHOSTING,
+            }
+            return mapping.get(raw, default)
+        return default
 
     def _parse_list_type(self, raw_value: Any, _: Any) -> list:
         """Forces normalization because QSettings can return string arrays or strings."""
