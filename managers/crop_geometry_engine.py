@@ -5,17 +5,12 @@ from dataclasses import dataclass
 
 from PyQt6.QtCore import QRect
 
-from config.ui_constants import (
-    RATIO_SOURCE,
-    RATIO_SQUARE,
-    RATIO_STANDARD,
-    RATIO_WIDESCREEN,
-)
+from config import app_constants
 
 ASPECT_RATIOS = {
-    RATIO_SQUARE: 1.0,
-    RATIO_WIDESCREEN: 16.0 / 9.0,
-    RATIO_STANDARD: 4.0 / 3.0,
+    app_constants.CropRatioMode.SQUARE_1_1: 1.0,
+    app_constants.CropRatioMode.WIDESCREEN_16_9: 16.0 / 9.0,
+    app_constants.CropRatioMode.STANDARD_4_3: 4.0 / 3.0,
     # "Freeform" intentionally absent -> resolve_aspect_ratio returns None
 }
 
@@ -70,14 +65,14 @@ class CropGeometryEngine:
 
     @staticmethod
     def resolve_aspect_ratio(
-        ratio_label: str, source_dimensions: tuple[int, int] | None = None
+        ratio_data: int, source_dimensions: tuple[int, int] | None = None
     ) -> float | None:
-        if ratio_label == RATIO_SOURCE:
+        if ratio_data == app_constants.CropRatioMode.SOURCE_RATIO:
             if not source_dimensions or not source_dimensions[1]:
                 return None
             w, h = source_dimensions
             return w / h
-        return ASPECT_RATIOS.get(ratio_label)
+        return ASPECT_RATIOS.get(ratio_data)
 
     @classmethod
     def snap_to_grid(cls, value: float, minimum: int = JPEG_GRID_SIZE) -> int:
@@ -89,7 +84,7 @@ class CropGeometryEngine:
         screen_rect: QRect,
         viewport: ViewportGeometry,
         lossless: bool,
-        ratio_label: str,
+        ratio_data: int,
     ) -> QRect:
         """Maps a screen-space rubber-band rect onto true source-image pixel
         space. Grid snap and aspect-ratio lock are both applied in IMAGE
@@ -101,7 +96,7 @@ class CropGeometryEngine:
         img_h = screen_rect.height() * viewport.scale_y
 
         aspect = cls.resolve_aspect_ratio(
-            ratio_label, (viewport.source_width, viewport.source_height)
+            ratio_data, (viewport.source_width, viewport.source_height)
         )
 
         if lossless:
@@ -124,7 +119,7 @@ class CropGeometryEngine:
         cls,
         source_rect: QRect,
         viewport: ViewportGeometry,
-        ratio_label: str,
+        ratio_data: int,
     ) -> QRect:
         """Inverse of screen_rect_to_source_rect: projects a source-pixel
         rect back onto label/screen coordinates for drawing the rubber band.
@@ -140,7 +135,7 @@ class CropGeometryEngine:
         Pixel-Perfect mode (no snap) it was directly visible as drift.
         """
         aspect = cls.resolve_aspect_ratio(
-            ratio_label, (viewport.source_width, viewport.source_height)
+            ratio_data, (viewport.source_width, viewport.source_height)
         )
 
         screen_x = (
@@ -172,12 +167,12 @@ class CropGeometryEngine:
 
     @classmethod
     def apply_aspect_lock_to_width(
-        cls, width: int, ratio_label: str, lossless: bool, source_dimensions=None
+        cls, width: int, ratio_data: int, lossless: bool, source_dimensions=None
     ) -> int | None:
         """Given a target width and the active ratio, returns the matching
         height, or None for Freeform (caller keeps whatever height it had).
         """
-        aspect = cls.resolve_aspect_ratio(ratio_label, source_dimensions)
+        aspect = cls.resolve_aspect_ratio(ratio_data, source_dimensions)
         if aspect is None:
             return None
         if lossless:
@@ -190,7 +185,7 @@ class CropGeometryEngine:
         screen_rect: QRect,
         viewport: ViewportGeometry,
         lossless: bool,
-        ratio_label: str,
+        ratio_data: int,
     ) -> QRect:
         """Round-trips a screen rect through source-pixel space and back, so
         that a JPEG-grid-aligned selection (or an aspect-locked one) is
@@ -201,15 +196,15 @@ class CropGeometryEngine:
         separate implementations of the same conversion (a maintenance
         landmine for a class whose whole job is being the *single* source
         of truth for this math), one of which used int() truncation instead
-        of round(), and neither of which honored ratio_label for the
+        of round(), and neither of which honored ratio_data for the
         height. Delegating here fixes both: rounding is now identical to
         every other conversion in this class, and an aspect-locked
         selection stays aspect-locked through the snap.
         """
         source_rect = cls.screen_rect_to_source_rect(
-            screen_rect, viewport, lossless, ratio_label
+            screen_rect, viewport, lossless, ratio_data
         )
-        return cls.source_rect_to_screen_rect(source_rect, viewport, ratio_label)
+        return cls.source_rect_to_screen_rect(source_rect, viewport, ratio_data)
 
     @staticmethod
     def constrain_and_slide_rect_to_pixmap(

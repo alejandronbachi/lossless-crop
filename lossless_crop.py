@@ -356,7 +356,7 @@ class LossLessCropApp(QMainWindow):
 
         # 1. Quick setting check
         if (
-            self.combo_engine.currentText() != app_constants.EngineMode.LOSSLESS
+            self.combo_engine.currentIndex() != app_constants.EngineMode.LOSSLESS
             or not self.image_manager.is_lossless_available
         ):
             return False
@@ -941,14 +941,16 @@ if __name__ == "__main__":
             if app.translator.load(str(qm_path)):
                 # Mount translation engine onto runtime core loop second
                 app.installTranslator(app.translator)
-                print(f"Loaded interface localized module: {qm_path.name}")
+                logger.debug("Loaded interface localized module: %s", qm_path.name)
             else:
-                print(
-                    f"Warning: Failed to map memory dictionary structure for {qm_path.name}"
+                logger.warning(
+                    "Warning: Failed to map memory dictionary structure for %s",
+                    qm_path.name,
                 )
     else:
-        print(
-            f"Using app default language context ({app.base_lang}). Bypassing translator initialization."
+        logger.info(
+            "Using app default language context (%s. Bypassing translator initialization.",
+            app.base_lang,
         )
 
     window = LossLessCropApp()

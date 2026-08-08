@@ -135,6 +135,7 @@ class ControlToolbar(QFrame):
         self.layout.addWidget(self.main_app.combo_engine)
 
         # 3. Aspect Ratio Dropdown
+        # 3. Aspect Ratio Dropdown
         self.main_app.combo_ratio = QComboBox()
         self.main_app.combo_ratio.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.combo_ratio.setToolTip(
@@ -142,13 +143,29 @@ class ControlToolbar(QFrame):
         )
         self.main_app.combo_ratio.setFont(native_font)
         self.main_app.combo_ratio.view().setFont(native_font)
-        self.main_app.combo_ratio.addItems(
-            [ui_constants.translate_constant(item) for item in ui_constants.RATIO_ITEMS]
-        )
+        self.main_app.combo_ratio.setMinimumWidth(18)
+
+        # Pair each immutable Enum mode with its matching text string token
+        ratio_mappings = [
+            (app_constants.CropRatioMode.FREEFORM, ui_constants.RATIO_FREEFORM),
+            (app_constants.CropRatioMode.SQUARE_1_1, ui_constants.RATIO_SQUARE),
+            (
+                app_constants.CropRatioMode.WIDESCREEN_16_9,
+                ui_constants.RATIO_WIDESCREEN,
+            ),
+            (app_constants.CropRatioMode.STANDARD_4_3, ui_constants.RATIO_STANDARD),
+            (app_constants.CropRatioMode.SOURCE_RATIO, ui_constants.RATIO_SOURCE),
+        ]
+
+        # Populate the dropdown with both display and hidden values
+        for mode, constant in ratio_mappings:
+            self.main_app.combo_ratio.addItem(
+                ui_constants.translate_constant(constant), mode
+            )
+
         self.main_app.combo_ratio.currentIndexChanged.connect(
             self.main_app.on_ratio_changed
         )
-        self.main_app.combo_ratio.setMinimumWidth(18)
         self.layout.addWidget(self.main_app.combo_ratio)
 
         # 4. Snap Feedback Dropdown
@@ -159,10 +176,21 @@ class ControlToolbar(QFrame):
         )
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
-        self.main_app.combo_snap.addItems(
-            [ui_constants.translate_constant(item) for item in ui_constants.SNAP_ITEMS]
-        )
         self.main_app.combo_snap.setMinimumWidth(18)
+
+        # Map each Enum state to its matching string constant from your UI file
+        snap_mappings = [
+            (app_constants.SnapMode.REAL_TIME, ui_constants.SNAP_REAL_TIME),
+            (app_constants.SnapMode.POST_RELEASE, ui_constants.SNAP_POST_RELEASE),
+            (app_constants.SnapMode.GHOSTING, ui_constants.SNAP_GHOSTING),
+        ]
+
+        # Bind them atomically using your translated text and hidden data properties
+        for mode, constant in snap_mappings:
+            self.main_app.combo_snap.addItem(
+                ui_constants.translate_constant(constant), mode
+            )
+
         self.layout.addWidget(self.main_app.combo_snap)
 
         # 5. Precision Manual Crop Spinboxes Component Layout

@@ -20,7 +20,7 @@ from enum import IntEnum
 from PyQt6.QtCore import QPoint, QRect, QSize
 from PyQt6.QtWidgets import QLabel, QRubberBand, QWidget
 
-from config import ui_constants
+from config import app_constants, ui_constants
 from managers.crop_geometry_engine import CropGeometryEngine, ViewportGeometry
 from models.crop_model import CropModel
 
@@ -99,8 +99,8 @@ class SelectionManager:
     # -----------------------------------------------------------------
     # Internal helpers
     # -----------------------------------------------------------------
-    def _current_ratio_label(self) -> str:
-        return self.ratio_combo.currentText()
+    def _current_ratio_data(self) -> str:
+        return self.ratio_combo.currentData()
 
     def _current_viewport(self) -> ViewportGeometry | None:
         pixmap = self.canvas.pixmap()
@@ -116,7 +116,7 @@ class SelectionManager:
             screen_rect,
             viewport,
             lossless=self._lossless_check(),
-            ratio_label=self._current_ratio_label(),
+            ratio_data=self._current_ratio_data(),
         )
 
     def _notify_changed(self):
@@ -142,7 +142,7 @@ class SelectionManager:
                     self.selector.geometry(),
                     viewport,
                     lossless=self._lossless_check(),
-                    ratio_label=self._current_ratio_label(),
+                    ratio_data=self._current_ratio_data(),
                 )
                 self.crop_model.set_rect(
                     QRect(
@@ -226,12 +226,12 @@ class SelectionManager:
 
         # 2. Extract Geometry & Viewport Information
         viewport = self._viewport_factory(pixmap)
-        ratio_label = self._current_ratio_label()
+        ratio_data = self._current_ratio_data()
         use_lossless = self._lossless_check()
 
         # 3. Calculate the core raw box geometry
         fluid_rect = self._calculate_fluid_geometry(
-            current_screen_pos, pixmap, viewport, ratio_label
+            current_screen_pos, pixmap, viewport, ratio_data
         )
         snapped_rect = self._snap_rect(fluid_rect) if use_lossless else fluid_rect
 
@@ -292,16 +292,16 @@ class SelectionManager:
         self, fluid_rect: QRect, snapped_rect: QRect, use_lossless: bool
     ):
         """Executes layout mutations and overlay visibility rules based on snap configuration."""
-        snap_mode = self.snap_combo.currentText()
+        snap_mode = self.snap_combo.currentData()
 
         # Pre-configure defaults shared by mostly all modes
         display_rect = fluid_rect
         self.ghost_crop_geometry = None
 
-        if snap_mode == ui_constants.SNAP_REAL_TIME:
+        if snap_mode == app_constants.SnapMode.REAL_TIME:
             display_rect = snapped_rect if use_lossless else fluid_rect
 
-        elif snap_mode == ui_constants.SNAP_GHOSTING:
+        elif snap_mode == app_constants.SnapMode.GHOSTING:
             self.ghost_crop_geometry = snapped_rect if use_lossless else None
 
         # Apply the determined metrics directly to the selector UI
@@ -320,10 +320,13 @@ class SelectionManager:
         if self.drag_start_origin.isNull() or not self.last_crop_geometry:
             return
 
-        snap_mode = self.snap_combo.currentText()
-        if snap_mode in (ui_constants.SNAP_POST_RELEASE, ui_constants.SNAP_REAL_TIME):
+        snap_mode = self.snap_combo.currentData()
+        if snap_mode in (
+            app_constants.SnapMode.POST_RELEASE,
+            app_constants.SnapMode.REAL_TIME,
+        ):
             self.snap_selection()
-        elif snap_mode == ui_constants.SNAP_GHOSTING:
+        elif snap_mode == app_constants.SnapMode.GHOSTING:
             self.ghost_crop_geometry = None  # Clear coordinates on release
 
             # Lock the final selection to the snapped boundaries if lossless is active
@@ -427,7 +430,7 @@ class SelectionManager:
                 self.selector.geometry(),
                 viewport,
                 lossless=self._lossless_check(),
-                ratio_label=self._current_ratio_label(),
+                ratio_label=self._current_ratio_data(),
             )
             self.crop_model.set_rect(QRect(projected.x(), projected.y(), tw, th))
             self._commit_context = _ScreenCommitContext(
@@ -458,7 +461,7 @@ class SelectionManager:
             self.selector.geometry(),
             viewport,
             lossless=self._lossless_check(),
-            ratio_label=self._current_ratio_label(),
+            ratio_label=self._current_ratio_data(),
         )
 
     # -----------------------------------------------------------------
@@ -519,7 +522,7 @@ class SelectionManager:
             self.selector.setGeometry(snapped)
 
         self.last_crop_geometry = self.selector.geometry()
-        if self._current_ratio_label() == ui_constants.RATIO_SOURCE:
+        if self._current_ratio_data() == ui_constants.RATIO_SOURCE:
             # Source Ratio's meaning is per-image. Lossless mode already
             # reshaped above via the grid re-snap (which re-derives height from
             # the live aspect); Pixel-Perfect mode leaves geometry untouched by
@@ -599,7 +602,7 @@ class SelectionManager:
         if viewport and current_source:
             # 2. Re-project the current backend source coordinates back into screen coordinates
             direct_rect = CropGeometryEngine.source_rect_to_screen_rect(
-                current_source, viewport, self._current_ratio_label()
+                current_source, viewport, self._current_ratio_data()
             )
 
             # 3. Clamp and translate to match the physical UI layout boundaries

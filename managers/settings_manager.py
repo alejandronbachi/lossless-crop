@@ -37,20 +37,23 @@ class SettingsBinder(QObject):
         widget.toggled.connect(_on_toggled)
 
     def bind_combobox(self, widget: QComboBox, attr_name: str) -> None:
-        """Binds a QComboBox to a string property on AppSettings with real-time sync."""
+        """Binds a QComboBox using its hidden item data property payload to AppSettings with real-time sync."""
         if not hasattr(self.model, attr_name):
             raise AttributeError(f"AppSettings has no attribute '{attr_name}'")
 
         self._bindings.append((widget, attr_name, "combobox"))
 
-        # Real-time UI -> Model synchronization callback
-        def _on_text_changed(text: str):
-            setattr(self.model, attr_name, text)
+        # Real-time UI -> Model synchronization callback via internal Data payload
+        def _on_data_changed(index: int):
+            # Extract the raw integer enum bound to the row instead of translated text characters
+            enum_value = widget.itemData(index)
+            if enum_value is not None:
+                setattr(self.model, attr_name, enum_value)
 
-        widget.currentTextChanged.connect(_on_text_changed)
+        widget.currentIndexChanged.connect(_on_data_changed)
 
     def apply_to_ui(self) -> None:
-        """Populates all bound UI widgets with current values from AppSettings model."""
+        """Populates all bound UI widgets with language-agnostic data values from AppSettings model."""
         for widget, attr_name, widget_type in self._bindings:
             value = getattr(self.model, attr_name)
             blocker = QSignalBlocker(
@@ -60,20 +63,21 @@ class SettingsBinder(QObject):
                 if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                     widget.setChecked(bool(value))
                 elif widget_type == "combobox" and isinstance(widget, QComboBox):
-                    index = widget.findText(str(value))
+                    # Clean Query: search by internal integer/Enum payload instead of localized string characters
+                    index = widget.findData(value)
                     if index != -1:
                         widget.setCurrentIndex(index)
             finally:
                 del blocker
 
     def update_model_from_ui(self) -> None:
-        """Reads all bound UI widgets and writes values back to AppSettings model."""
+        """Reads all bound UI widgets and writes underlying Enum integers back to AppSettings model."""
         for widget, attr_name, widget_type in self._bindings:
             if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
                 setattr(self.model, attr_name, widget.isChecked())
             elif widget_type == "combobox" and isinstance(widget, QComboBox):
-                setattr(self.model, attr_name, widget.currentText())
-                setattr(self.model, attr_name, widget.currentText())
+                # Clean write pass mapping the language-agnostic property to storage configurations
+                setattr(self.model, attr_name, widget.currentData())
 
 
 class SettingsManager:

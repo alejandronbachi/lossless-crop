@@ -19,10 +19,24 @@ BINARY_LINUX = "jpegtran_linux"
 FORMSUBMIT_TOKEN = "DEV_PLACEHOLDER_TOKEN"
 
 
-# Engine
+# Combo options
 class EngineMode(IntEnum):
     LOSSLESS = 0
     PIXEL_PERFECT = 1
+
+
+class SnapMode(IntEnum):
+    REAL_TIME = 0
+    POST_RELEASE = 1
+    GHOSTING = 2
+
+
+class CropRatioMode(IntEnum):
+    FREEFORM = 0
+    SQUARE_1_1 = 1
+    WIDESCREEN_16_9 = 2
+    STANDARD_4_3 = 3
+    SOURCE_RATIO = 4
 
 
 # --- Settings Attribute Names ---
