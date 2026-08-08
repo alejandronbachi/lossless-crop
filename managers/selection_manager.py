@@ -430,7 +430,7 @@ class SelectionManager:
                 self.selector.geometry(),
                 viewport,
                 lossless=self._lossless_check(),
-                ratio_label=self._current_ratio_data(),
+                ratio_data=self._current_ratio_data(),
             )
             self.crop_model.set_rect(QRect(projected.x(), projected.y(), tw, th))
             self._commit_context = _ScreenCommitContext(
@@ -461,7 +461,7 @@ class SelectionManager:
             self.selector.geometry(),
             viewport,
             lossless=self._lossless_check(),
-            ratio_label=self._current_ratio_data(),
+            ratio_data=self._current_ratio_data(),
         )
 
     # -----------------------------------------------------------------
