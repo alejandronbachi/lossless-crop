@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from config import ui_constants
+from config import app_constants
 
 
 @dataclass
@@ -37,9 +37,9 @@ class AppSettings:
     dark_theme: bool = True
 
     # --- Dropdown ComboBox States ---
-    ratio_preference: str = ui_constants.RATIO_FREEFORM
-    engine_preference: str = ui_constants.ENGINE_LOSSLESS
-    snap_preference: str = ui_constants.SNAP_REAL_TIME
+    ratio_preference: int = app_constants.CropRatioMode.FREEFORM
+    engine_preference: int = app_constants.EngineMode.LOSSLESS
+    snap_preference: int = app_constants.SnapMode.REAL_TIME
     # --- Recent Files History ---
     # 2. This safely creates a unique, empty list for every instance
     recent_items_history: list[str] = field(default_factory=list)
