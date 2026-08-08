@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, get_origin
@@ -8,6 +9,8 @@ from PyQt6.QtWidgets import QAbstractButton, QComboBox, QWidget
 
 from config import app_constants, ui_constants
 from models.app_settings import AppSettings
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsBinder(QObject):
@@ -83,17 +86,34 @@ class SettingsBinder(QObject):
                         widget.setCurrentIndex(index)
                     else:
                         widget.setCurrentIndex(0)
+            except Exception as e:
+                # logger.error provides a clean error with the field name
+                logger.error(
+                    "Failed to apply '%s' to UI due to type mismatch or corrupt model state: %s",
+                    attr_name,
+                    e,
+                )
+                continue
             finally:
                 del blocker
 
     def update_model_from_ui(self) -> None:
         """Reads all bound UI widgets and writes underlying Enum integers back to AppSettings model."""
         for widget, attr_name, widget_type in self._bindings:
-            if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
-                setattr(self.model, attr_name, widget.isChecked())
-            elif widget_type == "combobox" and isinstance(widget, QComboBox):
-                # Clean write pass mapping the language-agnostic property to storage configurations
-                setattr(self.model, attr_name, widget.currentData())
+            try:
+                if widget_type == "checkbox" and isinstance(widget, QAbstractButton):
+                    setattr(self.model, attr_name, widget.isChecked())
+                elif widget_type == "combobox" and isinstance(widget, QComboBox):
+                    # Clean write pass mapping the language-agnostic property to storage configurations
+                    setattr(self.model, attr_name, widget.currentData())
+            except Exception as e:
+                # Logs the error to warn you during development app changes
+                logger.error(
+                    "Failed to write UI state to model field '%s'. Operation skipped to prevent state crash: %s",
+                    attr_name,
+                    e,
+                )
+                continue
 
 
 class SettingsManager:
@@ -102,7 +122,7 @@ class SettingsManager:
     SettingsBinder for UI model binding.
     """
 
-    ALWAYS_PERSISTED_FIELDS = {
+    ALWAYS_PERSISTED_FIELDS = (
         app_constants.SETTING_REMEMBER_SETTINGS,
         app_constants.SETTING_LAST_USED_FOLDER,
         app_constants.SETTING_MAIN_WINDOW_GEOMETRY_BLOB,
@@ -113,7 +133,7 @@ class SettingsManager:
         app_constants.SETTING_SHOW_PREVIEW_HUD,
         app_constants.SETTING_PERSIST_MAIN_WIN,
         app_constants.SETTING_PERSIST_HUD_WIN,
-    }
+    )
 
     def __init__(
         self, organization: str = "LossLessCropTeam", application: str = "LossLessCrop"
