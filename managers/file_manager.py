@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class FileManager:
     def __init__(self, settings_manager: SettingsManager):
         # Dependency Injection keeps components loosely coupled and testable
-        self.settings = settings_manager
+        self.settings_manager = settings_manager
 
     def load_asset(self, filename: str, folder_name: str) -> str:
         """Dynamically loads layout styling text / HTML / QSS content safely."""
@@ -129,7 +129,7 @@ class FileManager:
                     file_path.name,
                 )
         if valid_paths:
-            self.settings.add_to_recent(directory.as_posix())
+            self.settings_manager.add_to_recent(directory.as_posix())
         return valid_paths
 
     def process_path(self, target_str_path: str) -> tuple[str, str | None, list[str]]:
