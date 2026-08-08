@@ -84,7 +84,7 @@ class ImageSession(QObject):
                 ui_constants.NOTIFICATION_FILE_MISSING
             )
 
-        return "Last image of directory"
+        return ui_constants.translate_constant(ui_constants.NOTIFICATION_LAST_IMAGE)
 
     def previous(self) -> str | None:
         if not self.files:

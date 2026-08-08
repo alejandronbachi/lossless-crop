@@ -161,6 +161,9 @@ ENGINE_PIXEL_PERFECT = QT_TRANSLATE_NOOP("UIConstants", "Pixel-Perfect")
 ENGINE_ACTIVATION_LOSSLESS = "LOSSLESS MODE (jpegtran)"
 ENGINE_ACTIVATION_PIXEL_PERFECT = "PIXEL-PERFECT MODE (Pillow)"
 
+
+LABEL_INFO_BAR_DIRECTORY = QT_TRANSLATE_NOOP("UIConstants", "Directory: ")
+
 # --- Email Feedback Dialog Constants ---
 FEEDBACK_BTN_SUBMIT = QT_TRANSLATE_NOOP("UIConstants", "Submit")
 FEEDBACK_BTN_TRANSMITTING = QT_TRANSLATE_NOOP("UIConstants", "Transmitting...")
@@ -214,4 +217,37 @@ FEEDBACK_THANKYOU_MSG = QT_TRANSLATE_NOOP(
 FEEDBACK_FAILURE_TITLE = QT_TRANSLATE_NOOP("UIConstants", "Network Dispatch Failure")
 FEEDBACK_FAILURE_TEMPLATE = QT_TRANSLATE_NOOP(
     "UIConstants", "Transmission failed. Check internet access.\n\nError: {}"
+)
+
+# --- App Menu Bar Constants ---
+MENU_FILE = QT_TRANSLATE_NOOP("UIConstants", "File")
+MENU_RECENT = QT_TRANSLATE_NOOP("UIConstants", "Recent")
+MENU_HELP = QT_TRANSLATE_NOOP("UIConstants", "Help")
+
+ACTION_OPEN_DIRECTORY = QT_TRANSLATE_NOOP("UIConstants", "Open Directory")
+ACTION_OPEN_IMAGE = QT_TRANSLATE_NOOP("UIConstants", "Open Image")
+ACTION_NO_RECENT_ITEMS = QT_TRANSLATE_NOOP("UIConstants", "No Recent Items")
+ACTION_SEE_LOGS = QT_TRANSLATE_NOOP("UIConstants", "See Logs")
+ACTION_EXIT = QT_TRANSLATE_NOOP("UIConstants", "Exit")
+ACTION_CREATE_DESKTOP_SHORTCUT = QT_TRANSLATE_NOOP(
+    "UIConstants", "Create Desktop Shortcut"
+)
+ACTION_USER_MANUAL = QT_TRANSLATE_NOOP("UIConstants", "User Manual")
+ACTION_ABOUT = QT_TRANSLATE_NOOP("UIConstants", "About")
+ACTION_SEND_FEEDBACK = QT_TRANSLATE_NOOP("UIConstants", "Send Feedback")
+
+DIALOG_TITLE_ABOUT = QT_TRANSLATE_NOOP("UIConstants", "About Lossless Crop")
+
+NOTIFICATION_LOG_PERMISSION_DENIED = QT_TRANSLATE_NOOP(
+    "UIConstants", "Permission denied: Cannot access log directory."
+)
+NOTIFICATION_LOG_SYSTEM_ERROR = QT_TRANSLATE_NOOP(
+    "UIConstants", "System error: Unable to prepare logs."
+)
+NOTIFICATION_OS_LAUNCH_FAILED = QT_TRANSLATE_NOOP(
+    "UIConstants", "OS failed to launch file explorer."
+)
+NOTIFICATION_SHORTCUT_CREATED = QT_TRANSLATE_NOOP("UIConstants", "Shortcut Created")
+NOTIFICATION_SHORTCUT_FAILED = QT_TRANSLATE_NOOP(
+    "UIConstants", "Failed to create shortcut"
 )
