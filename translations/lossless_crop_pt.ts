@@ -6,223 +6,223 @@
     <message>
         <location filename="..\config\ui_constants.py" line="63" />
         <source>Ready. Open a folder to start cropping.</source>
-        <translation>Ready. Open a folder to start cropping.</translation>
+        <translation>Pronto. Abra uma pasta.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="66" />
         <source>Lossless Crop</source>
-        <translation>Lossless Crop</translation>
+        <translation>Recorte sem perdas</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="67" />
         <source>Lossy Crop</source>
-        <translation>Lossy Crop</translation>
+        <translation>Recorte com perdas</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="68" />
         <source>Crop Failed</source>
-        <translation>Crop Failed</translation>
+        <translation>Falha no recorte</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="69" />
         <source>No valid images found in target folder.</source>
-        <translation>No valid images found in target folder.</translation>
+        <translation>Nenhuma imagem válida na pasta.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="72" />
         <source>No valid, readable images found in directory.</source>
-        <translation>No valid, readable images found in directory.</translation>
+        <translation>Nenhuma imagem válida ou legível.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="75" />
         <source>No valid, readable images found in dropped payload.</source>
-        <translation>No valid, readable images found in dropped payload.</translation>
+        <translation>Nenhuma imagem válida ou legível solta.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="78" />
         <source>First image of directory</source>
-        <translation type="unfinished" />
+        <translation>Primeira imagem do diretório</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="79" />
         <source>Last image of directory</source>
-        <translation type="unfinished" />
+        <translation>Última imagem do diretório</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="80" />
         <source>File missing; syncing workspace...</source>
-        <translation type="unfinished" />
+        <translation>Arquivo ausente; sincronizando...</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="83" />
         <source>No directory active</source>
-        <translation type="unfinished" />
+        <translation>Nenhum diretório ativo</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="95" />
         <source>Images (*.png *.jpg *.jpeg *.webp *.bmp)</source>
-        <translation>Images (*.png *.jpg *.jpeg *.webp *.bmp)</translation>
+        <translation>Imagens (*.png *.jpg *.jpeg *.webp *.bmp)</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="100" />
         <source>General</source>
-        <translation>General</translation>
+        <translation>Geral</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="101" />
         <source>Show / Display</source>
-        <translation>Show / Display</translation>
+        <translation>Exibição</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="102" />
         <source>Layout Memory</source>
-        <translation>Layout Memory</translation>
+        <translation>Memória de layout</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="104" />
         <source>Save settings</source>
-        <translation>Save settings</translation>
+        <translation>Salvar configurações</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="105" />
         <source>Auto-open last folder</source>
-        <translation>Auto-open last folder</translation>
+        <translation>Abrir última pasta</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="108" />
         <source>Shortcuts Guide</source>
-        <translation>Shortcuts Guide</translation>
+        <translation>Guia de atalhos</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="109" />
         <source>Notifications</source>
-        <translation>Notifications</translation>
+        <translation>Notificações</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="110" />
         <source>Bottom Info Bar</source>
-        <translation>Bottom Info Bar</translation>
+        <translation>Barra inferior</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="111" />
         <source>Directory Name</source>
-        <translation>Directory Name</translation>
+        <translation>Nome do diretório</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="112" />
         <source>Image Filename</source>
-        <translation>Image Filename</translation>
+        <translation>Nome da imagem</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="113" />
         <source>Image Resolution</source>
-        <translation>Image Resolution</translation>
+        <translation>Resolução</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="114" />
         <source>Preview</source>
-        <translation>Preview</translation>
+        <translation>Visualização</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="115" />
         <source>Fit Preview</source>
-        <translation>Fit Preview</translation>
+        <translation>Ajustar visualização</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="116" />
         <source>Main Window</source>
-        <translation>Main Window</translation>
+        <translation>Janela principal</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="117" />
         <source>Preview HUD</source>
-        <translation>Preview HUD</translation>
+        <translation>HUD de visualização</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="118" />
         <source>Keep selection</source>
-        <translation>Keep selection</translation>
+        <translation>Manter seleção</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="119" />
         <source>Overwrite</source>
-        <translation>Overwrite</translation>
+        <translation>Sobrescrever</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="120" />
         <source>Dark Theme</source>
-        <translation>Dark Theme</translation>
+        <translation>Tema escuro</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="122" />
         <source>Open Folder</source>
-        <translation type="unfinished" />
+        <translation>Abrir Pasta</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="228" />
         <location filename="..\config\ui_constants.py" line="123" />
         <source>Open Image</source>
-        <translation type="unfinished" />
+        <translation>Abrir Imagem</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="124" />
         <source>Crop</source>
-        <translation type="unfinished" />
+        <translation>Recortar</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="125" />
-        <source>Crop &amp; Next</source>
-        <translation type="unfinished" />
+        <source>Crop & Next</source>
+        <translation>Recortar e Próximo</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="126" />
         <source>Rotate</source>
-        <translation type="unfinished" />
+        <translation>Girar</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="128" />
         <source>Display Zoom Preview HUD</source>
-        <translation>Display Zoom Preview HUD</translation>
+        <translation>Exibir HUD de zoom</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="129" />
         <source>Choose processing engine for cropping operations.</source>
-        <translation>Choose processing engine for cropping operations.</translation>
+        <translation>Escolher motor de recorte.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="132" />
         <source>Force the cropping rectangle selection box to lock onto specific aspect ratios.</source>
-        <translation>Force the cropping rectangle selection box to lock onto specific aspect ratios.</translation>
+        <translation>Bloquear proporção do retângulo de seleção.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="136" />
         <source>Select layout feedback mode for Left-Click mouse drawing.</source>
-        <translation>Select layout feedback mode for Left-Click mouse drawing.</translation>
+        <translation>Modo de feedback para desenho com o mouse.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="139" />
         <source>Conserve current selection box size and position coordinates across images.</source>
-        <translation>Conserve current selection box size and position coordinates across images.</translation>
+        <translation>Manter tamanho e posição da seleção.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="143" />
         <source>Directly overwrite original source image files instead of nesting copies in a subfolder.</source>
-        <translation>Directly overwrite original source image files instead of nesting copies in a subfolder.</translation>
+        <translation>Sobrescrever diretamente os arquivos originais.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="147" />
         <source>Toggle configuration choices</source>
-        <translation>Toggle configuration choices</translation>
+        <translation>Alternar opções</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="149" />
         <source>Freeform</source>
-        <translation>Freeform</translation>
+        <translation>Livre</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="150" />
         <source>1:1 Square</source>
-        <translation>1:1 Square</translation>
+        <translation>Quadrado 1:1</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="151" />
@@ -237,261 +237,226 @@
     <message>
         <location filename="..\config\ui_constants.py" line="153" />
         <source>Source Ratio</source>
-        <translation>Source Ratio</translation>
+        <translation>Proporção original</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="155" />
         <source>Real-time snap</source>
-        <translation>Real-time snap</translation>
+        <translation>Encaixe em tempo real</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="156" />
         <source>Post-release snap</source>
-        <translation>Post-release snap</translation>
+        <translation>Encaixe ao soltar</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="157" />
         <source>Ghosting</source>
-        <translation>Ghosting</translation>
+        <translation>Fantasma</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="159" />
         <source>Lossless</source>
-        <translation>Lossless</translation>
+        <translation>Sem perdas</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="160" />
         <source>Pixel-Perfect</source>
-        <translation>Pixel-Perfect</translation>
+        <translation>Pixel perfeito</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="165" />
         <source>Directory: </source>
-        <translation type="unfinished" />
+        <translation>Diretório: </translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="168" />
         <source>Submit</source>
-        <translation>Submit</translation>
+        <translation>Enviar</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="169" />
         <source>Transmitting...</source>
-        <translation>Transmitting...</translation>
+        <translation>Transmitindo...</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="180" />
         <source>Success</source>
-        <translation>Success</translation>
+        <translation>Sucesso</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="181" />
         <source>Server responded with status code: </source>
-        <translation>Server responded with status code: </translation>
+        <translation>Servidor respondeu com código: </translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="185" />
         <source>Submit Feedback / Bug Report</source>
-        <translation>Submit Feedback / Bug Report</translation>
+        <translation>Enviar feedback / Relatar erro</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="189" />
         <source>Your Email (Optional, for follow-up details):</source>
-        <translation>Your Email (Optional, for follow-up details):</translation>
+        <translation>Seu e-mail (Opcional):</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="192" />
         <source>developer@example.com</source>
-        <translation>developer@example.com</translation>
+        <translation>desenvolvedor@example.com</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="193" />
         <source>Classification Category:</source>
-        <translation>Classification Category:</translation>
+        <translation>Categoria:</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="195" />
         <source>Bug Report</source>
-        <translation>Bug Report</translation>
+        <translation>Relatório de erro</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="196" />
         <source>Feature Request </source>
-        <translation>Feature Request </translation>
+        <translation>Solicitação de recurso </translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="197" />
         <source>General UI Feedback </source>
-        <translation>General UI Feedback </translation>
+        <translation>Feedback geral da UI </translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="199" />
         <source>Detailed Description:</source>
-        <translation>Detailed Description:</translation>
+        <translation>Descrição detalhada:</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="200" />
         <source>Please specify what steps you took right before encountering the issue...</source>
-        <translation>Please specify what steps you took right before encountering the issue...</translation>
+        <translation>Descreva os passos antes do problema...</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="204" />
         <source>Cancel</source>
-        <translation>Cancel</translation>
+        <translation>Cancelar</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="206" />
         <source>Validation Error</source>
-        <translation>Validation Error</translation>
+        <translation>Erro de validação</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="207" />
         <source>Description field cannot be submitted blank.</source>
-        <translation>Description field cannot be submitted blank.</translation>
+        <translation>A descrição não pode estar em branco.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="211" />
         <source>Thank You</source>
-        <translation>Thank You</translation>
+        <translation>Obrigado</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="212" />
         <source>Your feedback was sent successfully and delivered straight to my inbox!</source>
-        <translation>Your feedback was sent successfully and delivered straight to my inbox!</translation>
+        <translation>Seu feedback foi enviado com sucesso!</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="217" />
         <source>Network Dispatch Failure</source>
-        <translation>Network Dispatch Failure</translation>
+        <translation>Falha no envio de rede</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="218" />
         <source>Transmission failed. Check internet access.
 
 Error: {}</source>
-        <translation>Transmission failed. Check internet access.
+        <translation>Falha na transmissão. Verifique a internet.
 
-Error: {}</translation>
+Erro: {}</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="223" />
         <source>File</source>
-        <translation type="unfinished" />
+        <translation>Arquivo</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="224" />
         <source>Recent</source>
-        <translation type="unfinished" />
+        <translation>Recente</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="225" />
         <source>Help</source>
-        <translation type="unfinished" />
+        <translation>Ajuda</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="227" />
         <source>Open Directory</source>
-        <translation type="unfinished" />
+        <translation>Abrir Diretório</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="229" />
         <source>No Recent Items</source>
-        <translation type="unfinished" />
+        <translation>Sem Itens Recentes</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="230" />
         <source>See Logs</source>
-        <translation type="unfinished" />
+        <translation>Ver Logs</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="231" />
         <source>Exit</source>
-        <translation type="unfinished" />
+        <translation>Sair</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="232" />
         <source>Create Desktop Shortcut</source>
-        <translation type="unfinished" />
+        <translation>Criar Atalho</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="235" />
         <source>User Manual</source>
-        <translation type="unfinished" />
+        <translation>Manual do Usuário</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="236" />
         <source>About</source>
-        <translation type="unfinished" />
+        <translation>About</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="237" />
         <source>Send Feedback</source>
-        <translation type="unfinished" />
+        <translation>Enviar Feedback</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="239" />
         <source>About Lossless Crop</source>
-        <translation type="unfinished" />
+        <translation>Sobre o Lossless Crop</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="241" />
         <source>Permission denied: Cannot access log directory.</source>
-        <translation type="unfinished" />
+        <translation>Permissão negada: acesso aos logs negado.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="244" />
         <source>System error: Unable to prepare logs.</source>
-        <translation type="unfinished" />
+        <translation>Erro do sistema: falha ao preparar logs.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="247" />
         <source>OS failed to launch file explorer.</source>
-        <translation type="unfinished" />
+        <translation>O SO falhou ao abrir o explorador.</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="250" />
         <source>Shortcut Created</source>
-        <translation type="unfinished" />
+        <translation>Atalho Criado</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="251" />
         <source>Failed to create shortcut</source>
-        <translation type="unfinished" />
+        <translation>Falha ao criar atalho</translation>
     </message>
-    <message>
-        <source>LossLess Crop</source>
-        <translation type="vanished">LossLess Crop</translation>
-    </message>
-    <message>
-        <source>No directory loaded</source>
-        <translation type="vanished">No directory loaded</translation>
-    </message>
-    <message>
-        <source>W: </source>
-        <translation type="vanished">W: </translation>
-    </message>
-    <message>
-        <source> px</source>
-        <translation type="vanished"> px</translation>
-    </message>
-    <message>
-        <source>H: </source>
-        <translation type="vanished">H: </translation>
-    </message>
-    <message>
-        <source>LOSSLESS MODE (jpegtran)</source>
-        <translation type="vanished">LOSSLESS MODE (jpegtran)</translation>
-    </message>
-    <message>
-        <source>PIXEL-PERFECT MODE (Pillow)</source>
-        <translation type="vanished">PIXEL-PERFECT MODE (Pillow)</translation>
-    </message>
-    <message>
-        <source>Anonymous User</source>
-        <translation type="vanished">Anonymous User</translation>
-    </message>
-    <message>
-        <source>📥 New {} from lossless-crop</source>
-        <translation type="vanished">📥 New {} from lossless-crop</translation>
-    </message>
-</context></TS>
+</context>
+</TS>

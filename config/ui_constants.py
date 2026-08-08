@@ -25,7 +25,7 @@ def translate_constant(text: str) -> str:
     return result
 
 
-SUPPORTED_LANGUAGES = ["en", "es"]
+SUPPORTED_LANGUAGES = ["en", "es", "fr", "pt"]
 
 # --- Front End Assets Directory Names ---
 FOLDER_ASSETS = "assets"

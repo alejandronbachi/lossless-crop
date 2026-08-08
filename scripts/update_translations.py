@@ -8,6 +8,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Add root_dir to sys.path so Python can find the 'config' package
+root_dir = Path(__file__).resolve().parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
+
+# Import your centralized whitelist from the application config
+from config.ui_constants import SUPPORTED_LANGUAGES
+
 
 def locate_translation_tools():
     """Locates pylupdate6.exe and pyside6-lrelease.exe in the current environment's Scripts folder."""
@@ -30,15 +38,17 @@ def locate_translation_tools():
 
 
 def main():
-    root_dir = Path(__file__).resolve().parent.parent
     translations_dir = root_dir / "translations"
     translations_dir.mkdir(exist_ok=True)
 
-    # Define targeted .ts translation target files
+    # Automatically generate .ts paths for all supported languages, excluding English
     ts_targets = [
-        translations_dir / "lossless_crop_en.ts",
-        translations_dir / "lossless_crop_es.ts",
+        translations_dir / f"lossless_crop_{lang}.ts"
+        for lang in SUPPORTED_LANGUAGES
+        if lang != "en"
     ]
+
+    print(f"Generated target translation sync list: {[t.name for t in ts_targets]}")
 
     # Gather python source files dynamically, ignoring environment directories
     py_files = list(root_dir.glob("**/*.py"))
