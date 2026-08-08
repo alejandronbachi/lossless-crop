@@ -246,13 +246,13 @@ class SelectionManager:
             target_source_rect,
             viewport,
             lossless=use_lossless,
-            ratio_label=ratio_label,
+            ratio_data=ratio_data,
         )
 
     # --- Extracted Helper Methods ---
 
     def _calculate_fluid_geometry(
-        self, current_pos: QPoint, pixmap, viewport, ratio_label: str
+        self, current_pos: QPoint, pixmap, viewport, ratio_data: int
     ) -> QRect:
         """Handles raw coordinate calculating, aspect locking, and boundary clamping."""
         lbl_w, lbl_h = self.canvas.width(), self.canvas.height()
@@ -265,7 +265,7 @@ class SelectionManager:
 
         raw_w, raw_h = x2 - x1, y2 - y1
         aspect = CropGeometryEngine.resolve_aspect_ratio(
-            ratio_label, (viewport.source_width, viewport.source_height)
+            ratio_data, (viewport.source_width, viewport.source_height)
         )
 
         if aspect is not None:
