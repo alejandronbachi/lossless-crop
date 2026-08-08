@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
+from config import ui_constants
 from models.crop_model import CropModel
 from models.image_model import ImageModel
 
@@ -68,7 +69,9 @@ class ImageSession(QObject):
 
     def next(self) -> str | None:
         if not self.files:
-            return "No directory active"
+            return ui_constants.translate_constant(
+                ui_constants.NOTIFICATION_NO_ACTIVE_DIRECTORY
+            )
         if self.current_index < len(self.files) - 1:
             self.current_index += 1
             self.hydrate_current_image()
@@ -77,13 +80,17 @@ class ImageSession(QObject):
         # User is trying to press 'Next' but index cannot advance. Check if file was deleted!
         if not self.files[self.current_index].exists():
             self.image_model.file_deleted.emit()  # Trigger hard folder reload
-            return "File missing; syncing workspace..."
+            return ui_constants.translate_constant(
+                ui_constants.NOTIFICATION_FILE_MISSING
+            )
 
         return "Last image of directory"
 
     def previous(self) -> str | None:
         if not self.files:
-            return "No directory active"
+            return ui_constants.translate_constant(
+                ui_constants.NOTIFICATION_NO_ACTIVE_DIRECTORY
+            )
         if self.current_index > 0:
             self.current_index -= 1
             self.hydrate_current_image()
@@ -93,9 +100,11 @@ class ImageSession(QObject):
         # User is trying to press 'Prev' but index cannot advance. Check if file was deleted!
         if not self.files[self.current_index].exists():
             self.image_model.file_deleted.emit()  # Trigger hard folder reload
-            return "File missing; syncing workspace..."
+            return ui_constants.translate_constant(
+                ui_constants.NOTIFICATION_FILE_MISSING
+            )
 
-        return "First image of directory"
+        return ui_constants.translate_constant(ui_constants.NOTIFICATION_FIRST_IMAGE)
 
     def hydrate_current_image(self) -> bool:
         if self.current_index == -1 or not self.files:

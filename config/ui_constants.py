@@ -51,9 +51,6 @@ else:
     ICON_FILENAME = "icon.png"
 
 
-# --- App Window & Views Titles ---
-WINDOW_TITLE = QT_TRANSLATE_NOOP("UIConstants", "LossLess Crop")
-
 # --- View Control / Object Names ---
 WIDGET_ZOOM_HUD = "zoom_hud"
 WIDGET_SETTINGS_DRAWER = "settings_drawer"
@@ -63,7 +60,6 @@ WIDGET_SPLASH_HUD = "SplashHUD"
 WIDGET_TELEMETRY_HUD = "TelemetryHUD"
 
 # --- Text Messages & Notifications ---
-TEXT_NO_DIRECTORY = QT_TRANSLATE_NOOP("UIConstants", "No directory loaded")
 TEXT_READY_STATUS = QT_TRANSLATE_NOOP(
     "UIConstants", "Ready. Open a folder to start cropping."
 )
@@ -79,12 +75,21 @@ TEXT_NO_VALID_IMAGES_DIR = QT_TRANSLATE_NOOP(
 TEXT_NO_VALID_IMAGES_DROP = QT_TRANSLATE_NOOP(
     "UIConstants", "No valid, readable images found in dropped payload."
 )
+NOTIFICATION_FIRST_IMAGE = QT_TRANSLATE_NOOP("UIConstants", "First image of directory")
+NOTIFICATION_LAST_IMAGE = QT_TRANSLATE_NOOP("UIConstants", "Last image of directory")
+NOTIFICATION_FILE_MISSING = QT_TRANSLATE_NOOP(
+    "UIConstants", "File missing; syncing workspace..."
+)
+NOTIFICATION_NO_ACTIVE_DIRECTORY = QT_TRANSLATE_NOOP(
+    "UIConstants", "No directory active"
+)
+
 
 # --- Spinbox Prefixes & Suffixes ---
-SPIN_WIDTH_PREFIX = QT_TRANSLATE_NOOP("UIConstants", "W: ")
-SPIN_WIDTH_SUFFIX = QT_TRANSLATE_NOOP("UIConstants", " px")
-SPIN_HEIGHT_PREFIX = QT_TRANSLATE_NOOP("UIConstants", "H: ")
-SPIN_HEIGHT_SUFFIX = QT_TRANSLATE_NOOP("UIConstants", " px")
+SPIN_WIDTH_PREFIX = "W: "
+SPIN_WIDTH_SUFFIX = " px"
+SPIN_HEIGHT_PREFIX = "H: "
+SPIN_HEIGHT_SUFFIX = " px"
 
 # --- File Filters ---
 IMAGE_FILE_FILTER = QT_TRANSLATE_NOOP(
@@ -122,7 +127,7 @@ TOOLTIP_ROTATE = QT_TRANSLATE_NOOP("UIConstants", "Rotate")
 
 TOOLTIP_PREVIEW = QT_TRANSLATE_NOOP("UIConstants", "Display Zoom Preview HUD")
 TOOLTIP_ENGINE = QT_TRANSLATE_NOOP(
-    "UIConstants", "Choose processing engine mode for saving operations."
+    "UIConstants", "Choose processing engine for cropping operations."
 )
 TOOLTIP_RATIO = QT_TRANSLATE_NOOP(
     "UIConstants",
@@ -146,34 +151,22 @@ RATIO_SQUARE = QT_TRANSLATE_NOOP("UIConstants", "1:1 Square")
 RATIO_WIDESCREEN = QT_TRANSLATE_NOOP("UIConstants", "16:9 Widescreen")
 RATIO_STANDARD = QT_TRANSLATE_NOOP("UIConstants", "4:3 Standard")
 RATIO_SOURCE = QT_TRANSLATE_NOOP("UIConstants", "Source Ratio")
-RATIO_ITEMS = [
-    RATIO_FREEFORM,
-    RATIO_SQUARE,
-    RATIO_WIDESCREEN,
-    RATIO_STANDARD,
-    RATIO_SOURCE,
-]
+
 SNAP_REAL_TIME = QT_TRANSLATE_NOOP("UIConstants", "Real-time snap")
 SNAP_POST_RELEASE = QT_TRANSLATE_NOOP("UIConstants", "Post-release snap")
 SNAP_GHOSTING = QT_TRANSLATE_NOOP("UIConstants", "Ghosting")
-SNAP_ITEMS = [SNAP_REAL_TIME, SNAP_POST_RELEASE, SNAP_GHOSTING]
+
 ENGINE_LOSSLESS = QT_TRANSLATE_NOOP("UIConstants", "Lossless")
 ENGINE_PIXEL_PERFECT = QT_TRANSLATE_NOOP("UIConstants", "Pixel-Perfect")
-ENGINE_ACTIVATION_LOSSLESS = QT_TRANSLATE_NOOP(
-    "UIConstants", "LOSSLESS MODE (jpegtran)"
-)
-ENGINE_ACTIVATION_PIXEL_PERFECT = QT_TRANSLATE_NOOP(
-    "UIConstants", "PIXEL-PERFECT MODE (Pillow)"
-)
+ENGINE_ACTIVATION_LOSSLESS = "LOSSLESS MODE (jpegtran)"
+ENGINE_ACTIVATION_PIXEL_PERFECT = "PIXEL-PERFECT MODE (Pillow)"
 
 # --- Email Feedback Dialog Constants ---
 FEEDBACK_BTN_SUBMIT = QT_TRANSLATE_NOOP("UIConstants", "Submit")
 FEEDBACK_BTN_TRANSMITTING = QT_TRANSLATE_NOOP("UIConstants", "Transmitting...")
-FEEDBACK_ANONYMOUS_USER = QT_TRANSLATE_NOOP("UIConstants", "Anonymous User")
+FEEDBACK_ANONYMOUS_USER = "Anonymous User"
 FEEDBACK_CAPTCHA_FALSE = "false"
-FEEDBACK_SUBJECT_TEMPLATE = QT_TRANSLATE_NOOP(
-    "UIConstants", "📥 New {} from lossless-crop"
-)
+FEEDBACK_SUBJECT_TEMPLATE = "📥 New {} from lossless-crop"
 FEEDBACK_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 FEEDBACK_ACCEPT = "application/json"
 FEEDBACK_CONTENT_TYPE = "application/json"

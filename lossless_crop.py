@@ -440,7 +440,9 @@ class LossLessCropApp(QMainWindow):
         if not success:
             if error_message:
                 logger.error("Critical Error: Crop failed: %s", error_message)
-            self.status_manager.show_center_notification(ui_constants.TEXT_CROP_FAILED)
+            self.status_manager.show_center_notification(
+                ui_constants.translate_constant(ui_constants.TEXT_CROP_FAILED)
+            )
             return
 
         if self.chk_overwrite.isChecked():
@@ -459,16 +461,16 @@ class LossLessCropApp(QMainWindow):
 
         if use_lossless:
             self.status_manager.show_center_notification(
-                ui_constants.TEXT_LOSSLESS_CROP
+                ui_constants.translate_constant(ui_constants.TEXT_LOSSLESS_CROP)
             )
         else:
             if file_ext in app_constants.ALWAYS_LOSSLESS_IMAGE_EXTENSIONS:
                 self.status_manager.show_center_notification(
-                    ui_constants.TEXT_LOSSLESS_CROP
+                    ui_constants.translate_constant(ui_constants.TEXT_LOSSLESS_CROP)
                 )
             else:
                 self.status_manager.show_center_notification(
-                    ui_constants.TEXT_LOSSY_CROP
+                    ui_constants.translate_constant(ui_constants.TEXT_LOSSY_CROP)
                 )
 
         self.status_manager.invalidate_ui_state()

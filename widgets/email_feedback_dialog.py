@@ -29,9 +29,7 @@ class FormSubmitWorker(QObject):
         # FormSubmit's AJAX endpoint syntax layout
         self.target_email = target_email
         self.user_email = (
-            user_email
-            if user_email
-            else ui_constants.translate_constant(ui_constants.FEEDBACK_ANONYMOUS_USER)
+            user_email if user_email else ui_constants.FEEDBACK_ANONYMOUS_USER
         )
         self.category = category
         self.message = message
@@ -42,9 +40,7 @@ class FormSubmitWorker(QObject):
             "Category": self.category,
             "Message": self.message,
             "_captcha": ui_constants.FEEDBACK_CAPTCHA_FALSE,
-            "_subject": ui_constants.translate_constant(
-                ui_constants.FEEDBACK_SUBJECT_TEMPLATE
-            ).format(self.category),
+            "_subject": ui_constants.FEEDBACK_SUBJECT_TEMPLATE.format(self.category),
         }
 
         headers = {

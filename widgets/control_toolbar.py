@@ -102,7 +102,9 @@ class ControlToolbar(QFrame):
         self.main_app.combo_engine = QComboBox()
         self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.combo_engine.setToolTip(
-            ui_constants.translate_constant(ui_constants.TOOLTIP_ENGINE)
+            ui_constants.translate_constant(
+                ui_constants.translate_constant(ui_constants.TOOLTIP_ENGINE)
+            )
         )
         self.main_app.combo_engine.setFont(native_font)
         self.main_app.combo_engine.view().setFont(native_font)
@@ -206,12 +208,8 @@ class ControlToolbar(QFrame):
         self.main_app.spin_width = QSpinBox()
         self.main_app.spin_width.setRange(10, 10000)
         self.main_app.spin_width.setValue(0)
-        self.main_app.spin_width.setPrefix(
-            ui_constants.translate_constant(ui_constants.SPIN_WIDTH_PREFIX)
-        )
-        self.main_app.spin_width.setSuffix(
-            ui_constants.translate_constant(ui_constants.SPIN_WIDTH_SUFFIX)
-        )
+        self.main_app.spin_width.setPrefix(ui_constants.SPIN_WIDTH_PREFIX)
+        self.main_app.spin_width.setSuffix(ui_constants.SPIN_WIDTH_SUFFIX)
         self.main_app.spin_width.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_width.setFixedWidth(22)
         self.main_app.spin_width.editingFinished.connect(
@@ -223,12 +221,8 @@ class ControlToolbar(QFrame):
         self.main_app.spin_height = QSpinBox()
         self.main_app.spin_height.setRange(10, 10000)
         self.main_app.spin_height.setValue(0)
-        self.main_app.spin_height.setPrefix(
-            ui_constants.translate_constant(ui_constants.SPIN_HEIGHT_PREFIX)
-        )
-        self.main_app.spin_height.setSuffix(
-            ui_constants.translate_constant(ui_constants.SPIN_HEIGHT_SUFFIX)
-        )
+        self.main_app.spin_height.setPrefix(ui_constants.SPIN_HEIGHT_PREFIX)
+        self.main_app.spin_height.setSuffix(ui_constants.SPIN_HEIGHT_SUFFIX)
         self.main_app.spin_height.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.spin_height.setFixedWidth(22)
         self.main_app.spin_height.editingFinished.connect(
