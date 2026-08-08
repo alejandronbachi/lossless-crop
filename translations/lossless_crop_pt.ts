@@ -171,7 +171,7 @@
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="125" />
-        <source>Crop & Next</source>
+        <source>Crop &amp; Next</source>
         <translation>Recortar e Próximo</translation>
     </message>
     <message>
@@ -458,5 +458,4 @@ Erro: {}</translation>
         <source>Failed to create shortcut</source>
         <translation>Falha ao criar atalho</translation>
     </message>
-</context>
-</TS>
+</context></TS>

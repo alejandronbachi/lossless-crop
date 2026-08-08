@@ -171,8 +171,8 @@
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="125" />
-        <source>Crop & Next</source>
-        <translation>Rogner & Suivant</translation>
+        <source>Crop &amp; Next</source>
+        <translation>Rogner &amp; Suivant</translation>
     </message>
     <message>
         <location filename="..\config\ui_constants.py" line="126" />
@@ -458,5 +458,4 @@ Erreur : {}</translation>
         <source>Failed to create shortcut</source>
         <translation>Échec de création du raccourci</translation>
     </message>
-</context>
-</TS>
+</context></TS>
