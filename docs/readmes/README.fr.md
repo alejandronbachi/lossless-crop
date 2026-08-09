@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
+  <img src="../../assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
 </p>
 <p align="center">
 <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" alt="Python">
@@ -33,7 +33,7 @@ Utile pour recadrer rapidement plusieurs images dans un dossier les unes après 
 
 ## Démonstration
 <p align="center">
-  <img src="assets/screenshots/demo.webp" width="850" alt="Démonstration">
+  <img src="../../assets/screenshots/demo.webp" width="850" alt="Démonstration">
 </p>
 
 ## Formats pris en charge
@@ -58,7 +58,7 @@ Téléchargez le binaire approprié depuis la [Page des Releases](https://github
 3. Appuyez sur `space` pour recadrer et passer à l'image suivante
 
 ## Manuel de l'utilisateur
-Veuillez lire le [Manuel de l'utilisateur](/docs/user_manual.md) pour plus d'instructions, en particulier si vous avez besoin de savoir comment fonctionne le recadrage sans perte, sinon le magnétisme (snapping) de la zone de sélection pourrait sembler inattendu.
+Veuillez lire le [Manuel de l'utilisateur](/docs/user_manual_fr.md) pour plus d'instructions, en particulier si vous avez besoin de savoir comment fonctionne le recadrage sans perte, sinon le magnétisme (snapping) de la zone de sélection pourrait sembler inattendu.
 
 ## Raccourcis clavier globaux et contrôles de la souris
 
@@ -79,8 +79,8 @@ Veuillez lire le [Manuel de l'utilisateur](/docs/user_manual.md) pour plus d'ins
 ## Vitrine : thème clair, commandes, HUD de zoom, options et un capybara
   <br>
   <p align="center">
-    <img src="assets/screenshots/showcase_1.webp" alt="Premier écran" width="70%">
-    <img src="assets/screenshots/showcase_2.webp" alt="Deuxième écran" width="20%">
+    <img src="../../assets/screenshots/showcase_1.webp" alt="Premier écran" width="70%">
+    <img src="../../assets/screenshots/showcase_2.webp" alt="Deuxième écran" width="20%">
   </p>
 
 
@@ -102,7 +102,7 @@ Selon le temps disponible, l'utilisation de l'application et les demandes des ut
 - Opérations par lots
 
 ## Licence
-Ce projet est sous licence GNU GPL 3 - voir le fichier [`LICENSE`](LICENSE) pour plus de détails.
+Ce projet est sous licence GNU GPL 3 - voir le fichier [`LICENSE`](../../LICENSE) pour plus de détails.
 <a href="https://github.com/alejandronbachi/lossless-crop/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/alejandronbachi/lossless-crop?color=green" alt="Licence"></a>
 
 
@@ -114,4 +114,4 @@ Si vous trouvez ce projet utile, vous pouvez soutenir son développement via Bin
 
 *Scannez le code QR ci-dessous à l'aide de votre application mobile Binance pour faire un don instantané avec 0 % de frais de réseau (prend en charge USDT, BTC, ETH et BNB).*
 
-<img src="assets/screenshots/binance_qr.jpg" width="220" alt="Code QR Binance Pay">
+<img src="../../assets/screenshots/binance_qr.jpg" width="220" alt="Code QR Binance Pay">

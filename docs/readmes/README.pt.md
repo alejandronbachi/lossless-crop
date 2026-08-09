@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
+  <img src="../../assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
 </p>
 <p align="center">
 <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" alt="Python">
@@ -33,7 +33,7 @@
 
 ## Demonstração
 <p align="center">
-  <img src="assets/screenshots/demo.webp" width="850" alt="Demonstração">
+  <img src="../../assets/screenshots/demo.webp" width="850" alt="Demonstração">
 </p>
 
 ## Formatos Suportados
@@ -58,7 +58,7 @@ Baixe o binário apropriado na [Página de Lançamentos (Releases)](https://gith
 3. Pressione `space` para cortar e avançar para a próxima imagem
 
 ## Manual do Usuário
-Por favor, leia o [Manual do Usuário](/docs/user_manual.md) para mais instruções, especialmente se precisar saber como o corte sem perdas funciona, caso contrário, o ajuste (snapping) da área de seleção pode ser um comportamento inesperado.
+Por favor, leia o [Manual do Usuário](/docs/user_manual_pt.md) para mais instruções, especialmente se precisar saber como o corte sem perdas funciona, caso contrário, o ajuste (snapping) da área de seleção pode ser um comportamento inesperado.
 
 ## Atalhos Globais de Teclado e Controles do Mouse
 
@@ -76,11 +76,11 @@ Por favor, leia o [Manual do Usuário](/docs/user_manual.md) para mais instruç�
 | **Sair do App** | <kbd>Esc</kbd> | | |
 
 
-## Vitrine: tema claro, comandos, HUD de zoom, opções e uma capivara
+## Vitrine: tema claro, comandos, HUD de zoom, options e uma capivara
   <br>
   <p align="center">
-    <img src="assets/screenshots/showcase_1.webp" alt="Primeira Tela" width="70%">
-    <img src="assets/screenshots/showcase_2.webp" alt="Segunda Tela" width="20%">
+    <img src="../../assets/screenshots/showcase_1.webp" alt="Primeira Tela" width="70%">
+    <img src="../../assets/screenshots/showcase_2.webp" alt="Segunda Tela" width="20%">
   </p>
 
 
@@ -102,7 +102,7 @@ Dependendo do tempo disponível, uso do aplicativo e solicitações dos usuário
 - Operações em lote
 
 ## Licença
-Este projeto está licenciado sob a Licença GNU GPL 3 - consulte o arquivo [`LICENSE`](LICENSE) para obter detalhes.
+Este projeto está licenciado sob a Licença GNU GPL 3 - consulte o arquivo [`LICENSE`](../../LICENSE) para obter detalhes.
 <a href="https://github.com/alejandronbachi/lossless-crop/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/alejandronbachi/lossless-crop?color=green" alt="Licença"></a>
 
 
@@ -114,4 +114,4 @@ Se você achar este projeto útil, pode apoiar o desenvolvimento dele via Binanc
 
 *Escaneie o código QR abaixo usando seu aplicativo móvel da Binance para doar instantaneamente com 0% de taxas de gás de rede (Suporta USDT, BTC, ETH e BNB).*
 
-<img src="assets/screenshots/binance_qr.jpg" width="220" alt="QR Code Binance Pay">
+<img src="../../assets/screenshots/binance_qr.jpg" width="220" alt="QR Code Binance Pay">
