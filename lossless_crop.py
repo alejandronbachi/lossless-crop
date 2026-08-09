@@ -1,8 +1,12 @@
 import ctypes
 import logging
+import os
 import sys
 from pathlib import Path
 
+from PyQt6.QtWidgets import QMessageBox
+
+from config import ui_constants
 from config.logging_setup import initialize_logging
 from widgets.application_menu_bar import ApplicationMenuBar
 
@@ -29,7 +33,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from config import app_constants, ui_constants
+from config import app_constants
 from managers import theme_manager
 from managers.canvas_presenter import CanvasPresenter
 from managers.crop_execution_manager import CropExecutionController
@@ -60,11 +64,11 @@ logger = logging.getLogger(__name__)
 
 
 class LossLessCropApp(QMainWindow):
-    def __init__(self):
+    def __init__(self, settings_manager: SettingsManager):
         super().__init__()
         self.setWindowTitle(f"Lossless Crop  - {app_constants.APP_VERSION}")
         self.resize(900, 700)
-        self.settings_manager = SettingsManager()
+        self.settings_manager = settings_manager
         self.settings = AppSettings()
         self.file_manager = FileManager(self.settings_manager)
         theme_manager.init_theme(
@@ -899,6 +903,149 @@ class LossLessCropApp(QMainWindow):
     def on_engine_changed(self):
         self.snap_selector_widget()
 
+    def prompt_language_restart(self, target_lang: str) -> None:
+        """Displays a localized confirmation dialog prompting the user for a restart sequence."""
+
+        # 1. Initialize the custom confirmation message box container
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Question)
+        msg_box.setWindowTitle(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TITLE)
+        )
+        msg_box.setText(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TEXT)
+        )
+
+        # 2. Attach check actions using custom translated button text strings
+        restart_btn = msg_box.addButton(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_OK),
+            QMessageBox.ButtonRole.YesRole,
+        )
+        cancel_btn = msg_box.addButton(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_CANCEL),
+            QMessageBox.ButtonRole.NoRole,
+        )
+
+        msg_box.setDefaultButton(restart_btn)
+        msg_box.exec()
+
+        # 3. Intercept user response selection
+        if msg_box.clickedButton() == cancel_btn:
+            # Re-sync menu checkbox layout visually by rebuilding menu selections
+            # if they canceled out, ensuring the checkmark snaps back to the active state
+            if hasattr(self, "menuBar") and hasattr(self.menuBar(), "init_menus"):
+                # Clear and repaint checkbox states if necessary
+                pass
+            return
+
+        # 4. User accepted: Update persistent settings memory cache directly
+        self.settings_manager.current_settings.language = target_lang
+
+        # 5. Execute your custom state writing pass to flush settings to INI/Registry disk channels
+        self.save_application_state()
+
+        # 6. Hand off thread sequence execution to the custom language injection CLI argument restart engine
+        cleaned_args = []
+        skip_next = False
+        for arg in sys.argv:
+            if skip_next:
+                skip_next = False
+                continue
+            if arg == "--lang":
+                skip_next = True
+                continue
+            cleaned_args.append(arg)
+
+        new_argv = cleaned_args + ["--lang", target_lang]
+        os.execv(sys.executable, [sys.executable] + new_argv)
+
+
+def initialize_application_locale(app: QApplication, settings_manager) -> None:
+    """Central source of truth to resolve and install interface translations.
+
+    Enforces strict priority fallback sequence:
+    1. CLI Argument (--lang)
+    2. Stored Persistent Configuration Setting
+    3. System Default Operating System Locale
+    4. Fallback default layout strings (English)
+    """
+    resolved_lang = "en"  # Ultimate safety default
+    is_resolved = False  # Strict Boolean flag tracking checkpoint resolutions
+
+    # --- 1. PRIORITY 1: Check Command-Line Arguments ---
+    if "--lang" in sys.argv:
+        try:
+            lang_idx = sys.argv.index("--lang")
+            cli_lang = sys.argv[lang_idx + 1]
+            if cli_lang in ui_constants.SUPPORTED_LANGUAGES:
+                resolved_lang = cli_lang
+                is_resolved = True
+                logger.info(
+                    "Locale Resolution: Triggered CLI priority override -> '%s'",
+                    resolved_lang,
+                )
+        except (ValueError, IndexError):
+            pass
+
+    # --- 2. PRIORITY 2: Check Stored Setting ---
+    if not is_resolved:
+        temp_settings = settings_manager.load()
+        stored_lang = getattr(temp_settings, "language", "system")
+
+        # Ensure it's a known language code and NOT the "system" default placeholder string
+        if stored_lang in ui_constants.SUPPORTED_LANGUAGES and stored_lang != "system":
+            resolved_lang = stored_lang
+            is_resolved = True
+            logger.info(
+                "Locale Resolution: Loaded stored user setting -> '%s'", resolved_lang
+            )
+
+    # --- 3. PRIORITY 3: Check System Default Operating System Locale ---
+    if not is_resolved:
+        system_locale = QLocale.system().name()  # e.g., 'es_MX', 'en_US', 'fr_FR'
+        detected_base = system_locale.split("_")[0]  # Safely extracts 'es', 'en', 'fr'
+
+        # --- 4. PRIORITY 4: Check if system locale is supported, else use English ---
+        if detected_base in ui_constants.SUPPORTED_LANGUAGES:
+            resolved_lang = detected_base
+            logger.info(
+                "Locale Resolution: Auto-detected system OS locale -> '%s'",
+                resolved_lang,
+            )
+        else:
+            resolved_lang = "en"
+            logger.info(
+                "Locale Resolution: System locale '%s' not supported. Defaulting to English.",
+                detected_base,
+            )
+        is_resolved = True
+
+    # --- EXPOSE RESOLVED VALUE AND MOUNT TRANSLATOR ---
+    app.base_lang = resolved_lang  # Shared property exposed for template loaders
+
+    # Only load binary packages if the final resolved target is a foreign language
+    if resolved_lang != "en":
+        app.translator = QTranslator()
+        translations_dir = app_constants.APP_ROOT_DIR / "translations"
+        qm_path = translations_dir / f"lossless_crop_{resolved_lang}.qm"
+
+        if qm_path.exists():
+            if app.translator.load(str(qm_path)):
+                app.installTranslator(app.translator)
+                logger.info(
+                    "Successfully mounted interface translation package: %s",
+                    qm_path.name,
+                )
+            else:
+                logger.error(
+                    "Warning: Failed to load binary dictionary structure for %s",
+                    qm_path.name,
+                )
+    else:
+        logger.info(
+            "Using app default native language string context (English). Bypassing translator initialization."
+        )
+
 
 if __name__ == "__main__":
     myappid = "losslesscropteam.losslesscrop.editor.1.0"
@@ -912,49 +1059,11 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
-    # --- Production-Ready Internationalization Setup ---
-    translations_dir = app_constants.APP_ROOT_DIR / "translations"
+    settings_manager = SettingsManager()
+    # Execute the 4-step initialization sequence seamlessly
+    initialize_application_locale(app, settings_manager)
 
-    # 1. Grab system locale text code (e.g., 'en_US' or 'es_ES')
-    locale_name = QLocale.system().name()
-    # Safely extracts the pure string code: 'en' or 'es'
-    base_lang = locale_name.split("_")[0]
-
-    # 2. Match against your whitelist. If supported, store it; otherwise default to English
-    if base_lang in ui_constants.SUPPORTED_LANGUAGES:
-        app.base_lang = base_lang
-    else:
-        app.base_lang = "en"
-
-    # 2. ONLY initialize translator machinery if the system language is NOT English
-    if app.base_lang != "en" and translations_dir.exists():
-        # Check full absolute string file first (e.g. lossless_crop_es_ES.qm)
-        qm_path = translations_dir / f"lossless_crop_{locale_name}.qm"
-
-        # Fallback check to generic base language (e.g. lossless_crop_es.qm)
-        if not qm_path.exists():
-            qm_path = translations_dir / f"lossless_crop_{app.base_lang}.qm"
-
-        if qm_path.exists():
-            # Assign property directly onto app context to survive garbage collection
-            app.translator = QTranslator()
-
-            # Load into system memory array structure first
-            if app.translator.load(str(qm_path)):
-                # Mount translation engine onto runtime core loop second
-                app.installTranslator(app.translator)
-                logger.debug("Loaded interface localized module: %s", qm_path.name)
-            else:
-                logger.warning(
-                    "Warning: Failed to map memory dictionary structure for %s",
-                    qm_path.name,
-                )
-    else:
-        logger.info(
-            "Using app default language context (%s. Bypassing translator initialization.",
-            app.base_lang,
-        )
-
-    window = LossLessCropApp()
+    window = LossLessCropApp(settings_manager)
+    app.main_window = window
     window.show()
     sys.exit(app.exec())

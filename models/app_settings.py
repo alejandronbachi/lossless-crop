@@ -43,3 +43,4 @@ class AppSettings:
     # --- Recent Files History ---
     # 2. This safely creates a unique, empty list for every instance
     recent_items_history: list[str] = field(default_factory=list)
+    language: str = "system"  # Options: "system", "en", "es", "fr", "pt"

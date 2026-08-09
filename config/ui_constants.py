@@ -27,6 +27,14 @@ def translate_constant(text: str) -> str:
 
 SUPPORTED_LANGUAGES = ["en", "es", "fr", "pt"]
 
+LANGUAGE_DISPLAY_NAMES = {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "pt": "Português",
+}
+
+MENU_LANGUAGE_TITLE = QT_TRANSLATE_NOOP("UIConstants", "&Language")
 # --- Front End Assets Directory Names ---
 FOLDER_ASSETS = "assets"
 FOLDER_STYLES = "styles"
@@ -251,3 +259,11 @@ NOTIFICATION_SHORTCUT_CREATED = QT_TRANSLATE_NOOP("UIConstants", "Shortcut Creat
 NOTIFICATION_SHORTCUT_FAILED = QT_TRANSLATE_NOOP(
     "UIConstants", "Failed to create shortcut"
 )
+# --- Language Restart Prompt Strings ---
+DIALOG_LANG_RESTART_TITLE = QT_TRANSLATE_NOOP("UIConstants", "Change Language")
+DIALOG_LANG_RESTART_TEXT = QT_TRANSLATE_NOOP(
+    "UIConstants",
+    "The application needs to restart to apply the new language layout.\n\nDo you want to restart now?",
+)
+DIALOG_LANG_RESTART_OK = QT_TRANSLATE_NOOP("UIConstants", "Restart Now")
+DIALOG_LANG_RESTART_CANCEL = QT_TRANSLATE_NOOP("UIConstants", "Cancel")
