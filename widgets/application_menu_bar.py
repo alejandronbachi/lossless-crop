@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QProcess, QStandardPaths, Qt, QUrl
+from PyQt6.QtCore import QStandardPaths, Qt, QUrl
 from PyQt6.QtGui import QAction, QActionGroup, QDesktopServices
 from PyQt6.QtWidgets import QApplication, QMenuBar, QMessageBox
 
@@ -374,12 +374,10 @@ class ApplicationMenuBar(QMenuBar):
         self.settings_mgr.current_settings.language = target_lang
         self.main_win.save_application_state()
 
-        # 6. Hand off thread sequence execution to QProcess for a clean reboot
+        # 6. Build the arguments list safely
         cleaned_args = []
         skip_next = False
-        for arg in sys.argv[
-            1:
-        ]:  # Skip sys.argv[0] as QProcess handles the executable target
+        for arg in sys.argv[1:]:
             if skip_next:
                 skip_next = False
                 continue
@@ -388,27 +386,39 @@ class ApplicationMenuBar(QMenuBar):
                 continue
             cleaned_args.append(arg)
 
-        # 7. Safe Environment Check for QProcess execution targets (Cross-Platform)
+        # 7. Safe Environment Check and Environment Variable Cleaning
+        import os
+        import subprocess
+
+        # Clone the current environment variables
+        clean_env = os.environ.copy()
+
+        # IMPORTANT: Remove PyInstaller tracking keys so the new process
+        # knows it must unpack a fresh internal filesystem tree (_MEIPASS)
+        for key in ["_MEIPASS", "REQ_CA_BUNDLE", "REQUESTS_CA_BUNDLE"]:
+            clean_env.pop(key, None)
 
         if getattr(sys, "frozen", False):
-            # Checking if wrapped inside a Linux AppImage container
             if "APPIMAGE" in os.environ:
-                executable = os.environ[
-                    "APPIMAGE"
-                ]  # Resolves to: /path/to/LosslessCrop.AppImage
+                executable = os.environ["APPIMAGE"]
                 new_argv = cleaned_args + ["--lang", target_lang]
             else:
-                # Standard compiled Windows (.exe) or Linux binary
                 executable = sys.executable
                 new_argv = cleaned_args + ["--lang", target_lang]
         else:
-            # Target is the local Python interpreter (VS Code / Terminal development testing)
             executable = sys.executable
             main_script = sys.argv[0]
             new_argv = [main_script] + cleaned_args + ["--lang", target_lang]
 
-        # 8. Fire off the detached restart sequence
-        QProcess.startDetached(executable, new_argv)
+        # 8. Fire off the clean detached process using Python's subprocess engine
+        # This completely breaks the parent-child relationship on both Windows and Linux
+        full_command = [executable] + new_argv
 
-        # 9. Cleanly exit the current window instance
+        if os.name == "nt":  # Windows specific clean spawn flags
+            # DETACHED_PROCESS (0x00000008) creates a completely separate process group
+            subprocess.Popen(full_command, env=clean_env, creationflags=0x00000008)
+        else:  # Linux / macOS clean spawn flags
+            subprocess.Popen(full_command, env=clean_env, start_new_session=True)
+
+        # 9. Cleanly exit the current window instance immediately
         QApplication.instance().quit()
