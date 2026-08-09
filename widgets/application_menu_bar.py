@@ -310,7 +310,7 @@ class ApplicationMenuBar(QMenuBar):
                 return False  # Let the UI know it failed (e.g. permissions issue)
 
     def handle_language_change(self) -> None:
-        """Displays a confirmation prompt, updates settings, and restarts the app if accepted."""
+        """Displays a confirmation prompt, updates settings, and exits the app for manual restart."""
         action = self.sender()
         if not isinstance(action, QAction):
             return
@@ -330,7 +330,6 @@ class ApplicationMenuBar(QMenuBar):
         )
 
         # 1. Initialize the custom confirmation message box container
-
         msg_box = QMessageBox(
             self.main_win
         )  # Parent it to the main window for proper overlay centering
@@ -364,76 +363,12 @@ class ApplicationMenuBar(QMenuBar):
 
             for act in self.findChildren(QAction):
                 if act.data() == current_lang:
-                    # By directly calling setChecked(True) without a signal blocker,
-                    # the QActionGroup intercepts the change and clears the incorrect checkmark natively.
                     act.setChecked(True)
                     break
             return
 
         # 4. User accepted: Update persistent settings memory cache directly
         self.settings_mgr.current_settings.language = target_lang
-        self.main_win.save_application_state()
 
-        # 6. Build the arguments list safely
-        cleaned_args = []
-        skip_next = False
-        for arg in sys.argv[1:]:
-            if skip_next:
-                skip_next = False
-                continue
-            if arg == "--lang":
-                skip_next = True
-                continue
-            cleaned_args.append(arg)
-
-        # 7. Safe Environment Check and Environment Variable Cleaning
-        import os
-        import subprocess
-
-        # Clone the current environment variables safely
-        clean_env = os.environ.copy()
-
-        if getattr(sys, "frozen", False):
-            # PyInstaller environment recovery
-            orig_vars = getattr(sys, "__pl_orig_vars", None)
-            if orig_vars:
-                for key in orig_vars:
-                    clean_env[key] = os.environ.get(
-                        f"PYI_{key}_OLD", clean_env.get(key)
-                    )
-
-            pyi_keys = [
-                "_MEIPASS",
-                "REQ_CA_BUNDLE",
-                "REQUESTS_CA_BUNDLE",
-                "PYI_BUNDLED_ARGS",
-                "PATH" if os.name == "nt" else "LD_LIBRARY_PATH",
-            ]
-            for key in pyi_keys:
-                clean_env.pop(key, None)
-
-            if "APPIMAGE" in os.environ:
-                executable = os.environ["APPIMAGE"]
-                new_argv = cleaned_args + ["--lang", target_lang]
-            else:
-                executable = sys.executable
-                new_argv = cleaned_args + ["--lang", target_lang]
-        else:
-            # Local IDE Environment (VS Code / Terminal development testing)
-            executable = sys.executable
-            main_script = sys.argv[
-                0
-            ]  # <-- FIX: Extract only the script path string, not the list!
-            new_argv = [main_script] + cleaned_args + ["--lang", target_lang]
-
-        # 8. Fire off the clean detached process using Python's subprocess engine
-        full_command = [executable] + new_argv
-
-        if os.name == "nt":  # Windows
-            # DETACHED_PROCESS (0x00000008) + NEW_PROCESS_GROUP (0x00000200)
-            subprocess.Popen(full_command, env=clean_env, creationflags=0x00000208)
-        else:  # Linux / macOS
-            subprocess.Popen(full_command, env=clean_env, start_new_session=True)
-
-        # 9. Cleanly exit the current window instance immediately
+        # 5. Gracefully shut down the current frozen instance and clean up its temporary workspace
         QApplication.instance().quit()

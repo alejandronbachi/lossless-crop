@@ -266,7 +266,7 @@ NOTIFICATION_SHORTCUT_FAILED = QT_TRANSLATE_NOOP(
 DIALOG_LANG_RESTART_TITLE = QT_TRANSLATE_NOOP("UIConstants", "Change Language")
 DIALOG_LANG_RESTART_TEXT = QT_TRANSLATE_NOOP(
     "UIConstants",
-    "The application needs to restart to apply the new language layout.\n\nDo you want to restart now?",
+    "Restart is needed to apply the new language.\n\nIf you continue the app will close and require a manual restart.\n\n Do you want to proceed?",
 )
-DIALOG_LANG_RESTART_OK = QT_TRANSLATE_NOOP("UIConstants", "Restart Now")
+DIALOG_LANG_RESTART_OK = QT_TRANSLATE_NOOP("UIConstants", "Quit Now")
 DIALOG_LANG_RESTART_CANCEL = QT_TRANSLATE_NOOP("UIConstants", "Cancel")
