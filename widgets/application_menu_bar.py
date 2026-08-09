@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -310,7 +311,7 @@ class ApplicationMenuBar(QMenuBar):
                 return False  # Let the UI know it failed (e.g. permissions issue)
 
     def handle_language_change(self) -> None:
-        """Extracts the underlying language token string and signals the main window to prompt a restart."""
+        """Displays a confirmation prompt, updates settings, and restarts the app if accepted."""
         action = self.sender()
         if not isinstance(action, QAction):
             return
@@ -329,6 +330,62 @@ class ApplicationMenuBar(QMenuBar):
             target_lang,
         )
 
-        # Forward the instruction smoothly to your main window interface layer
-        if hasattr(self.main_win, "prompt_language_restart"):
-            self.main_win.prompt_language_restart(target_lang)
+        # 1. Initialize the custom confirmation message box container
+
+        msg_box = QMessageBox(
+            self.main_win
+        )  # Parent it to the main window for proper overlay centering
+        msg_box.setIcon(QMessageBox.Icon.Question)
+        msg_box.setWindowTitle(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TITLE)
+        )
+        msg_box.setText(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TEXT)
+        )
+
+        # 2. Attach custom translated button properties
+        restart_btn = msg_box.addButton(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_OK),
+            QMessageBox.ButtonRole.YesRole,
+        )
+        cancel_btn = msg_box.addButton(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_CANCEL),
+            QMessageBox.ButtonRole.NoRole,
+        )
+
+        msg_box.setDefaultButton(restart_btn)
+        msg_box.exec()
+
+        # 3. Intercept user cancellation
+        if msg_box.clickedButton() == cancel_btn:
+            logger.info(
+                "Language switch aborted by user. Restoring visual checkmark back to: '%s'",
+                current_lang,
+            )
+
+            for act in self.findChildren(QAction):
+                if act.data() == current_lang:
+                    # By directly calling setChecked(True) without a signal blocker,
+                    # the QActionGroup intercepts the change and clears the incorrect checkmark natively.
+                    act.setChecked(True)
+                    break
+            return
+
+        # 4. User accepted: Update persistent settings memory cache directly
+        self.settings_mgr.current_settings.language = target_lang
+        self.main_win.save_application_state()
+
+        # 6. Hand off thread sequence execution to the custom language injection CLI argument restart engine
+        cleaned_args = []
+        skip_next = False
+        for arg in sys.argv:
+            if skip_next:
+                skip_next = False
+                continue
+            if arg == "--lang":
+                skip_next = True
+                continue
+            cleaned_args.append(arg)
+
+        new_argv = cleaned_args + ["--lang", target_lang]
+        os.execv(sys.executable, [sys.executable] + new_argv)

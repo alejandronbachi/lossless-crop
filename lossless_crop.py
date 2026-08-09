@@ -1,10 +1,7 @@
 import ctypes
 import logging
-import os
 import sys
 from pathlib import Path
-
-from PyQt6.QtWidgets import QMessageBox
 
 from config import ui_constants
 from config.logging_setup import initialize_logging
@@ -902,62 +899,6 @@ class LossLessCropApp(QMainWindow):
 
     def on_engine_changed(self):
         self.snap_selector_widget()
-
-    def prompt_language_restart(self, target_lang: str) -> None:
-        """Displays a localized confirmation dialog prompting the user for a restart sequence."""
-
-        # 1. Initialize the custom confirmation message box container
-        msg_box = QMessageBox(self)
-        msg_box.setIcon(QMessageBox.Icon.Question)
-        msg_box.setWindowTitle(
-            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TITLE)
-        )
-        msg_box.setText(
-            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TEXT)
-        )
-
-        # 2. Attach check actions using custom translated button text strings
-        restart_btn = msg_box.addButton(
-            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_OK),
-            QMessageBox.ButtonRole.YesRole,
-        )
-        cancel_btn = msg_box.addButton(
-            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_CANCEL),
-            QMessageBox.ButtonRole.NoRole,
-        )
-
-        msg_box.setDefaultButton(restart_btn)
-        msg_box.exec()
-
-        # 3. Intercept user response selection
-        if msg_box.clickedButton() == cancel_btn:
-            # Re-sync menu checkbox layout visually by rebuilding menu selections
-            # if they canceled out, ensuring the checkmark snaps back to the active state
-            if hasattr(self, "menuBar") and hasattr(self.menuBar(), "init_menus"):
-                # Clear and repaint checkbox states if necessary
-                pass
-            return
-
-        # 4. User accepted: Update persistent settings memory cache directly
-        self.settings_manager.current_settings.language = target_lang
-
-        # 5. Execute your custom state writing pass to flush settings to INI/Registry disk channels
-        self.save_application_state()
-
-        # 6. Hand off thread sequence execution to the custom language injection CLI argument restart engine
-        cleaned_args = []
-        skip_next = False
-        for arg in sys.argv:
-            if skip_next:
-                skip_next = False
-                continue
-            if arg == "--lang":
-                skip_next = True
-                continue
-            cleaned_args.append(arg)
-
-        new_argv = cleaned_args + ["--lang", target_lang]
-        os.execv(sys.executable, [sys.executable] + new_argv)
 
 
 def initialize_application_locale(app: QApplication, settings_manager) -> None:
