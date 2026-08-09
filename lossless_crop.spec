@@ -39,7 +39,8 @@ a = Analysis(
         ('assets', 'assets'), # Maps your consolidated assets tree
         ('config', 'config'), # Keeps your custom config bundle intact
         ('version.txt', '.'),  # Adds version for the app to grab and show
-        ('docs/user_manual.md', 'docs'),  # Adds user manual
+        ('translations', 'translations'), # Package .qm files
+        ('docs/user_manual_*.md', 'docs'),  # Include all markdown docs
     ],
     hiddenimports=active_hidden_imports, # Uses the platform-safe dynamic list
     hookspath=[],
