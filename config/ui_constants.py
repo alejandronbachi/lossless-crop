@@ -1,6 +1,9 @@
+import logging
 import sys
 
 from PyQt6.QtCore import QCoreApplication
+
+logger = logging.getLogger(__name__)
 
 
 # --- Internationalization Helpers ---
@@ -20,7 +23,7 @@ def translate_constant(text: str) -> str:
 
     # Optional debugging for foreign languages (e.g., Spanish)
     if result == text:
-        print(f"[MISSING TRANSLATION] Context: UIConstants | String: '{text}'")
+        logger.debug("[MISSING TRANSLATION] Context: UIConstants | String: %s", text)
 
     return result
 
