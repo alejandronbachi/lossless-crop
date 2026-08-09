@@ -36,7 +36,7 @@ def initialize_logging():
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
-                "level": "INFO",
+                "level": "DEBUG",
                 "formatter": "standard",
                 "stream": sys.stdout,
             },
@@ -50,7 +50,7 @@ def initialize_logging():
                 "backupCount": 3,
             },
         },
-        "root": {"handlers": ["console", "file"], "level": "INFO"},
+        "root": {"handlers": ["console", "file"], "level": "DEBUG"},
     }
 
     # 4. Inject settings into Python's logging core engine

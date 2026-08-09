@@ -3,17 +3,20 @@ import logging
 import sys
 from pathlib import Path
 
+from config import ui_constants
 from config.logging_setup import initialize_logging
 from widgets.application_menu_bar import ApplicationMenuBar
 
 initialize_logging()
 from PyQt6.QtCore import (
     QEasingCurve,
+    QLocale,
     QPoint,
     QPropertyAnimation,
     QRect,
     Qt,
     QTimer,
+    QTranslator,
 )
 from PyQt6.QtGui import QIcon, QPixmap, QResizeEvent, QWheelEvent
 from PyQt6.QtWidgets import (
@@ -27,7 +30,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from config import app_constants, ui_constants
+from config import app_constants
 from managers import theme_manager
 from managers.canvas_presenter import CanvasPresenter
 from managers.crop_execution_manager import CropExecutionController
@@ -58,11 +61,11 @@ logger = logging.getLogger(__name__)
 
 
 class LossLessCropApp(QMainWindow):
-    def __init__(self):
+    def __init__(self, settings_manager: SettingsManager):
         super().__init__()
         self.setWindowTitle(f"Lossless Crop  - {app_constants.APP_VERSION}")
         self.resize(900, 700)
-        self.settings_manager = SettingsManager()
+        self.settings_manager = settings_manager
         self.settings = AppSettings()
         self.file_manager = FileManager(self.settings_manager)
         theme_manager.init_theme(
@@ -354,7 +357,7 @@ class LossLessCropApp(QMainWindow):
 
         # 1. Quick setting check
         if (
-            self.combo_engine.currentText() != ui_constants.ENGINE_LOSSLESS
+            self.combo_engine.currentIndex() != app_constants.EngineMode.LOSSLESS
             or not self.image_manager.is_lossless_available
         ):
             return False
@@ -438,7 +441,9 @@ class LossLessCropApp(QMainWindow):
         if not success:
             if error_message:
                 logger.error("Critical Error: Crop failed: %s", error_message)
-            self.status_manager.show_center_notification(ui_constants.TEXT_CROP_FAILED)
+            self.status_manager.show_center_notification(
+                ui_constants.translate_constant(ui_constants.TEXT_CROP_FAILED)
+            )
             return
 
         if self.chk_overwrite.isChecked():
@@ -457,16 +462,16 @@ class LossLessCropApp(QMainWindow):
 
         if use_lossless:
             self.status_manager.show_center_notification(
-                ui_constants.TEXT_LOSSLESS_CROP
+                ui_constants.translate_constant(ui_constants.TEXT_LOSSLESS_CROP)
             )
         else:
             if file_ext in app_constants.ALWAYS_LOSSLESS_IMAGE_EXTENSIONS:
                 self.status_manager.show_center_notification(
-                    ui_constants.TEXT_LOSSLESS_CROP
+                    ui_constants.translate_constant(ui_constants.TEXT_LOSSLESS_CROP)
                 )
             else:
                 self.status_manager.show_center_notification(
-                    ui_constants.TEXT_LOSSY_CROP
+                    ui_constants.translate_constant(ui_constants.TEXT_LOSSY_CROP)
                 )
 
         self.status_manager.invalidate_ui_state()
@@ -754,7 +759,10 @@ class LossLessCropApp(QMainWindow):
             self.image_session.close_session()
             self.crop_box_selector.hide()
             self.status_manager.set_empty_workspace_state()
-            alert_text = error_msg if error_msg else ui_constants.TEXT_NO_VALID_IMAGES
+            default_text = ui_constants.translate_constant(
+                ui_constants.TEXT_NO_VALID_IMAGES
+            )
+            alert_text = error_msg if error_msg else default_text
             self.status_manager.show_center_notification(alert_text)
             if error_msg:
                 self.status_manager.info_bar.lbl_status.setText(error_msg)
@@ -784,20 +792,24 @@ class LossLessCropApp(QMainWindow):
             return
 
         _, _, valid_files = self.file_manager.process_path(directory)
-
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DIR
+        )
         self.update_ui_after_loadin_folder(
             folder_path=directory,
             valid_files=valid_files,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+            error_msg=error_msg,
         )
 
     def open_recent_dir(self, target_folder_str: str):
         _, _, valid_files = self.file_manager.process_path(target_folder_str)
-
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DIR
+        )
         self.update_ui_after_loadin_folder(
             folder_path=target_folder_str,
             valid_files=valid_files,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+            error_msg=error_msg,
         )
 
     def dropEvent(self, event):
@@ -813,11 +825,14 @@ class LossLessCropApp(QMainWindow):
             dropped_path
         )
 
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DROP
+        )
         self.update_ui_after_loadin_folder(
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DROP,
+            error_msg=error_msg,
         )
 
     def select_individual_image_file(self):
@@ -833,12 +848,14 @@ class LossLessCropApp(QMainWindow):
         folder, starting_file, valid_files = self.file_manager.process_path(
             selected_file_path
         )
-
+        error_msg = ui_constants.translate_constant(
+            ui_constants.TEXT_NO_VALID_IMAGES_DIR
+        )
         self.update_ui_after_loadin_folder(
             folder_path=folder,
             valid_files=valid_files,
             target_file=starting_file,
-            error_msg=ui_constants.TEXT_NO_VALID_IMAGES_DIR,
+            error_msg=error_msg,
         )
 
     def reload_directory(self):
@@ -884,16 +901,110 @@ class LossLessCropApp(QMainWindow):
         self.snap_selector_widget()
 
 
+def initialize_application_locale(app: QApplication, settings_manager) -> None:
+    """Central source of truth to resolve and install interface translations.
+
+    Enforces strict priority fallback sequence:
+    1. CLI Argument (--lang)
+    2. Stored Persistent Configuration Setting
+    3. System Default Operating System Locale
+    4. Fallback default layout strings (English)
+    """
+    resolved_lang = "en"  # Ultimate safety default
+    is_resolved = False  # Strict Boolean flag tracking checkpoint resolutions
+
+    # --- 1. PRIORITY 1: Check Command-Line Arguments ---
+    if "--lang" in sys.argv:
+        try:
+            lang_idx = sys.argv.index("--lang")
+            cli_lang = sys.argv[lang_idx + 1]
+            if cli_lang in ui_constants.SUPPORTED_LANGUAGES:
+                resolved_lang = cli_lang
+                is_resolved = True
+                logger.info(
+                    "Locale Resolution: Triggered CLI priority override -> '%s'",
+                    resolved_lang,
+                )
+        except (ValueError, IndexError):
+            pass
+
+    # --- 2. PRIORITY 2: Check Stored Setting ---
+    if not is_resolved:
+        temp_settings = settings_manager.load()
+        stored_lang = getattr(temp_settings, "language", "system")
+
+        # Ensure it's a known language code and NOT the "system" default placeholder string
+        if stored_lang in ui_constants.SUPPORTED_LANGUAGES and stored_lang != "system":
+            resolved_lang = stored_lang
+            is_resolved = True
+            logger.info(
+                "Locale Resolution: Loaded stored user setting -> '%s'", resolved_lang
+            )
+
+    # --- 3. PRIORITY 3: Check System Default Operating System Locale ---
+    if not is_resolved:
+        system_locale = QLocale.system().name()  # e.g., 'es_MX', 'en_US', 'fr_FR'
+        detected_base = system_locale.split("_")[0]  # Safely extracts 'es', 'en', 'fr'
+
+        # --- 4. PRIORITY 4: Check if system locale is supported, else use English ---
+        if detected_base in ui_constants.SUPPORTED_LANGUAGES:
+            resolved_lang = detected_base
+            logger.info(
+                "Locale Resolution: Auto-detected system OS locale -> '%s'",
+                resolved_lang,
+            )
+        else:
+            resolved_lang = "en"
+            logger.info(
+                "Locale Resolution: System locale '%s' not supported. Defaulting to English.",
+                detected_base,
+            )
+        is_resolved = True
+
+    # --- EXPOSE RESOLVED VALUE AND MOUNT TRANSLATOR ---
+    app.base_lang = resolved_lang  # Shared property exposed for template loaders
+
+    # Only load binary packages if the final resolved target is a foreign language
+    if resolved_lang != "en":
+        app.translator = QTranslator()
+        translations_dir = app_constants.APP_ROOT_DIR / "translations"
+        qm_path = translations_dir / f"lossless_crop_{resolved_lang}.qm"
+
+        if qm_path.exists():
+            if app.translator.load(str(qm_path)):
+                app.installTranslator(app.translator)
+                logger.info(
+                    "Successfully mounted interface translation package: %s",
+                    qm_path.name,
+                )
+            else:
+                logger.error(
+                    "Warning: Failed to load binary dictionary structure for %s",
+                    qm_path.name,
+                )
+    else:
+        logger.info(
+            "Using app default native language string context (English). Bypassing translator initialization."
+        )
+
+
 if __name__ == "__main__":
-    myappid = (
-        "losslesscropteam.losslesscrop.editor.1.0"  # Arbitrary unique ID string names
-    )
+    myappid = "losslesscropteam.losslesscrop.editor.1.0"
 
     try:
+        import ctypes
+
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except Exception:
         pass
+
     app = QApplication(sys.argv)
-    window = LossLessCropApp()
+
+    settings_manager = SettingsManager()
+    # Execute the 4-step initialization sequence seamlessly
+    initialize_application_locale(app, settings_manager)
+
+    window = LossLessCropApp(settings_manager)
+    app.main_window = window
     window.show()
     sys.exit(app.exec())

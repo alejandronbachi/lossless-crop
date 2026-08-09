@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QToolButton,
 )
 
-from config import ui_constants
+from config import app_constants, ui_constants
 from widgets.sliding_switch import SlidingSwitch
 
 
@@ -34,7 +34,8 @@ class ControlToolbar(QFrame):
         # Open folder
         self.main_app.btn_open_folder = QToolButton(self)
         self.main_app.btn_open_folder.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_open_folder.setToolTip("Open Folder")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_OPEN_FOLDER)
+        self.main_app.btn_open_folder.setToolTip(tooltip)
         self.main_app.btn_open_folder.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("open_folder.svg")
         self.main_app.btn_open_folder.setIcon(QIcon(icon_path))
@@ -45,7 +46,8 @@ class ControlToolbar(QFrame):
         # Open Image
         self.main_app.btn_open_image = QToolButton(self)
         self.main_app.btn_open_image.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_open_image.setToolTip("Open Image")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_OPEN_IMAGE)
+        self.main_app.btn_open_image.setToolTip(tooltip)
         self.main_app.btn_open_image.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("open_image.svg")
         self.main_app.btn_open_image.setIcon(QIcon(icon_path))
@@ -57,7 +59,8 @@ class ControlToolbar(QFrame):
         # Crop
         self.main_app.btn_crop = QToolButton(self)
         self.main_app.btn_crop.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_crop.setToolTip("Crop")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_CROP)
+        self.main_app.btn_crop.setToolTip(tooltip)
         self.main_app.btn_crop.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("crop.svg")
         self.main_app.btn_crop.setIcon(QIcon(icon_path))
@@ -68,7 +71,8 @@ class ControlToolbar(QFrame):
         # Crop and next
         self.main_app.btn_crop_next = QToolButton(self)
         self.main_app.btn_crop_next.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_crop_next.setToolTip("Crop and Next")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_CROP_NEXT)
+        self.main_app.btn_crop_next.setToolTip(tooltip)
         self.main_app.btn_crop_next.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("crop_next.svg")
         self.main_app.btn_crop_next.setIcon(QIcon(icon_path))
@@ -79,7 +83,8 @@ class ControlToolbar(QFrame):
         # Rotate
         self.main_app.btn_rotate = QToolButton(self)
         self.main_app.btn_rotate.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_rotate.setToolTip("Rotate")
+        tooltip = ui_constants.translate_constant(ui_constants.TOOLTIP_ROTATE)
+        self.main_app.btn_rotate.setToolTip(tooltip)
         self.main_app.btn_rotate.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("rotate.svg")
         self.main_app.btn_rotate.setIcon(QIcon(icon_path))
@@ -96,16 +101,33 @@ class ControlToolbar(QFrame):
         # 2. Engine Options Dropdown
         self.main_app.combo_engine = QComboBox()
         self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.combo_engine.setToolTip(ui_constants.TOOLTIP_ENGINE)
+        self.main_app.combo_engine.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_ENGINE)
+        )
         self.main_app.combo_engine.setFont(native_font)
         self.main_app.combo_engine.view().setFont(native_font)
 
         if self.image_manager.is_lossless_available:
-            self.main_app.combo_engine.addItem(ui_constants.ENGINE_LOSSLESS)
+            self.main_app.combo_engine.addItem(
+                ui_constants.translate_constant(ui_constants.ENGINE_LOSSLESS),
+                app_constants.EngineMode.LOSSLESS,
+            )
+
         if pillow_available:
-            self.main_app.combo_engine.addItem(ui_constants.ENGINE_PIXEL_PERFECT)
+            self.main_app.combo_engine.addItem(
+                ui_constants.translate_constant(ui_constants.ENGINE_PIXEL_PERFECT),
+                app_constants.EngineMode.PIXEL_PERFECT,
+            )
+
+        # Clean Fallback logic using internal Data instead of UI strings
         if not self.image_manager.is_lossless_available and pillow_available:
-            self.main_app.combo_engine.setCurrentText(ui_constants.ENGINE_PIXEL_PERFECT)
+            # Dynamically locate where PIXEL_PERFECT sits, regardless of what index it landed on
+            target_index = self.main_app.combo_engine.findData(
+                app_constants.EngineMode.PIXEL_PERFECT
+            )
+            if target_index != -1:
+                self.main_app.combo_engine.setCurrentIndex(target_index)
+
         self.main_app.combo_engine.currentIndexChanged.connect(
             self.main_app.on_engine_changed
         )
@@ -113,26 +135,62 @@ class ControlToolbar(QFrame):
         self.layout.addWidget(self.main_app.combo_engine)
 
         # 3. Aspect Ratio Dropdown
+        # 3. Aspect Ratio Dropdown
         self.main_app.combo_ratio = QComboBox()
         self.main_app.combo_ratio.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.combo_ratio.setToolTip(ui_constants.TOOLTIP_RATIO)
+        self.main_app.combo_ratio.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_RATIO)
+        )
         self.main_app.combo_ratio.setFont(native_font)
         self.main_app.combo_ratio.view().setFont(native_font)
-        self.main_app.combo_ratio.addItems(ui_constants.RATIO_ITEMS)
+        self.main_app.combo_ratio.setMinimumWidth(18)
+
+        # Pair each immutable Enum mode with its matching text string token
+        ratio_mappings = [
+            (app_constants.CropRatioMode.FREEFORM, ui_constants.RATIO_FREEFORM),
+            (app_constants.CropRatioMode.SQUARE_1_1, ui_constants.RATIO_SQUARE),
+            (
+                app_constants.CropRatioMode.WIDESCREEN_16_9,
+                ui_constants.RATIO_WIDESCREEN,
+            ),
+            (app_constants.CropRatioMode.STANDARD_4_3, ui_constants.RATIO_STANDARD),
+            (app_constants.CropRatioMode.SOURCE_RATIO, ui_constants.RATIO_SOURCE),
+        ]
+
+        # Populate the dropdown with both display and hidden values
+        for mode, constant in ratio_mappings:
+            self.main_app.combo_ratio.addItem(
+                ui_constants.translate_constant(constant), mode
+            )
+
         self.main_app.combo_ratio.currentIndexChanged.connect(
             self.main_app.on_ratio_changed
         )
-        self.main_app.combo_ratio.setMinimumWidth(18)
         self.layout.addWidget(self.main_app.combo_ratio)
 
         # 4. Snap Feedback Dropdown
         self.main_app.combo_snap = QComboBox()
         self.main_app.combo_snap.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.combo_snap.setToolTip(ui_constants.TOOLTIP_SNAP)
+        self.main_app.combo_snap.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_SNAP)
+        )
         self.main_app.combo_snap.setFont(native_font)
         self.main_app.combo_snap.view().setFont(native_font)
-        self.main_app.combo_snap.addItems(ui_constants.SNAP_ITEMS)
         self.main_app.combo_snap.setMinimumWidth(18)
+
+        # Map each Enum state to its matching string constant from your UI file
+        snap_mappings = [
+            (app_constants.SnapMode.REAL_TIME, ui_constants.SNAP_REAL_TIME),
+            (app_constants.SnapMode.POST_RELEASE, ui_constants.SNAP_POST_RELEASE),
+            (app_constants.SnapMode.GHOSTING, ui_constants.SNAP_GHOSTING),
+        ]
+
+        # Bind them atomically using your translated text and hidden data properties
+        for mode, constant in snap_mappings:
+            self.main_app.combo_snap.addItem(
+                ui_constants.translate_constant(constant), mode
+            )
+
         self.layout.addWidget(self.main_app.combo_snap)
 
         # 5. Precision Manual Crop Spinboxes Component Layout
@@ -178,18 +236,22 @@ class ControlToolbar(QFrame):
 
         # 6. Toolbar Checkboxes
         self.main_app.chk_preserve = SlidingSwitch(
-            ui_constants.CHECKBOX_KEEP_SELECTION_TEXT
+            ui_constants.translate_constant(ui_constants.CHECKBOX_KEEP_SELECTION_TEXT)
         )
         self.main_app.chk_preserve.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.chk_preserve.setToolTip(ui_constants.TOOLTIP_PRESERVE)
+        self.main_app.chk_preserve.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_PRESERVE)
+        )
         self.main_app.chk_preserve.setChecked(True)
         self.layout.addWidget(self.main_app.chk_preserve)
 
         self.main_app.chk_overwrite = SlidingSwitch(
-            ui_constants.CHECKBOX_OVERWRITE_TEXT
+            ui_constants.translate_constant(ui_constants.CHECKBOX_OVERWRITE_TEXT)
         )
         self.main_app.chk_overwrite.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.chk_overwrite.setToolTip(ui_constants.TOOLTIP_OVERWRITE)
+        self.main_app.chk_overwrite.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_OVERWRITE)
+        )
         self.main_app.chk_overwrite.setChecked(False)
         self.layout.addWidget(self.main_app.chk_overwrite)
 
@@ -200,7 +262,9 @@ class ControlToolbar(QFrame):
         # 7. Configuration Gear Toggle Button
         self.main_app.btn_settings = QToolButton(self)
         self.main_app.btn_settings.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.main_app.btn_settings.setToolTip(ui_constants.TOOLTIP_SETTINGS)
+        self.main_app.btn_settings.setToolTip(
+            ui_constants.translate_constant(ui_constants.TOOLTIP_SETTINGS)
+        )
         self.main_app.btn_settings.setFixedSize(38, 38)
         icon_path = self.file_manager.getSVGPathString("gear.svg")
         self.main_app.btn_settings.setIcon(QIcon(icon_path))

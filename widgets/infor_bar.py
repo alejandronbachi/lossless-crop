@@ -24,7 +24,9 @@ class InfoBar(QFrame):
         self.layout.addWidget(self.lbl_directory, 0, 0)
 
         # Primary Centered File Status Label (Column 1)
-        self.lbl_status = QLabel(ui_constants.TEXT_READY_STATUS)
+        self.lbl_status = QLabel(
+            ui_constants.translate_constant(ui_constants.TEXT_READY_STATUS)
+        )
         self.lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_status.setObjectName("lblStatus")
         self.layout.addWidget(self.lbl_status, 0, 1)

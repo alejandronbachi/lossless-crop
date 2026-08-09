@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import QApplication, QWidget
 from config.ui_constants import (
     BASE_STYLE_TEMPLATE,
     FOLDER_STYLES,
-    FOLDER_TEMPLATES,
     TEMPLATE_SPLASH,
 )
 
@@ -231,8 +230,8 @@ def apply_theme(theme_mode: str):
                 splash_hud = window.findChild(QWidget, "SplashHUD")
                 if splash_hud and hasattr(splash_hud, "setText"):
                     # If found, load the splash asset, swap tokens, and set it directly!
-                    raw_html = _file_manager.load_asset(
-                        filename=TEMPLATE_SPLASH, folder_name=FOLDER_TEMPLATES
+                    raw_html = _file_manager.load_localized_template(
+                        filename=TEMPLATE_SPLASH
                     )
                     if raw_html:
                         raw_html = substitute_tokens(raw_html)

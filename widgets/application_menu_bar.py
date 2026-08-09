@@ -1,13 +1,14 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QStandardPaths, Qt, QUrl
-from PyQt6.QtGui import QAction, QDesktopServices
-from PyQt6.QtWidgets import QMenuBar, QMessageBox
+from PyQt6.QtGui import QAction, QActionGroup, QDesktopServices
+from PyQt6.QtWidgets import QApplication, QMenuBar, QMessageBox
 
+from config import ui_constants
 from config.app_constants import APP_VERSION
-from config.ui_constants import FOLDER_TEMPLATES, TEMPLATE_ABOUT
 from managers import theme_manager
 from managers.file_manager import FileManager
 from widgets.email_feedback_dialog import EmailFeedbackDialog
@@ -27,17 +28,24 @@ class ApplicationMenuBar(QMenuBar):
 
     def init_menus(self):
         # --- FILE MENU ---
-        file_menu = self.addMenu("File")
+        file_menu = self.addMenu(
+            ui_constants.translate_constant(ui_constants.MENU_FILE)
+        )
 
-        open_folder_act = QAction("Open Directory", self)
-        open_image_act = QAction("Open Image", self)
+        open_folder_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_OPEN_DIRECTORY), self
+        )
+        open_image_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_OPEN_IMAGE), self
+        )
 
-        self.recent_menu = self.addMenu("Recent")
-        self.recent_menu.aboutToShow.connect(self.populate_recent_menu)
+        see_logs_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_SEE_LOGS), self
+        )
 
-        see_logs_act = QAction("See Logs", self)
-
-        exit_act = QAction("Exit", self)
+        exit_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_EXIT), self
+        )
 
         open_folder_act.triggered.connect(self.handle_open_folder)
         open_image_act.triggered.connect(self.handle_open_image)
@@ -49,18 +57,40 @@ class ApplicationMenuBar(QMenuBar):
         file_menu.addAction(open_image_act)
         file_menu.addSeparator()
         if sys.platform == "win32":
-            create_shortcut = QAction("Create Desktop Shortcut", self)
+            create_shortcut = QAction(
+                ui_constants.translate_constant(
+                    ui_constants.ACTION_CREATE_DESKTOP_SHORTCUT
+                ),
+                self,
+            )
             create_shortcut.triggered.connect(self.handle_desktop_shortcut)
             file_menu.addAction(create_shortcut)
         file_menu.addAction(see_logs_act)
         file_menu.addSeparator()
         file_menu.addAction(exit_act)
 
+        # Recen menu
+        self.recent_menu = self.addMenu(
+            ui_constants.translate_constant(ui_constants.MENU_RECENT)
+        )
+        self.recent_menu.aboutToShow.connect(self.populate_recent_menu)
+
+        # Language menu
+        self.setup_language_menu()
+
         # --- HELP MENU ---
-        help_menu = self.addMenu("Help")
-        user_manual_act = QAction("User Manual", self)
-        about_act = QAction("About", self)
-        feedback_act = QAction("Send Feedback", self)
+        help_menu = self.addMenu(
+            ui_constants.translate_constant(ui_constants.MENU_HELP)
+        )
+        user_manual_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_USER_MANUAL), self
+        )
+        about_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_ABOUT), self
+        )
+        feedback_act = QAction(
+            ui_constants.translate_constant(ui_constants.ACTION_SEND_FEEDBACK), self
+        )
 
         user_manual_act.triggered.connect(self.handle_user_manual)
         about_act.triggered.connect(self.handle_about)
@@ -78,7 +108,10 @@ class ApplicationMenuBar(QMenuBar):
         recent_paths = self.settings_mgr.get_recent_paths()
 
         if not recent_paths:
-            empty_act = QAction("No Recent Items", self)
+            empty_act = QAction(
+                ui_constants.translate_constant(ui_constants.ACTION_NO_RECENT_ITEMS),
+                self,
+            )
             empty_act.setEnabled(False)
             self.recent_menu.addAction(empty_act)
             return
@@ -95,6 +128,34 @@ class ApplicationMenuBar(QMenuBar):
                 lambda checked, target=path_str: self.handle_load_recent(target)
             )
             self.recent_menu.addAction(action)
+
+    def setup_language_menu(self):
+        # --- LANGUAGE MENU ---
+        lang_menu = self.addMenu(
+            ui_constants.translate_constant(ui_constants.MENU_LANGUAGE_TITLE)
+        )
+
+        # Group actions to behave like exclusive radio selections
+        lang_group = QActionGroup(self)
+        lang_group.setExclusive(True)
+
+        app_instance = QApplication.instance()
+        current_lang = getattr(app_instance, "base_lang", "en")
+
+        for lang_code in ui_constants.SUPPORTED_LANGUAGES:
+            # Directly extract the native string literal payload
+            native_label = ui_constants.LANGUAGE_DISPLAY_NAMES.get(lang_code, lang_code)
+
+            # Build checkable action properties using the clean native string directly
+            action = QAction(native_label, self, checkable=True)
+            action.setData(lang_code)
+
+            if lang_code == current_lang:
+                action.setChecked(True)
+
+            action.triggered.connect(self.handle_language_change)
+            lang_group.addAction(action)
+            lang_menu.addAction(action)
 
     # --- ACTIONS ---
     def handle_open_folder(self):
@@ -130,7 +191,9 @@ class ApplicationMenuBar(QMenuBar):
             )
             # 2. Inform the user gracefully on screen using your status manager
             self.main_win.status_manager.show_center_notification(
-                "Permission denied: Cannot access log directory."
+                ui_constants.translate_constant(
+                    ui_constants.NOTIFICATION_LOG_PERMISSION_DENIED
+                )
             )
             return
         except Exception:
@@ -138,7 +201,9 @@ class ApplicationMenuBar(QMenuBar):
                 "Unexpected system exception occurred during log folder preparation."
             )
             self.main_win.status_manager.show_center_notification(
-                "System error: Unable to prepare logs."
+                ui_constants.translate_constant(
+                    ui_constants.NOTIFICATION_LOG_SYSTEM_ERROR
+                )
             )
             return
 
@@ -153,7 +218,9 @@ class ApplicationMenuBar(QMenuBar):
             )
             # Notify the user smoothly
             self.main_win.status_manager.show_center_notification(
-                "OS failed to launch file explorer."
+                ui_constants.translate_constant(
+                    ui_constants.NOTIFICATION_OS_LAUNCH_FAILED
+                )
             )
 
     def handle_about(self):
@@ -166,7 +233,9 @@ class ApplicationMenuBar(QMenuBar):
         msg_box = QMessageBox(self.main_win)
 
         # 2. Assign properties cleanly using native methods
-        msg_box.setWindowTitle("About Lossless Crop")
+        msg_box.setWindowTitle(
+            ui_constants.translate_constant(ui_constants.DIALOG_TITLE_ABOUT)
+        )
         if self.main_win.windowIcon() and not self.main_win.windowIcon().isNull():
             # Grabs your app icon and scales it to a standard crisp crisp 48x48 layout
             app_pixmap = self.main_win.windowIcon().pixmap(48, 48)
@@ -181,7 +250,7 @@ class ApplicationMenuBar(QMenuBar):
         )
 
         # 4. Your polished HTML block layout
-        about_html = self.file_mgr.load_asset(TEMPLATE_ABOUT, FOLDER_TEMPLATES)
+        about_html = self.file_mgr.load_localized_template(ui_constants.TEMPLATE_ABOUT)
         about_html = about_html.replace("@APP_VERSION", APP_VERSION)
         about_html = theme_manager.substitute_tokens(about_html)
 
@@ -205,10 +274,16 @@ class ApplicationMenuBar(QMenuBar):
     def handle_desktop_shortcut(self):
         success = self.create_desktop_shortcut()
         if success:
-            self.main_win.status_manager.show_center_notification("Shortcut Created")
+            self.main_win.status_manager.show_center_notification(
+                ui_constants.translate_constant(
+                    ui_constants.NOTIFICATION_SHORTCUT_CREATED
+                )
+            )
         else:
             self.main_win.status_manager.show_center_notification(
-                "Failed to create shortcut"
+                ui_constants.translate_constant(
+                    ui_constants.NOTIFICATION_SHORTCUT_FAILED
+                )
             )
 
     def create_desktop_shortcut(self):
@@ -232,5 +307,85 @@ class ApplicationMenuBar(QMenuBar):
                 shortcut.save()
                 return True  # Let the UI know it succeeded
             except Exception:
-                logger.error("Failed to create desktop shortcut.", exc_info=True)
+                logger.exception("Failed to create desktop shortcut.")
                 return False  # Let the UI know it failed (e.g. permissions issue)
+
+    def handle_language_change(self) -> None:
+        """Displays a confirmation prompt, updates settings, and restarts the app if accepted."""
+        action = self.sender()
+        if not isinstance(action, QAction):
+            return
+
+        target_lang = action.data()
+        app_instance = QApplication.instance()
+        current_lang = getattr(app_instance, "base_lang", "en")
+
+        # Guard Clause: Do nothing if the user clicks the language that is already active
+        if target_lang == current_lang:
+            return
+
+        logger.info(
+            "Language switch requested via menu bar sequence: '%s' -> '%s'",
+            current_lang,
+            target_lang,
+        )
+
+        # 1. Initialize the custom confirmation message box container
+
+        msg_box = QMessageBox(
+            self.main_win
+        )  # Parent it to the main window for proper overlay centering
+        msg_box.setIcon(QMessageBox.Icon.Question)
+        msg_box.setWindowTitle(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TITLE)
+        )
+        msg_box.setText(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_TEXT)
+        )
+
+        # 2. Attach custom translated button properties
+        restart_btn = msg_box.addButton(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_OK),
+            QMessageBox.ButtonRole.YesRole,
+        )
+        cancel_btn = msg_box.addButton(
+            ui_constants.translate_constant(ui_constants.DIALOG_LANG_RESTART_CANCEL),
+            QMessageBox.ButtonRole.NoRole,
+        )
+
+        msg_box.setDefaultButton(restart_btn)
+        msg_box.exec()
+
+        # 3. Intercept user cancellation
+        if msg_box.clickedButton() == cancel_btn:
+            logger.info(
+                "Language switch aborted by user. Restoring visual checkmark back to: '%s'",
+                current_lang,
+            )
+
+            for act in self.findChildren(QAction):
+                if act.data() == current_lang:
+                    # By directly calling setChecked(True) without a signal blocker,
+                    # the QActionGroup intercepts the change and clears the incorrect checkmark natively.
+                    act.setChecked(True)
+                    break
+            return
+
+        # 4. User accepted: Update persistent settings memory cache directly
+        self.settings_mgr.current_settings.language = target_lang
+        self.main_win.save_application_state()
+
+        # 6. Hand off thread sequence execution to the custom language injection CLI argument restart engine
+        cleaned_args = []
+        skip_next = False
+        for arg in sys.argv:
+            if skip_next:
+                skip_next = False
+                continue
+            if arg == "--lang":
+                skip_next = True
+                continue
+            cleaned_args.append(arg)
+
+        new_argv = cleaned_args + ["--lang", target_lang]
+        os.execv(sys.executable, [sys.executable] + new_argv)

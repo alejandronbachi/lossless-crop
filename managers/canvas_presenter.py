@@ -205,7 +205,7 @@ class CanvasPresenter:
             else None
         )
         return CropGeometryEngine.resolve_aspect_ratio(
-            self.combo_ratio.currentText(), dims
+            self.combo_ratio.currentData(), dims
         )
 
     def update_resolution_metrics_display(self):
@@ -335,7 +335,7 @@ class CanvasPresenter:
             box_rect,
             viewport,
             lossless=False,
-            ratio_label=self.combo_ratio.currentText(),
+            ratio_data=self.combo_ratio.currentData(),
         )
 
         crop_left, crop_top = source_rect.x(), source_rect.y()

@@ -44,11 +44,11 @@ class StatusManager(QObject):
         self.lazy_timer.start()
 
     def invalidate_ui_state(self):
-        """🚀 Mark the view state as dirty. High-frequency mouse events call this!"""
+        """Mark the view state as dirty. High-frequency mouse events call this!"""
         self._is_dirty = True
 
     def _on_lazy_heartbeat_tick(self):
-        """🚀 The Frame-Rate Gatekeeper: Executes heavy updates ONLY if a change actually occurred."""
+        """The Frame-Rate Gatekeeper: Executes heavy updates ONLY if a change actually occurred."""
         if not self._is_dirty:
             return  # The mouse hasn't moved; drop out immediately to save CPU cycles!
 
@@ -79,7 +79,9 @@ class StatusManager(QObject):
 
     def set_empty_workspace_state(self):
         """Resets layout labels back to startup splash configurations."""
-        self.info_bar.lbl_status.setText(self.ui_constants.TEXT_READY_STATUS)
+        self.info_bar.lbl_status.setText(
+            self.ui_constants.translate_constant(self.ui_constants.TEXT_READY_STATUS)
+        )
         self.info_bar.lbl_metrics.setText("")
         self.lbl_telemetry_hud.hide()
         self.lbl_commands_overlay.hide()
@@ -234,7 +236,10 @@ class StatusManager(QObject):
             self.main_app.cfg_show_directory.isChecked()
             and self.main_app.image_session.has_active_image
         ):
-            return f"Directory: {self.main_app.image_session.folder_path.name}"
+            directory = self.ui_constants.translate_constant(
+                self.ui_constants.LABEL_INFO_BAR_DIRECTORY
+            )
+            return f"{directory}: {self.main_app.image_session.folder_path.name}"
         return ""
 
     def _compile_filename_string(self) -> str:

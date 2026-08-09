@@ -34,9 +34,7 @@ class CommandsOverlay(QLabel):
 
         self.setObjectName("CommandsOverlay")
         self.setText(
-            file_manager.load_asset(
-                ui_constants.TEMPLATE_COMMANDS, ui_constants.FOLDER_TEMPLATES
-            )
+            file_manager.load_localized_template(ui_constants.TEMPLATE_COMMANDS)
         )
 
         shadow = QGraphicsDropShadowEffect(self)
@@ -53,15 +51,13 @@ class SplashHUD(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.hide()  # Maintained hidden by default until evaluated on launch
         self.setObjectName("SplashHUD")
-        splash_text = file_manager.load_asset(
-            ui_constants.TEMPLATE_SPLASH, ui_constants.FOLDER_TEMPLATES
-        )
+        splash_text = file_manager.load_localized_template(ui_constants.TEMPLATE_SPLASH)
         self.setText(splash_text)
 
 
 class TelemetryHUD(QLabel):
     def __init__(self, parent_container, file_manager, ui_constants):
-        # 🚀 Pass the canvas/central container directly
+        #  Pass the canvas/central container directly
         super().__init__(parent_container)
         self.setObjectName(ui_constants.WIDGET_TELEMETRY_HUD)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
