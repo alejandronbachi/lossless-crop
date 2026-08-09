@@ -69,7 +69,7 @@ class FloatingZoomPreview(QWidget):
             # 1. Define target rectangle matching full high-res image pixels
             target_rect = QRect(int(left), int(top), int(width), int(height))
 
-            # 2. ⚡ INSTANT VRAM TEXTURE COPY (Slices directly out of the active image memory!)
+            # 2. INSTANT VRAM TEXTURE COPY (Slices directly out of the active image memory!)
             cropped_pixmap = current_pixmap.copy(target_rect)
 
             current_window_size = self.size()
@@ -101,7 +101,7 @@ class FloatingZoomPreview(QWidget):
             self.main_app.status_manager.invalidate_ui_state()
 
     # =================================================================
-    # 🖱️ FINALIZED COHESIVE INPUT MAPS: LEFT = RESIZE, RIGHT = MOVE ANYWHERE
+    # FINALIZED COHESIVE INPUT MAPS: LEFT = RESIZE, RIGHT = MOVE ANYWHERE
     # =================================================================
     def mousePressEvent(self, event):
         # Capture absolute global starting anchors to prevent tracking jitter
@@ -109,11 +109,11 @@ class FloatingZoomPreview(QWidget):
         self.initial_window_geom = self.geometry()
 
         if event.button() == Qt.MouseButton.LeftButton:
-            # 🌟 MATCHED COHESION: Left click handles resizing!
+            #  MATCHED COHESION: Left click handles resizing!
             self.is_resizing = True
             event.accept()
         elif event.button() == Qt.MouseButton.RightButton:
-            # 🌟 MATCHED COHESION: Right click handles moving the position!
+            #  MATCHED COHESION: Right click handles moving the position!
             self.is_moving = True
             event.accept()
 
@@ -125,7 +125,7 @@ class FloatingZoomPreview(QWidget):
         current_global_pos = event.globalPosition().toPoint()
         delta = current_global_pos - self.drag_start_global
 
-        # 🌟 MATCHED COHESION: LEFT-CLICK DRAG TO RESIZE (Expands toward drag direction)
+        # MATCHED COHESION: LEFT-CLICK DRAG TO RESIZE (Expands toward drag direction)
         if self.is_resizing and (event.buttons() == Qt.MouseButton.LeftButton):
             new_w = max(
                 self.minimumWidth(), self.initial_window_geom.width() + delta.x()
@@ -136,7 +136,7 @@ class FloatingZoomPreview(QWidget):
             self.resize(new_w, new_h)
             event.accept()
 
-        # 🌟 MATCHED COHESION: RIGHT-CLICK DRAG TO MOVE ANYWHERE
+        #  MATCHED COHESION: RIGHT-CLICK DRAG TO MOVE ANYWHERE
         elif self.is_moving and (event.buttons() == Qt.MouseButton.RightButton):
             target_x = self.initial_window_geom.x() + delta.x()
             target_y = self.initial_window_geom.y() + delta.y()
@@ -149,7 +149,7 @@ class FloatingZoomPreview(QWidget):
         event.accept()
 
     def mouseDoubleClickEvent(self, event):
-        # 🌟 MATCHED COHESION: Double right-click to close (so double-left doesn't misfire during resizing)
+        #  MATCHED COHESION: Double right-click to close (so double-left doesn't misfire during resizing)
         if event.button() == Qt.MouseButton.RightButton:
             self.hide()
             #  Bulletproof Guard: Check that the checkbox widget object actually exists
