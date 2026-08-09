@@ -102,9 +102,7 @@ class ControlToolbar(QFrame):
         self.main_app.combo_engine = QComboBox()
         self.main_app.combo_engine.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.main_app.combo_engine.setToolTip(
-            ui_constants.translate_constant(
-                ui_constants.translate_constant(ui_constants.TOOLTIP_ENGINE)
-            )
+            ui_constants.translate_constant(ui_constants.TOOLTIP_ENGINE)
         )
         self.main_app.combo_engine.setFont(native_font)
         self.main_app.combo_engine.view().setFont(native_font)
