@@ -390,15 +390,28 @@ class ApplicationMenuBar(QMenuBar):
         import os
         import subprocess
 
-        # Clone the current environment variables
+        # Clone the current environment variables safely
         clean_env = os.environ.copy()
 
-        # IMPORTANT: Remove PyInstaller tracking keys so the new process
-        # knows it must unpack a fresh internal filesystem tree (_MEIPASS)
-        for key in ["_MEIPASS", "REQ_CA_BUNDLE", "REQUESTS_CA_BUNDLE"]:
-            clean_env.pop(key, None)
-
         if getattr(sys, "frozen", False):
+            # PyInstaller environment recovery
+            orig_vars = getattr(sys, "__pl_orig_vars", None)
+            if orig_vars:
+                for key in orig_vars:
+                    clean_env[key] = os.environ.get(
+                        f"PYI_{key}_OLD", clean_env.get(key)
+                    )
+
+            pyi_keys = [
+                "_MEIPASS",
+                "REQ_CA_BUNDLE",
+                "REQUESTS_CA_BUNDLE",
+                "PYI_BUNDLED_ARGS",
+                "PATH" if os.name == "nt" else "LD_LIBRARY_PATH",
+            ]
+            for key in pyi_keys:
+                clean_env.pop(key, None)
+
             if "APPIMAGE" in os.environ:
                 executable = os.environ["APPIMAGE"]
                 new_argv = cleaned_args + ["--lang", target_lang]
@@ -406,18 +419,20 @@ class ApplicationMenuBar(QMenuBar):
                 executable = sys.executable
                 new_argv = cleaned_args + ["--lang", target_lang]
         else:
+            # Local IDE Environment (VS Code / Terminal development testing)
             executable = sys.executable
-            main_script = sys.argv[0]
+            main_script = sys.argv[
+                0
+            ]  # <-- FIX: Extract only the script path string, not the list!
             new_argv = [main_script] + cleaned_args + ["--lang", target_lang]
 
         # 8. Fire off the clean detached process using Python's subprocess engine
-        # This completely breaks the parent-child relationship on both Windows and Linux
         full_command = [executable] + new_argv
 
-        if os.name == "nt":  # Windows specific clean spawn flags
-            # DETACHED_PROCESS (0x00000008) creates a completely separate process group
-            subprocess.Popen(full_command, env=clean_env, creationflags=0x00000008)
-        else:  # Linux / macOS clean spawn flags
+        if os.name == "nt":  # Windows
+            # DETACHED_PROCESS (0x00000008) + NEW_PROCESS_GROUP (0x00000200)
+            subprocess.Popen(full_command, env=clean_env, creationflags=0x00000208)
+        else:  # Linux / macOS
             subprocess.Popen(full_command, env=clean_env, start_new_session=True)
 
         # 9. Cleanly exit the current window instance immediately
