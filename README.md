@@ -11,8 +11,8 @@
 <p align="center">
   <a href="README.md"><img src="https://img.shields.io/badge/Language-English-blue" alt="English"></a>
   <a href="docs/readmes/README.es.md"><img src="https://img.shields.io/badge/Idioma-Español-orange" alt="Español"></a>
-  <a href="docs/readmes/README.fr.md"><img src="https://img.shields.io/badge/Language-Français-green" alt="Français"></a>
-  <a href="docs/readmes/README.pt.md"><img src="https://img.shields.io/badge/Idioma-Português-red" alt="Português"></a>
+  <a href="docs/readmes/README.fr.md"><img src="https://img.shields.io/badge/Language-Français-red" alt="Français"></a>
+  <a href="docs/readmes/README.pt.md"><img src="https://img.shields.io/badge/Idioma-Português-green" alt="Português"></a>
 </p>
 
 **A cross-platform lossless image cropping application with many features and configuration options.**
@@ -111,8 +111,6 @@ Depending on available time, application usage and user requests.
 
 ## License
 This project is licensed under the GNU GPL 3 License - see the [LICENSE](LICENSE) file for details.
-<a href="https://github.com/alejandronbachi/lossless-crop/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/alejandronbachi/lossless-crop?color=green" alt="License"></a>
-
 
 ##  Support My Work
 
