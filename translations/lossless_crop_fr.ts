@@ -4,374 +4,374 @@
 <context>
     <name>UIConstants</name>
     <message>
-        <location filename="..\config\ui_constants.py" line="37" />
+        <location filename="..\config\ui_constants.py" line="40" />
         <source>&amp;Language</source>
         <translation>Langue</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="71" />
+        <location filename="..\config\ui_constants.py" line="74" />
         <source>Ready. Open a folder to start cropping.</source>
         <translation>Prêt. Ouvrez un dossier.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="74" />
+        <location filename="..\config\ui_constants.py" line="77" />
         <source>Lossless Crop</source>
         <translation>Rogner sans perte</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="75" />
+        <location filename="..\config\ui_constants.py" line="78" />
         <source>Lossy Crop</source>
         <translation>Rogner avec perte</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="76" />
+        <location filename="..\config\ui_constants.py" line="79" />
         <source>Crop Failed</source>
         <translation>Échec du rognage</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="77" />
+        <location filename="..\config\ui_constants.py" line="80" />
         <source>No valid images found in target folder.</source>
         <translation>Aucune image valide dans le dossier.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="80" />
+        <location filename="..\config\ui_constants.py" line="83" />
         <source>No valid, readable images found in directory.</source>
         <translation>Aucune image valide et lisible.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="83" />
+        <location filename="..\config\ui_constants.py" line="86" />
         <source>No valid, readable images found in dropped payload.</source>
         <translation>Aucune image valide et lisible déposée.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="86" />
+        <location filename="..\config\ui_constants.py" line="89" />
         <source>First image of directory</source>
         <translation>Première image du dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="87" />
+        <location filename="..\config\ui_constants.py" line="90" />
         <source>Last image of directory</source>
         <translation>Dernière image du dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="88" />
+        <location filename="..\config\ui_constants.py" line="91" />
         <source>File missing; syncing workspace...</source>
         <translation>Fichier manquant ; synchronisation...</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="91" />
+        <location filename="..\config\ui_constants.py" line="94" />
         <source>No directory active</source>
         <translation>Aucun dossier actif</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="103" />
+        <location filename="..\config\ui_constants.py" line="106" />
         <source>Images (*.png *.jpg *.jpeg *.webp *.bmp)</source>
         <translation>Images (*.png *.jpg *.jpeg *.webp *.bmp)</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="108" />
+        <location filename="..\config\ui_constants.py" line="111" />
         <source>General</source>
         <translation>Général</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="109" />
+        <location filename="..\config\ui_constants.py" line="112" />
         <source>Show / Display</source>
         <translation>Affichage</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="110" />
+        <location filename="..\config\ui_constants.py" line="113" />
         <source>Layout Memory</source>
         <translation>Mémoire de disposition</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="112" />
+        <location filename="..\config\ui_constants.py" line="115" />
         <source>Save settings</source>
         <translation>Enregistrer les paramètres</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="113" />
+        <location filename="..\config\ui_constants.py" line="116" />
         <source>Auto-open last folder</source>
         <translation>Ouvrir le dernier dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="116" />
+        <location filename="..\config\ui_constants.py" line="119" />
         <source>Shortcuts Guide</source>
         <translation>Guide des raccourcis</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="117" />
+        <location filename="..\config\ui_constants.py" line="120" />
         <source>Notifications</source>
         <translation>Notifications</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="118" />
+        <location filename="..\config\ui_constants.py" line="121" />
         <source>Bottom Info Bar</source>
         <translation>Barre d'infos</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="119" />
+        <location filename="..\config\ui_constants.py" line="122" />
         <source>Directory Name</source>
         <translation>Nom du dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="120" />
+        <location filename="..\config\ui_constants.py" line="123" />
         <source>Image Filename</source>
         <translation>Nom du fichier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="121" />
+        <location filename="..\config\ui_constants.py" line="124" />
         <source>Image Resolution</source>
         <translation>Résolution</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="122" />
+        <location filename="..\config\ui_constants.py" line="125" />
         <source>Preview</source>
         <translation>Aperçu</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="123" />
+        <location filename="..\config\ui_constants.py" line="126" />
         <source>Fit Preview</source>
         <translation>Ajuster l'aperçu</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="124" />
+        <location filename="..\config\ui_constants.py" line="127" />
         <source>Main Window</source>
         <translation>Fenêtre principale</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="125" />
+        <location filename="..\config\ui_constants.py" line="128" />
         <source>Preview HUD</source>
         <translation>HUD d'aperçu</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="126" />
+        <location filename="..\config\ui_constants.py" line="129" />
         <source>Keep selection</source>
         <translation>Conserver la sélection</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="127" />
+        <location filename="..\config\ui_constants.py" line="130" />
         <source>Overwrite</source>
         <translation>Écraser</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="128" />
+        <location filename="..\config\ui_constants.py" line="131" />
         <source>Dark Theme</source>
         <translation>Thème sombre</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="130" />
+        <location filename="..\config\ui_constants.py" line="133" />
         <source>Open Folder</source>
         <translation>Ouvrir le dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="236" />
-        <location filename="..\config\ui_constants.py" line="131" />
+        <location filename="..\config\ui_constants.py" line="239" />
+        <location filename="..\config\ui_constants.py" line="134" />
         <source>Open Image</source>
         <translation>Ouvrir l'image</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="132" />
+        <location filename="..\config\ui_constants.py" line="135" />
         <source>Crop</source>
         <translation>Rogner</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="133" />
+        <location filename="..\config\ui_constants.py" line="136" />
         <source>Crop &amp; Next</source>
         <translation>Rogner &amp; Suivant</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="134" />
+        <location filename="..\config\ui_constants.py" line="137" />
         <source>Rotate</source>
         <translation>Pivoter</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="136" />
+        <location filename="..\config\ui_constants.py" line="139" />
         <source>Display Zoom Preview HUD</source>
         <translation>Afficher le HUD de zoom</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="137" />
+        <location filename="..\config\ui_constants.py" line="140" />
         <source>Choose processing engine for cropping operations.</source>
         <translation>Choisir le moteur de rognage.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="140" />
+        <location filename="..\config\ui_constants.py" line="143" />
         <source>Force the cropping rectangle selection box to lock onto specific aspect ratios.</source>
         <translation>Verrouiller le ratio du rectangle de sélection.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="144" />
+        <location filename="..\config\ui_constants.py" line="147" />
         <source>Select layout feedback mode for Left-Click mouse drawing.</source>
         <translation>Mode de retour pour le tracé à la souris.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="147" />
+        <location filename="..\config\ui_constants.py" line="150" />
         <source>Conserve current selection box size and position coordinates across images.</source>
         <translation>Conserver la taille et la position de la sélection.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="151" />
+        <location filename="..\config\ui_constants.py" line="154" />
         <source>Directly overwrite original source image files instead of nesting copies in a subfolder.</source>
         <translation>Écraser directement les fichiers originaux.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="155" />
+        <location filename="..\config\ui_constants.py" line="158" />
         <source>Toggle configuration choices</source>
         <translation>Basculer les options</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="157" />
+        <location filename="..\config\ui_constants.py" line="160" />
         <source>Freeform</source>
         <translation>Libre</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="158" />
+        <location filename="..\config\ui_constants.py" line="161" />
         <source>1:1 Square</source>
         <translation>Carré 1:1</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="159" />
+        <location filename="..\config\ui_constants.py" line="162" />
         <source>16:9 Widescreen</source>
         <translation>16:9 Panoramique</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="160" />
+        <location filename="..\config\ui_constants.py" line="163" />
         <source>4:3 Standard</source>
         <translation>4:3 Standard</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="161" />
+        <location filename="..\config\ui_constants.py" line="164" />
         <source>Source Ratio</source>
         <translation>Ratio d'origine</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="163" />
+        <location filename="..\config\ui_constants.py" line="166" />
         <source>Real-time snap</source>
         <translation>Ajustement en temps réel</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="164" />
+        <location filename="..\config\ui_constants.py" line="167" />
         <source>Post-release snap</source>
         <translation>Ajustement au relâcher</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="165" />
+        <location filename="..\config\ui_constants.py" line="168" />
         <source>Ghosting</source>
         <translation>Fantôme</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="167" />
+        <location filename="..\config\ui_constants.py" line="170" />
         <source>Lossless</source>
         <translation>Sans perte</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="168" />
+        <location filename="..\config\ui_constants.py" line="171" />
         <source>Pixel-Perfect</source>
         <translation>Pixel parfait</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="173" />
+        <location filename="..\config\ui_constants.py" line="176" />
         <source>Directory</source>
         <translation>Dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="176" />
+        <location filename="..\config\ui_constants.py" line="179" />
         <source>Submit</source>
         <translation>Envoyer</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="177" />
+        <location filename="..\config\ui_constants.py" line="180" />
         <source>Transmitting...</source>
         <translation>Transmission...</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="188" />
+        <location filename="..\config\ui_constants.py" line="191" />
         <source>Success</source>
         <translation>Succès</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="189" />
+        <location filename="..\config\ui_constants.py" line="192" />
         <source>Server responded with status code: </source>
         <translation>Code réponse du serveur : </translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="193" />
+        <location filename="..\config\ui_constants.py" line="196" />
         <source>Submit Feedback / Bug Report</source>
         <translation>Envoyer un avis / Rapport de bug</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="197" />
+        <location filename="..\config\ui_constants.py" line="200" />
         <source>Your Email (Optional, for follow-up details):</source>
         <translation>Votre e-mail (optionnel) :</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="200" />
+        <location filename="..\config\ui_constants.py" line="203" />
         <source>developer@example.com</source>
         <translation>developpeur@example.com</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="201" />
+        <location filename="..\config\ui_constants.py" line="204" />
         <source>Classification Category:</source>
         <translation>Catégorie :</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="203" />
+        <location filename="..\config\ui_constants.py" line="206" />
         <source>Bug Report</source>
         <translation>Rapport de bug</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="204" />
+        <location filename="..\config\ui_constants.py" line="207" />
         <source>Feature Request </source>
         <translation>Demande de fonctionnalité </translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="205" />
+        <location filename="..\config\ui_constants.py" line="208" />
         <source>General UI Feedback </source>
         <translation>Avis général UI </translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="207" />
+        <location filename="..\config\ui_constants.py" line="210" />
         <source>Detailed Description:</source>
         <translation>Description détaillée :</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="208" />
+        <location filename="..\config\ui_constants.py" line="211" />
         <source>Please specify what steps you took right before encountering the issue...</source>
         <translation>Veuillez décrire les étapes menant au problème...</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="269" />
-        <location filename="..\config\ui_constants.py" line="212" />
+        <location filename="..\config\ui_constants.py" line="272" />
+        <location filename="..\config\ui_constants.py" line="215" />
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="214" />
+        <location filename="..\config\ui_constants.py" line="217" />
         <source>Validation Error</source>
         <translation>Erreur de validation</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="215" />
+        <location filename="..\config\ui_constants.py" line="218" />
         <source>Description field cannot be submitted blank.</source>
         <translation>La description ne peut être vide.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="219" />
+        <location filename="..\config\ui_constants.py" line="222" />
         <source>Thank You</source>
         <translation>Merci</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="220" />
+        <location filename="..\config\ui_constants.py" line="223" />
         <source>Your feedback was sent successfully and delivered straight to my inbox!</source>
         <translation>Votre avis a bien été envoyé !</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="225" />
+        <location filename="..\config\ui_constants.py" line="228" />
         <source>Network Dispatch Failure</source>
         <translation>Échec d'envoi réseau</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="226" />
+        <location filename="..\config\ui_constants.py" line="229" />
         <source>Transmission failed. Check internet access.
 
 Error: {}</source>
@@ -380,108 +380,124 @@ Error: {}</source>
 Erreur : {}</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="231" />
+        <location filename="..\config\ui_constants.py" line="234" />
         <source>File</source>
         <translation>Fichier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="232" />
+        <location filename="..\config\ui_constants.py" line="235" />
         <source>Recent</source>
         <translation>Récent</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="233" />
+        <location filename="..\config\ui_constants.py" line="236" />
         <source>Help</source>
         <translation>Aide</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="235" />
+        <location filename="..\config\ui_constants.py" line="238" />
         <source>Open Directory</source>
         <translation>Ouvrir le dossier</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="237" />
+        <location filename="..\config\ui_constants.py" line="240" />
         <source>No Recent Items</source>
         <translation>Aucun élément récent</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="238" />
+        <location filename="..\config\ui_constants.py" line="241" />
         <source>See Logs</source>
         <translation>Voir les logs</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="239" />
+        <location filename="..\config\ui_constants.py" line="242" />
         <source>Exit</source>
         <translation>Quitter</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="240" />
+        <location filename="..\config\ui_constants.py" line="243" />
         <source>Create Desktop Shortcut</source>
         <translation>Créer un raccourci bureau</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="243" />
+        <location filename="..\config\ui_constants.py" line="246" />
         <source>User Manual</source>
         <translation>Manuel utilisateur</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="244" />
+        <location filename="..\config\ui_constants.py" line="247" />
         <source>About</source>
         <translation>À propos</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="245" />
+        <location filename="..\config\ui_constants.py" line="248" />
         <source>Send Feedback</source>
         <translation>Envoyer un avis</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="247" />
+        <location filename="..\config\ui_constants.py" line="250" />
         <source>About Lossless Crop</source>
         <translation>À propos de Lossless Crop</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="249" />
+        <location filename="..\config\ui_constants.py" line="252" />
         <source>Permission denied: Cannot access log directory.</source>
         <translation>Permission refusée : accès aux logs impossible.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="252" />
+        <location filename="..\config\ui_constants.py" line="255" />
         <source>System error: Unable to prepare logs.</source>
         <translation>Erreur système : impossible de préparer les logs.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="255" />
+        <location filename="..\config\ui_constants.py" line="258" />
         <source>OS failed to launch file explorer.</source>
         <translation>Échec du lancement de l'explorateur.</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="258" />
+        <location filename="..\config\ui_constants.py" line="261" />
         <source>Shortcut Created</source>
         <translation>Raccourci créé</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="259" />
+        <location filename="..\config\ui_constants.py" line="262" />
         <source>Failed to create shortcut</source>
         <translation>Échec de création du raccourci</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="263" />
+        <location filename="..\config\ui_constants.py" line="266" />
         <source>Change Language</source>
         <translation>Changer de langue</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="264" />
+        <location filename="..\config\ui_constants.py" line="267" />
+        <source>Restart is needed to apply the new language.
+
+If you continue the app will close and require a manual restart.
+
+ Do you want to proceed?</source>
+        <translation>Un redémarrage est nécessaire pour appliquer la nouvelle langue.
+
+Si vous continuez, l'application se fermera et nécessitera un redémarrage manuel.
+
+Voulez-vous continuer ?</translation>
+    </message>
+    <message>
+        <location filename="..\config\ui_constants.py" line="271" />
+        <source>Quit Now</source>
+        <translation>Quitter maintenant</translation>
+    </message>
+    <message>
         <source>The application needs to restart to apply the new language layout.
 
 Do you want to restart now?</source>
-        <translation>L'application doit redémarrer para appliquer la nueva disposition de la langue.
+        <translation type="vanished">L'application doit redémarrer para appliquer la nueva disposition de la langue.
 
 Voulez-vous redémarrer maintenant?</translation>
     </message>
     <message>
-        <location filename="..\config\ui_constants.py" line="268" />
         <source>Restart Now</source>
-        <translation>Redémarrer maintenant</translation>
+        <translation type="vanished">Redémarrer maintenant</translation>
     </message>
     <message>
         <source>Directory: </source>
