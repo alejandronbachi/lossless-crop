@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
+  <img src="../../assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
 </p>
 <p align="center">
 <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" alt="Python">
@@ -33,7 +33,7 @@
 
 ## Demostración
 <p align="center">
-  <img src="assets/screenshots/demo.webp" width="850" alt="Demostración">
+  <img src="../../assets/screenshots/demo.webp" width="850" alt="Demostración">
 </p>
 
 ## Formatos Soportados
@@ -58,7 +58,7 @@ Descarga el binario apropiado desde la [Página de Lanzamientos (Releases)](http
 3. Presiona `space` para recortar y pasar a la siguiente imagen
 
 ## Manual de Usuario
-Por favor, lee el [Manual de Usuario](/docs/user_manual.md) para más instrucciones, especialmente si necesitas saber cómo funciona el recorte sin pérdida; de lo contrario, el ajuste (snapping) del área de selección podría parecer un comportamiento inesperado.
+Por favor, lee el [Manual de Usuario](/docs/user_manual_es.md) para más instrucciones, especialmente si necesitas saber cómo funciona el recorte sin pérdida; de lo contrario, el ajuste (snapping) del área de selección podría parecer un comportamiento inesperado.
 
 ## Atajos de Teclado Globales y Controles del Mouse
 
@@ -79,8 +79,8 @@ Por favor, lee el [Manual de Usuario](/docs/user_manual.md) para más instruccio
 ## Demostración visual: tema claro, comandos, HUD de zoom, opciones y un capibara
   <br>
   <p align="center">
-    <img src="assets/screenshots/showcase_1.webp" alt="Primera Pantalla" width="70%">
-    <img src="assets/screenshots/showcase_2.webp" alt="Segunda Pantalla" width="20%">
+    <img src="../../assets/screenshots/showcase_1.webp" alt="Primera Pantalla" width="70%">
+    <img src="../../assets/screenshots/showcase_2.webp" alt="Segunda Pantalla" width="20%">
   </p>
 
 
@@ -102,7 +102,7 @@ Dependiendo del tiempo disponible, el uso de la aplicación y las peticiones de 
 - Operaciones por lotes
 
 ## Licencia
-Este proyecto está bajo la Licencia GNU GPL 3. Consulta el archivo [`LICENSE`](LICENSE) para más detalles.
+Este proyecto está bajo la Licencia GNU GPL 3. Consulta el archivo [`LICENSE`](../../LICENSE) para más detalles.
 <a href="https://github.com/alejandronbachi/lossless-crop/blob/main/LICENSE"> <img src="https://img.shields.io/github/license/alejandronbachi/lossless-crop?color=green" alt="Licencia"></a>
 
 
@@ -114,4 +114,4 @@ Si encuentras útil este proyecto, ¡puedes apoyar su desarrollo a través de Bi
 
 *Escanea el código QR a continuación usando tu aplicación móvil de Binance para donar al instante con 0% de comisiones por gas de red (Compatible con USDT, BTC, ETH y BNB).*
 
-<img src="assets/screenshots/binance_qr.jpg" width="220" alt="Código QR de Binance Pay">
+<img src="../../assets/screenshots/binance_qr.jpg" width="220" alt="Código QR de Binance Pay">
