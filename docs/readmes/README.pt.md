@@ -1,3 +1,4 @@
+
 <p align="center">
   <img src="../../assets/screenshots/banner.png" width="100%" alt="Lossless Crop">
 </p>
@@ -7,7 +8,9 @@
 <img src="https://img.shields.io/badge/macOS-Supported-lighgrey?logo=apple" alt="macOSSupport">
 <img src="https://img.shields.io/badge/Linux-Supported-orange?logo=linux" alt="LinuxSupport">
 </p>
-
+<p align="center">
+  <a href="../../README.md"><img src="https://img.shields.io/badge/Language-English-blue" alt="English"></a>
+</p>
 
 **Uma aplicação multiplataforma de corte de imagens sem perdas (lossless) com diversos recursos e opções de configuração.**
 
@@ -47,7 +50,7 @@
 ### Opção 1: Binários
 Baixe o binário apropriado na [Página de Lançamentos (Releases)](https://github.com/alejandronbachi/lossless-crop/releases):
 - **Windows** (`LosslessCrop-Windows.exe`)
-- **Linux** (`LosslessCrop-Linux`)
+- **Linux** (`LosslessCrop-Linux`) , (`LosslessCrop-Linux.AppImage`)
 - **macOS** (`LosslessCrop-macOS.tar.gz`)
 
 [![GitHubRelease](https://img.shields.io/github/v/release/alejandronbachi/lossless-crop?color=blue)](https://github.com/alejandronbachi/lossless-crop/releases)

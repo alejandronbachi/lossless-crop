@@ -8,7 +8,12 @@
 <img src="https://img.shields.io/badge/macOS-Supported-lighgrey?logo=apple" alt="macOSSupport">
 <img src="https://img.shields.io/badge/Linux-Supported-orange?logo=linux" alt="LinuxSupport">
 </p>
-
+<p align="center">
+  <a href="README.md"><img src="https://img.shields.io/badge/Language-English-blue" alt="English"></a>
+  <a href="docs/readmes/README.es.md"><img src="https://img.shields.io/badge/Idioma-Español-orange" alt="Español"></a>
+  <a href="docs/readmes/README.fr.md"><img src="https://img.shields.io/badge/Language-Français-green" alt="Français"></a>
+  <a href="docs/readmes/README.pt.md"><img src="https://img.shields.io/badge/Idioma-Português-red" alt="Português"></a>
+</p>
 
 **A cross-platform lossless image cropping application with many features and configuration options.**
 
@@ -50,7 +55,7 @@ Download the appropiate binary from the  [Releases Page](https://github.com/alej
 
  page:
 - **Windows** (`LosslessCrop-Windows.exe`)
-- **Linux** (`LosslessCrop-Linux`)
+- **Linux** (`LosslessCrop-Linux`) and (`LosslessCrop-Linux.AppImage`)
 - **macOS** (`LosslessCrop-macOS.tar.gz`)
 
 [![GitHubRelease](https://img.shields.io/github/v/release/alejandronbachi/lossless-crop?color=blue)](https://github.com/alejandronbachi/lossless-crop/releases)
