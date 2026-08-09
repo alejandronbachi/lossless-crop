@@ -42,7 +42,7 @@ def initialize_logging():
             },
             "file": {
                 "class": "logging.handlers.RotatingFileHandler",
-                "level": "DEBUG",
+                "level": "WARNING",
                 "formatter": "standard",
                 "filename": log_file_path,
                 "encoding": "utf-8",
@@ -50,7 +50,7 @@ def initialize_logging():
                 "backupCount": 3,
             },
         },
-        "root": {"handlers": ["console", "file"], "level": "DEBUG"},
+        "root": {"handlers": ["console", "file"], "level": "WARNING"},
     }
 
     # 4. Inject settings into Python's logging core engine
