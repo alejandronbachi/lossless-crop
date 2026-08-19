@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lossless Crop - High Performance Desktop Cropping Tool</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #1e293b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 100px 20px 60px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .badge {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-color);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+
+        /* Action Buttons */
+        .cta-group {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 60px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Mockup Visual / Container */
+        .preview-container {
+            width: 100%;
+            max-width: 900px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(0,0,0,0) 100%);
+            padding: 12px;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 80px;
+        }
+
+        .app-mockup {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+            background-color: #000;
+            aspect-ratio: 16 / 10; /* Placeholder ratio */
+        }
+
+        /* Features Section */
+        .features {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px 100px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .card-icon {
+            font-size: 1.75rem;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        /* Responsive changes */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .hero { padding-top: 60px; }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero">
+        <div class="badge">Open Source Desktop App</div>
+        <h1>Instantly Crop Images Without Quality Loss</h1>
+        <p class="tagline">A lightning-fast standalone utility designed for efficient keyboard workflows, precision boundary selections, and zero-compromise metadata preservation.</p>
+        
+        <div class="cta-group">
+            <a href="https://github.com/alejandronbachi/lossless-crop/releases" class="btn btn-primary">Download Executable</a>
+            <a href="https://github.com/alejandronbachi/lossless-crop" class="btn btn-secondary">View Source Code</a>
+        </div>
+
+        <div class="preview-container">
+            <!-- Tip: Replace this placeholder image with an actual screenshot of your application later -->
+            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80" alt="Lossless Crop Interface Preview" class="app-mockup">
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="card">
+            <span class="card-icon">⚡</span>
+            <h3>Keyboard Workflow</h3>
+            <p>Designed for speed. Draw your boundary box, hit the Spacebar to instantly crop, and your canvas resets for the next file automatically.</p>
+        </div>
+        <div class="card">
+            <span class="card-icon">💎</span>
+            <h3>True Lossless Output</h3>
+            <p>Perform pixel-perfect transformations. Crops image dimensions flawlessly while preserving 100% of your native metadata and file structure.</p>
+        </div>
+        <div class="card">
+            <span class="card-icon">📦</span>
+            <h3>Zero Installation</h3>
+            <p>Ships as pre-compiled standalone binaries. No installations, setup scripts, or bloated background dependencies required.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Maintained by <a href="https://github.com/alejandronbachi">alejandronbachi</a>. Released under the open-source community terms.</p>
+    </footer>
+
+</body>
+</html>
