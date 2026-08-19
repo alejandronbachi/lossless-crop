@@ -28,6 +28,17 @@
             overflow-x: hidden;
         }
 
+         /* Banner Styling at the very top */
+        .top-banner {
+            width: 100%;
+            max-width: 850px; /* Matches the demo max-width exactly */
+            display: block;
+            height: auto;
+            margin: 0 auto 30px auto; /* Centers it and adds space below */
+            padding: 0; 
+        }
+
+
         /* Hero Section */
         .hero {
             display: flex;
@@ -175,6 +186,72 @@
             font-size: 0.95rem;
         }
 
+
+        .why-choose {
+            max-width: 850px;
+            margin: 0 auto 80px auto;
+            padding: 0 20px;
+        }
+
+        .why-choose h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 32px;
+            font-weight: 700;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 16px 24px;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background-color: rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            color: var(--accent-color);
+        }
+
+        .comparison-table tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-table td strong {
+            color: #ffffff;
+            display: block;
+            font-size: 1.05rem;
+            margin-bottom: 2px;
+        }
+
+        .comparison-table td span {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .check-icon {
+            color: #10b981;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-align: center;
+            width: 40px;
+        }
+
+
         footer {
             text-align: center;
             padding: 40px 20px;
@@ -196,7 +273,7 @@
     </style>
 </head>
 <body>
-
+    <img src="assets/screenshots/banner-transparent.png" alt="Lossless Crop Banner" class="top-banner">
     <section class="hero">
         <div class="badge">Open Source Desktop App</div>
         <h1>Instantly Crop Images Without Quality Loss</h1>
@@ -206,12 +283,62 @@
             <a href="https://github.com/alejandronbachi/lossless-crop/releases" class="btn btn-primary">Download Executable</a>
             <a href="https://github.com/alejandronbachi/lossless-crop" class="btn btn-secondary">View Source Code</a>
         </div>
-
         <div class="preview-container">
-            <!-- Tip: Replace this placeholder image with an actual screenshot of your application later -->
-            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80" alt="Lossless Crop Interface Preview" class="app-mockup">
+            <img src="assets/screenshots/demo.webp" alt="Lossless Crop Demo Animation" class="app-mockup">
         </div>
+
     </section>
+
+        <!-- Why Choose Section -->
+    <section class="why-choose">
+        <h2>Why use Lossless Crop over traditional image editors?</h2>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature Highlight</th>
+                    <th style="text-align: center; width: 100px;">Lossless Crop</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong>True Lossless Quality</strong>
+                        <span>Perfect canvas dimensions with absolutely zero pixel compression.</span>
+                    </td>
+                    <td class="check-icon">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>Fast Keyboard-Driven Workflow</strong>
+                        <span>Draw a box, hit Spacebar, and move instantly to your next image file.</span>
+                    </td>
+                    <td class="check-icon">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>Preserve Image Metadata</strong>
+                        <span>Retain original EXIF, GPS, and camera sensor information intact.</span>
+                    </td>
+                    <td class="check-icon">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>Smart Window Management</strong>
+                        <span>Remembers your custom application window size and coordinates automatically.</span>
+                    </td>
+                    <td class="check-icon">✓</td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>Zero-Installation Portable Binary</strong>
+                        <span>No bloated dependencies, installer screens, or background background telemetry.</span>
+                    </td>
+                    <td class="check-icon">✓</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
 
     <section class="features">
         <div class="card">
