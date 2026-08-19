@@ -92,6 +92,13 @@ Please read the [User Manual](/docs/user_manual.md) for more instructions, speci
   </p>
 
 
+## Why use this over traditional image editors?
+- Crop images without losing quality
+- Fast keyboard-driven image cropping
+- Preserve image metadata while cropping
+- Remember application windows size if desired
+- Portable software, no installation required
+
 ## Development & Contributing
 I'll be updating the documentation to make it easier to collaborate with the project soon, let me know if you are insterested in helping out.
 The project was built with python with PyQt6 and Pillow libraries. I might be testing switching to Pyside6 shortly.
